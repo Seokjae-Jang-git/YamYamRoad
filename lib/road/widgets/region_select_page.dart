@@ -41,7 +41,7 @@ class RegionSelectPage extends StatelessWidget {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 leading: ClipOval(
                   child: Image.asset(
-                    'assets/images/seoul.PNG', // 임시 지정된 대표 이미지 파일
+                    'assets/temp_images/seoul.PNG', // 임시 지정된 대표 이미지 파일
                     fit: BoxFit.cover,
                     width: 44,
                     height: 44,

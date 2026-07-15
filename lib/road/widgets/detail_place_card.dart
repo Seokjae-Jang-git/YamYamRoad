@@ -33,7 +33,7 @@ class DetailPlaceCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: Image.asset(
-                  'assets/images/seoul.PNG',
+                  'assets/temp_images/seoul.PNG',
                   width: 72,
                   height: 72,
                   fit: BoxFit.cover,
