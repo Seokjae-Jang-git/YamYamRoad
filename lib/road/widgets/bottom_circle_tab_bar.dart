@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../mypage/mypage_main.dart';
 
 class BottomCircleTabBar extends StatelessWidget {
   final int currentIndex;
@@ -22,19 +23,32 @@ class BottomCircleTabBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildBottomCircleTab(0, '홈', currentIndex == 0),
-          _buildBottomCircleTab(1, '냠냠북', currentIndex == 1),
-          _buildBottomCircleTab(2, '커뮤니티\n(냠냠로드)', currentIndex == 2),
-          _buildBottomCircleTab(3, '문의', currentIndex == 3),
-          _buildBottomCircleTab(4, '마이\n페이지', currentIndex == 4),
+          _buildBottomCircleTab(context, 0, '홈', currentIndex == 0),
+          _buildBottomCircleTab(context, 1, '얌얌북', currentIndex == 1),
+          _buildBottomCircleTab(context, 2, '커뮤니티\n(냠냠로드)', currentIndex == 2),
+          _buildBottomCircleTab(context, 3, '포인트', currentIndex == 3),
+          _buildBottomCircleTab(context, 4, '마이\n페이지', currentIndex == 4),
         ],
       ),
     );
   }
 
-  Widget _buildBottomCircleTab(int index, String label, bool isSelected) {
+  Widget _buildBottomCircleTab(BuildContext context, int index, String label, bool isSelected) {
     return GestureDetector(
-      onTap: () => onTap(index),
+      onTap: () {
+        if (index == 4) {
+          // 🌟 4번(마이페이지) 클릭 시 홈 화면 상태를 바꾸지 않고 마이페이지를 화면 위에 새로 얹습니다.
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const MyPageMainScreen(),
+            ),
+          );
+        } else {
+          // 0~3번 탭은 기존 홈 화면의 탭 교체 로직을 그대로 따릅니다.
+          onTap(index);
+        }
+      },
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
