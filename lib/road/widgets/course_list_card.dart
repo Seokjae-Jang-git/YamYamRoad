@@ -57,7 +57,7 @@ class CourseListCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '${course.description}  ·  🎯 스탬프 ${course.stampCount}개',
+                      '${course.description}  ·  🍒 스탬프 ${course.stampCount}개',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[700],

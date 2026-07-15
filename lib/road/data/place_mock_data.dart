@@ -2,12 +2,14 @@ class PlaceData {
   final String placeId;
   final String name;
   final double rating;
-  final int stampCount; // 🍉 수박 스탬프 카운트
+  final int stampCount; // 🍒 체리 스탬프 카운트
   final String distance;
   final int distanceValue; // 실시간 거리순 정렬을 위한 가상 미터(m) 값
   final String description;
   final double mapX; // 가상 지도상 가로 위치 비율 (0.0 ~ 1.0)
   final double mapY; // 가상 지도상 세로 위치 비율 (0.0 ~ 1.0)
+  final double latitude;  // 진짜 지구 위도
+  final double longitude; // 진짜 지구 경도
 
   const PlaceData({
     required this.placeId,
@@ -19,12 +21,14 @@ class PlaceData {
     required this.description,
     required this.mapX,
     required this.mapY,
+    required this.latitude,
+    required this.longitude,
   });
 }
 
 // 얌얌로드 14대 전국구 코스들에 대응하는 가게 마스터 데이터베이스
 final List<PlaceData> masterPlaces = [
-  // 1. 성수동 소금빵 코스 매칭 가게들
+  // 1. 성수동 소금빵 코스 매칭 가게들 (성수역 부근 좌표)
   const PlaceData(
     placeId: 'place_s1_1',
     name: '성수 소금빵 팩토리',
@@ -35,6 +39,8 @@ final List<PlaceData> masterPlaces = [
     description: '[인기] 🧂 버터 풍미 가득한 바삭한 유기농 소금빵',
     mapX: 0.3,
     mapY: 0.4,
+    latitude: 37.5445,
+    longitude: 127.0560,
   ),
   const PlaceData(
     placeId: 'place_s1_2',
@@ -46,9 +52,11 @@ final List<PlaceData> masterPlaces = [
     description: '🥯 매일 정해진 수량만 구워내는 특제 소금빵집',
     mapX: 0.5,
     mapY: 0.2,
+    latitude: 37.5422,
+    longitude: 127.0520,
   ),
 
-  // 2. 망리단길 카페 코스 매칭 가게들
+  // 2. 망리단길 카페 코스 매칭 가게들 (망원역 부근 좌표)
   const PlaceData(
     placeId: 'place_s2_1',
     name: '스페셜티 딥 망원',
@@ -59,6 +67,8 @@ final List<PlaceData> masterPlaces = [
     description: '[인기] ☕️ 드립 마스터가 내려주는 완벽한 싱글오리진 커피',
     mapX: 0.4,
     mapY: 0.6,
+    latitude: 37.5562,
+    longitude: 126.9015,
   ),
   const PlaceData(
     placeId: 'place_s2_2',
@@ -70,9 +80,11 @@ final List<PlaceData> masterPlaces = [
     description: '🍂 은은한 얼그레이 밀크티와 따뜻한 스콘의 환상 조화',
     mapX: 0.7,
     mapY: 0.5,
+    latitude: 37.5585,
+    longitude: 126.8975,
   ),
 
-  // 3. 수원 행궁동 구움과자 코스 매칭 가게들
+  // 3. 수원 행궁동 구움과자 코스 매칭 가게들 (행궁동 주민센터 부근 좌표)
   const PlaceData(
     placeId: 'place_k1_1',
     name: '행궁 구움과점',
@@ -83,6 +95,8 @@ final List<PlaceData> masterPlaces = [
     description: '[추천] 🍪 겉은 바삭하고 촉촉한 구운과자의 성지',
     mapX: 0.2,
     mapY: 0.5,
+    latitude: 37.2842,
+    longitude: 127.0162,
   ),
   const PlaceData(
     placeId: 'place_k1_2',
@@ -94,9 +108,11 @@ final List<PlaceData> masterPlaces = [
     description: '🎨 눈과 입이 모두 즐거운 이색 수제 아이싱 쿠키 전문점',
     mapX: 0.6,
     mapY: 0.3,
+    latitude: 37.2865,
+    longitude: 127.0145,
   ),
 
-  // 4. 구월동 타르트 코스 매칭 가게들
+  // 4. 구월동 타르트 코스 매칭 가게들 (예술회관역 부근 좌표)
   const PlaceData(
     placeId: 'place_i1_1',
     name: '구월 타르트 팩토리',
@@ -107,6 +123,8 @@ final List<PlaceData> masterPlaces = [
     description: '🥧 제철 생과일이 듬뿍 올라간 시그니처 과일 타르트',
     mapX: 0.3,
     mapY: 0.7,
+    latitude: 37.4485,
+    longitude: 126.7025,
   ),
   const PlaceData(
     placeId: 'place_i1_2',
@@ -118,9 +136,11 @@ final List<PlaceData> masterPlaces = [
     description: '🍯 부드러운 수제 에그타르트의 달콤한 향기가 머무는 곳',
     mapX: 0.5,
     mapY: 0.8,
+    latitude: 37.4462,
+    longitude: 126.7055,
   ),
 
-  // 5. 속초 샌드 코스 매칭 가게들
+  // 5. 속초 샌드 코스 매칭 가게들 (속초관광수산시장 부근 좌표)
   const PlaceData(
     placeId: 'place_g1_1',
     name: '속초 오션 샌드위치',
@@ -131,6 +151,8 @@ final List<PlaceData> masterPlaces = [
     description: '[인기] 🥪 신선한 속초 홍게살이 가득 찬 시그니처 게살 샌드',
     mapX: 0.35,
     mapY: 0.45,
+    latitude: 38.2045,
+    longitude: 128.5912,
   ),
   const PlaceData(
     placeId: 'place_g1_2',
@@ -142,9 +164,11 @@ final List<PlaceData> masterPlaces = [
     description: '🍁 고소한 단풍 팥 앙금이 듬뿍 들어간 동글동글 앙금빵',
     mapX: 0.55,
     mapY: 0.65,
+    latitude: 38.2030,
+    longitude: 128.5895,
   ),
 
-  // 6. 여수 밤바다 코스 매칭 가게들
+  // 6. 여수 밤바다 코스 매칭 가게들 (이순신광장 부근 좌표)
   const PlaceData(
     placeId: 'place_j1_1',
     name: '여수 돌산 오션 카페',
@@ -155,6 +179,8 @@ final List<PlaceData> masterPlaces = [
     description: '[추천] 🌊 여수 밤바다의 야경이 한눈에 보이는 명품 테라스',
     mapX: 0.2,
     mapY: 0.3,
+    latitude: 34.7415,
+    longitude: 127.7342,
   ),
   const PlaceData(
     placeId: 'place_j1_2',
@@ -166,9 +192,11 @@ final List<PlaceData> masterPlaces = [
     description: '🌌 낭만적인 밤공기와 어우러지는 콜드브루 스페셜티',
     mapX: 0.6,
     mapY: 0.5,
+    latitude: 34.7395,
+    longitude: 127.7385,
   ),
 
-  // 7. 제주 애월 코스 매칭 가게들
+  // 7. 제주 애월 코스 매칭 가게들 (애월 한담해변 부근 좌표)
   const PlaceData(
     placeId: 'place_je1_1',
     name: '애월 한라봉 도넛',
@@ -179,6 +207,8 @@ final List<PlaceData> masterPlaces = [
     description: '[인기] 🍊 제주 청정 한라봉을 갈아 넣은 수제 필링 도넛',
     mapX: 0.3,
     mapY: 0.5,
+    latitude: 33.4618,
+    longitude: 126.3105,
   ),
   const PlaceData(
     placeId: 'place_je1_2',
@@ -190,9 +220,11 @@ final List<PlaceData> masterPlaces = [
     description: '🗿 귀여운 하르방 모양의 쫀득한 쑥 말차 마카롱',
     mapX: 0.7,
     mapY: 0.4,
+    latitude: 33.4632,
+    longitude: 126.3142,
   ),
 
-  // 8. 인사동 개성주악 코스 매칭 가게들
+  // 8. 인사동 개성주악 코스 매칭 가게들 (인사동길 부근 좌표)
   const PlaceData(
     placeId: 'place_m2_1',
     name: '인사동 가온 한과',
@@ -203,6 +235,8 @@ final List<PlaceData> masterPlaces = [
     description: '🍯 바삭함과 부드러움이 살아있는 정통 유과와 수제 강정',
     mapX: 0.4,
     mapY: 0.3,
+    latitude: 37.5735,
+    longitude: 126.9855,
   ),
   const PlaceData(
     placeId: 'place_m2_2',
@@ -214,9 +248,11 @@ final List<PlaceData> masterPlaces = [
     description: '[추천] 🪵 예스러운 한옥에서 맛보는 겉바속촉 조청 주악',
     mapX: 0.6,
     mapY: 0.5,
+    latitude: 37.5712,
+    longitude: 126.9885,
   ),
 
-  // 9. 카이막 빵지순례 코스 매칭 가게들
+  // 9. 카이막 빵지순례 코스 매칭 가게들 (판교역 및 수원 좌표 분산 매핑)
   const PlaceData(
     placeId: 'place_m3_1',
     name: '터키 카이막 행궁동 본점',
@@ -227,6 +263,8 @@ final List<PlaceData> masterPlaces = [
     description: '[인기] 🥛 물 건너온 정통 레시피로 매일 끓여내는 리얼 카이막',
     mapX: 0.25,
     mapY: 0.6,
+    latitude: 37.2855,
+    longitude: 127.0135,
   ),
   const PlaceData(
     placeId: 'place_m3_2',
@@ -238,9 +276,11 @@ final List<PlaceData> masterPlaces = [
     description: '🥖 화덕에서 갓 구운 피타 브레드와 카이막의 꿀조합',
     mapX: 0.65,
     mapY: 0.4,
+    latitude: 37.3945,
+    longitude: 127.1112,
   ),
 
-  // 10. 동성로 딸기빙수 코스 매칭 가게들
+  // 10. 동성로 딸기빙수 코스 매칭 가게들 (대구 반월당역 부근 좌표)
   const PlaceData(
     placeId: 'place_m4_1',
     name: '동성로 눈꽃 빙수',
@@ -251,6 +291,8 @@ final List<PlaceData> masterPlaces = [
     description: '🍧 부드러운 순수 우유 눈꽃 얼음과 단팥 가득 빙수',
     mapX: 0.45,
     mapY: 0.55,
+    latitude: 35.8685,
+    longitude: 128.5945,
   ),
   const PlaceData(
     placeId: 'place_m4_2',
@@ -262,9 +304,11 @@ final List<PlaceData> masterPlaces = [
     description: '[추천] 🍓 제철 생딸기가 산더미처럼 얹어진 시즌 핫 메뉴',
     mapX: 0.55,
     mapY: 0.35,
+    latitude: 35.8655,
+    longitude: 128.6012,
   ),
 
-  // 11. 부산 수제 샌드위치 코스 매칭 가게들
+  // 11. 부산 수제 샌드위치 코스 매칭 가게들 (부산 전포동 부근 좌표)
   const PlaceData(
     placeId: 'place_m5_1',
     name: '해운대 수제 샌드위치 숍',
@@ -275,6 +319,8 @@ final List<PlaceData> masterPlaces = [
     description: '[인기] 🥗 신선한 생연어와 건강한 통밀 식빵의 만남',
     mapX: 0.3,
     mapY: 0.7,
+    latitude: 35.1612,
+    longitude: 129.1585,
   ),
   const PlaceData(
     placeId: 'place_m5_2',
@@ -286,9 +332,11 @@ final List<PlaceData> masterPlaces = [
     description: '🍞 칼로리 부담 없이 맛있고 든든한 닭가슴살 아보카도 샌드',
     mapX: 0.6,
     mapY: 0.6,
+    latitude: 35.1575,
+    longitude: 129.0642,
   ),
 
-  // 12. 강릉 인절미 코스 매칭 가게들
+  // 12. 강릉 인절미 코스 매칭 가게들 (강릉역 부근 좌표)
   const PlaceData(
     placeId: 'place_m6_1',
     name: '강릉 인절미 크림빵',
@@ -296,9 +344,11 @@ final List<PlaceData> masterPlaces = [
     stampCount: 130,
     distance: '내 위치에서 1.0km',
     distanceValue: 1000,
-    description: '🍡 쫀득한 찹쌀떡과 부드러운 고소함 가득 콩가루 크림',
+    description: '🍡 쫀득한 찹쌀떡 and 부드러운 고소함 가득 콩가루 크림',
     mapX: 0.3,
     mapY: 0.4,
+    latitude: 37.7625,
+    longitude: 128.8985,
   ),
   const PlaceData(
     placeId: 'place_m6_2',
@@ -310,9 +360,11 @@ final List<PlaceData> masterPlaces = [
     description: '🍵 쑥을 갈아 넣은 와플과 달달한 인절미 쉐이크',
     mapX: 0.7,
     mapY: 0.5,
+    latitude: 37.7595,
+    longitude: 128.9022,
   ),
 
-  // 13. 인천 말차 코스 매칭 가게들
+  // 13. 인천 말차 코스 매칭 가게들 (송도 센트럴파크 부근 좌표)
   const PlaceData(
     placeId: 'place_m7_1',
     name: '송도 그린티 하우스',
@@ -323,6 +375,8 @@ final List<PlaceData> masterPlaces = [
     description: '[인기] 🍵 보성 유기농 진한 말차 크림이 흘러내리는 아인슈페너',
     mapX: 0.2,
     mapY: 0.6,
+    latitude: 37.3912,
+    longitude: 126.6385,
   ),
   const PlaceData(
     placeId: 'place_m7_2',
@@ -334,5 +388,7 @@ final List<PlaceData> masterPlaces = [
     description: '🍦 달콤 쌉싸름한 그린티 샷과 에스프레소의 환상 하모니',
     mapX: 0.8,
     mapY: 0.4,
+    latitude: 37.4915,
+    longitude: 126.7242,
   ),
 ];

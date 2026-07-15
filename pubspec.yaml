@@ -30,6 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  url_launcher: ^6.3.0  # 👈 외부 딥링크 주소를 실행해 주는 핵심 패키지 추가
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -64,7 +65,7 @@ flutter:
   #   - images/a_dot_ham.jpeg
   assets:
     - .env
-    - assets/images/
+    - assets/temp_images/
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

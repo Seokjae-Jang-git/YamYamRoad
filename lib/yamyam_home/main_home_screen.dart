@@ -36,12 +36,12 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
               Icon(Icons.payment, size: 48, color: Colors.grey),
               const SizedBox(height: 12),
               Text(
-                '포인트 내역 화면',
+                '포인트 내역',
                 style: TextStyle(fontSize: 16, color: Colors.grey, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               Text(
-                '(다른 개발자분 작업 예정 영역)',
+                '화면 준비중',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ],
