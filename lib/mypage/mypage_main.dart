@@ -1,10 +1,75 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // 🌟 Firestore 패키지 임포트 추가!
+import '../common/bottom_circle_tab_bar.dart';
+import 'setting/setting.dart';
+import '../common/user_data.dart';
+import 'setting/myinfo.dart';
 
-class MyPageMainScreen extends StatelessWidget {
+// 🌟 StatelessWidget에서 StatefulWidget으로 변경하여 상태 관리 기능 부여!
+class MyPageMainScreen extends StatefulWidget {
   const MyPageMainScreen({Key? key}) : super(key: key);
 
   @override
+  State<MyPageMainScreen> createState() => _MyPageMainScreenState();
+}
+
+class _MyPageMainScreenState extends State<MyPageMainScreen> {
+  bool _isLoading = true; // 🌟 DB 데이터를 읽어오는 동안 보여줄 로딩 상태 변수
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData(); // 🌟 화면이 처음 켜질 때 Firestore에서 최신 유저 정보를 동기화합니다.
+  }
+
+  // 🌟 Firestore에서 test_user_01 데이터를 읽어와 로컬 메모리와 동기화하는 비동기 함수
+  Future<void> _loadUserData() async {
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc('test_user_01')
+          .get();
+
+      if (userDoc.exists) {
+        Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
+
+        setState(() {
+          // DB에 저장된 실제 데이터들을 로컬 전역 변수(UserData)에 대입
+          UserData.nickname = data['nickname'] ?? '디저트킬러';
+          UserData.name = data['name'] ?? '홍길동';
+          UserData.phone = data['phone'] ?? '';
+          UserData.profileImagePath = data['profileImageUrl']; // 스토리지의 다운로드 URL 대입
+
+          // 이미지 URL 존재 여부에 따라 기본 이미지 사용 여부(bool) 판별
+          UserData.isDefaultProfileImage = (data['profileImageUrl'] == null);
+          _isLoading = false; // 데이터 동기화가 완료되었으므로 로딩 해제
+        });
+      } else {
+        // 문서 자체가 없을 경우 임시 로딩 해제
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print("Firestore에서 유저 데이터를 가져오는 도중 오류 발생: $e");
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // 🌟 데이터를 아직 불러오는 중이라면 화면 중앙에 빙글빙글 도는 로딩 서클을 표시합니다.
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.black),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -23,7 +88,7 @@ class MyPageMainScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildProfileSection(),
+              _buildProfileSection(context),
               const SizedBox(height: 24),
               _buildMenuGrid(),
               const SizedBox(height: 24),
@@ -45,32 +110,67 @@ class MyPageMainScreen extends StatelessWidget {
           ),
         ),
       ),
+      bottomNavigationBar: BottomCircleTabBar(
+        currentIndex: 4, // 마이페이지이므로 인덱스를 4로 고정합니다.
+        onTap: (index) {
+          if (index != 4) {
+            // 마이페이지가 아닌 다른 탭(홈, 얌얌북 등)을 누르면,
+            // 현재 화면(마이페이지)을 닫고 원래 있던 홈 화면으로 돌아가게 합니다.
+            Navigator.pop(context);
+          }
+        },
+      ),
     );
   }
 
   // 1. 프로필 영역
-  Widget _buildProfileSection() {
+  Widget _buildProfileSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const CircleAvatar(
+            CircleAvatar(
               radius: 30,
-              backgroundColor: Color(0xFFEEEEEE),
-              child: Text('프로필\n이미지',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 10, color: Colors.black54)),
+              backgroundColor: const Color(0xFFF5F5F5),
+              // 🌟 URL 경로가 null이거나 비어있으면 기본 아이콘을, 주소가 있으면 Image.network로 가져옵니다!
+              child: UserData.isDefaultProfileImage || UserData.profileImagePath == null
+                  ? const Icon(Icons.person_outline, size: 35, color: Colors.grey)
+                  : ClipOval(
+                child: Image.network(
+                  UserData.profileImagePath!, // Storage에서 받은 https://... 주소
+                  width: 60,
+                  height: 60,
+                  fit: BoxFit.cover,
+                  // 네트워크로 이미지를 로딩하는 동안 보여줄 플레이스홀더 설정 (선택)
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Icon(Icons.person_outline, size: 35, color: Colors.grey);
+                  },
+                ),
+              ),
             ),
             const SizedBox(width: 16),
-            const Expanded(
+            Expanded(
               child: Text(
-                '닉네임',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                UserData.nickname,
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
             ),
             OutlinedButton(
-              onPressed: () {},
+              onPressed: () {
+                // 🌟 [수정 완료 후 즉시 반영 핵심 로직]
+                // 내 정보 수정 화면으로 이동했다가, 정보 수정을 마치고 pop() 되어 돌아오는 순간
+                // .then((_) { ... }) 블록이 실행되면서 DB의 최신 데이터로 화면을 강제 갱신합니다!
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MyInfoScreen()),
+                ).then((_) {
+                  setState(() {
+                    _isLoading = true; // 새로고침 효과를 위해 로딩바 활성화 후 재조회
+                  });
+                  _loadUserData();
+                });
+              },
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.black,
                 side: const BorderSide(color: Colors.grey),
@@ -121,22 +221,40 @@ class MyPageMainScreen extends StatelessWidget {
           childAspectRatio: 1,
         ),
         itemBuilder: (context, index) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade400),
-                  borderRadius: BorderRadius.circular(8),
+          return GestureDetector( // 🌟 여기서부터 수정: 클릭 이벤트 추가
+            onTap: () {
+              // 클릭한 아이콘의 라벨이 '설정'일 때만 이동합니다.
+              if (menuItems[index]['label'] == '설정') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SettingScreen()),
+                );
+              } else {
+                // 다른 메뉴를 눌렀을 때의 임시 피드백
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content: Text('${menuItems[index]['label']} 화면 준비중'),
+                      duration: const Duration(seconds: 1)
+                  ),
+                );
+              }
+            },
+            child: Column( // 🌟 기존에 있던 Column 위젯을 그대로 child로 넣습니다.
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade400),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(menuItems[index]['icon'], color: Colors.grey.shade700),
                 ),
-                child: Icon(menuItems[index]['icon'], color: Colors.grey.shade700),
-              ),
-              const SizedBox(height: 8),
-              Text(menuItems[index]['label'],
-                  style: const TextStyle(fontSize: 12)),
-            ],
+                const SizedBox(height: 8),
+                Text(menuItems[index]['label'], style: const TextStyle(fontSize: 12)),
+              ],
+            ),
           );
         },
       ),
