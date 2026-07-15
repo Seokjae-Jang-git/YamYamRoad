@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'road/main_home_screen.dart'; // road 폴더 아래의 메인 홈 스크린 임포트
+import 'road/main_home_screen.dart';
 
 void main() {
   runApp(const MyApp());
