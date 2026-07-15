@@ -36,7 +36,8 @@ class BottomCircleTabBar extends StatelessWidget {
   Widget _buildBottomCircleTab(BuildContext context, int index, String label, bool isSelected) {
     return GestureDetector(
       onTap: () {
-        if (index == 4 && currentIndex != 4) {
+        if (index == 4) {
+          // 🌟 4번(마이페이지) 클릭 시 홈 화면 상태를 바꾸지 않고 마이페이지를 화면 위에 새로 얹습니다.
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -44,6 +45,7 @@ class BottomCircleTabBar extends StatelessWidget {
             ),
           );
         } else {
+          // 0~3번 탭은 기존 홈 화면의 탭 교체 로직을 그대로 따릅니다.
           onTap(index);
         }
       },
