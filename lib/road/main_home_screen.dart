@@ -5,7 +5,16 @@ import 'widgets/theme_carousel.dart';
 import 'widgets/ad_banner.dart';
 import '../common/bottom_circle_tab_bar.dart';
 import 'widgets/stamp_verification_dialog.dart';
-import '../ad/ad_station_page.dart'; // 🆕 오직 이 파일만 상위 폴더(../)로 거슬러 올라가서 임포트합니다!
+import '../ad/ad_station_page.dart';
+
+// TODO: 실제 로그인 상태 관리 방식에 맞게 교체하세요.
+// - firebase_auth 쓰는 경우: FirebaseAuth.instance.currentUser != null
+// - Provider/Riverpod 쓰는 경우: ref.watch(authProvider).isLoggedIn 등
+// - 자체 토큰 저장 방식이면: SharedPreferences에 저장된 accessToken 존재 여부
+class LocalAuthState {
+  static bool isLoggedIn = false; // 임시 값 (기본: 비로그인)
+  static String? profileImageUrl; // 로그인 시 서버에서 받아온 프로필 이미지 URL
+}
 
 class MainHomeScreen extends StatefulWidget {
   const MainHomeScreen({super.key});
@@ -74,15 +83,12 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         return StampVerificationDialog(
           places: _mockVerifiablePlaces,
           onPlaceSelected: (selectedPlace) {
-            // 팝업 닫기
             Navigator.pop(context);
 
-            // 디버그 콘솔에 placeId 명시적으로 확인 출력
             debugPrint('================================================');
             debugPrint('부모 화면 수신 데이터 [Selected Place ID]: ${selectedPlace.placeId}');
             debugPrint('================================================');
 
-            // 화면상 피드백 유지
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
@@ -95,6 +101,47 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
           },
         );
       },
+    );
+  }
+
+  // 우측 상단 프로필 영역 탭 처리
+  // - 비로그인: 로그인 화면으로 이동
+  // - 로그인: 마이페이지로 이동
+  void _handleProfileTap() {
+    if (LocalAuthState.isLoggedIn) {
+      Navigator.pushNamed(context, '/mypage');
+    } else {
+      // ⚠️ main.dart의 routes 테이블에 등록된 이름('/login')과 반드시 일치해야 합니다.
+      Navigator.pushNamed(context, '/login').then((_) {
+        // 로그인 화면에서 돌아왔을 때 로그인 상태가 바뀌었을 수 있으므로 갱신
+        setState(() {});
+      });
+    }
+  }
+
+  // 우측 상단 프로필 영역 위젯
+  // - 비로그인: '로그인' 텍스트 버튼 (TopCircleButton)
+  // - 로그인: 프로필 이미지 원형 아바타
+  Widget _buildProfileArea() {
+    if (LocalAuthState.isLoggedIn) {
+      return GestureDetector(
+        onTap: _handleProfileTap,
+        child: CircleAvatar(
+          radius: 22,
+          backgroundColor: Colors.grey[200],
+          backgroundImage: LocalAuthState.profileImageUrl != null
+              ? NetworkImage(LocalAuthState.profileImageUrl!)
+              : null,
+          child: LocalAuthState.profileImageUrl == null
+              ? const Icon(Icons.person, color: Colors.grey, size: 22)
+              : null,
+        ),
+      );
+    }
+
+    return TopCircleButton(
+      text: '로그인',
+      onTap: _handleProfileTap,
     );
   }
 
@@ -133,14 +180,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                           },
                         ),
                         const SizedBox(width: 8),
-                        TopCircleButton(
-                          text: '프로필\n이미지',
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('마이페이지로 이동합니다.')),
-                            );
-                          },
-                        ),
+                        _buildProfileArea(), // 🔁 로그인 상태에 따라 로그인 버튼 / 프로필 이미지 분기
                       ],
                     ),
                   ],
@@ -200,7 +240,14 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),
-                          onPressed: _showStampVerificationPopup,
+                          onPressed: () {
+                            // 스탬프 인증은 로그인 필요 기능이므로 비로그인 시 로그인 화면으로 유도
+                            if (!LocalAuthState.isLoggedIn) {
+                              Navigator.pushNamed(context, '/login');
+                              return;
+                            }
+                            _showStampVerificationPopup();
+                          },
                           child: const Text('인증하기'),
                         ),
                       ],
@@ -237,7 +284,6 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: AdBanner(
                   onTap: () {
-                    // 빈 광고 충전소 페이지로 화면 라우팅 이동
                     Navigator.push(
                       context,
                       MaterialPageRoute(
