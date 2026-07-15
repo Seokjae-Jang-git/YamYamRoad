@@ -3,9 +3,10 @@ import 'widgets/top_circle_button.dart';
 import 'widgets/location_bar.dart';
 import 'widgets/theme_carousel.dart';
 import 'widgets/ad_banner.dart';
-import '../common/bottom_circle_tab_bar.dart';
 import 'widgets/stamp_verification_dialog.dart';
-import '../ad/ad_station_page.dart'; // 🆕 오직 이 파일만 상위 폴더(../)로 거슬러 올라가서 임포트합니다!
+import '../common/bottom_circle_tab_bar.dart'; // 🆕 common 폴더의 바텀바로 경로 수정!
+import '../ad/ad_station_page.dart';          // 🆕 ad 폴더의 광고 페이지 경로 수정!
+import '../road/road_main_screen.dart';       // 🆕 road 폴더의 얌얌로드 메인 화면 임포트!
 
 class MainHomeScreen extends StatefulWidget {
   const MainHomeScreen({super.key});
@@ -74,15 +75,12 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         return StampVerificationDialog(
           places: _mockVerifiablePlaces,
           onPlaceSelected: (selectedPlace) {
-            // 팝업 닫기
             Navigator.pop(context);
 
-            // 디버그 콘솔에 placeId 명시적으로 확인 출력
             debugPrint('================================================');
             debugPrint('부모 화면 수신 데이터 [Selected Place ID]: ${selectedPlace.placeId}');
             debugPrint('================================================');
 
-            // 화면상 피드백 유지
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
@@ -98,160 +96,203 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 1. 상단 바 (AppBar 영역)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+  // 🆕 1. 기존 홈 화면 레이아웃 코드를 완전히 격리하여 응집도를 보존합니다.
+  Widget _buildHomeContent() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 상단 바 (AppBar 영역)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                  ),
+                  child: const Text(
+                    'YamYam Map 로그',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Row(
+                  children: [
+                    TopCircleButton(
+                      text: '알림',
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('새로운 알림이 없습니다.')),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    TopCircleButton(
+                      text: '프로필\n이미지',
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('마이페이지로 이동합니다.')),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // 내 위치 설정 바
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: LocationBar(
+              currentLocation: _currentLocationText,
+              onResetLocation: _handleResetLocation,
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // 스탬프 인증 대시보드 카드
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                side: const BorderSide(color: Colors.blue, width: 1.5),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                      ),
-                      child: const Text(
-                        'YamYam Map 로그',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    Row(
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        TopCircleButton(
-                          text: '알림',
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('새로운 알림이 없습니다.')),
-                            );
-                          },
+                        Text(
+                          '지금 매장에 계신가요?',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                          ),
                         ),
-                        const SizedBox(width: 8),
-                        TopCircleButton(
-                          text: '프로필\n이미지',
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('마이페이지로 이동합니다.')),
-                            );
-                          },
+                        SizedBox(height: 4),
+                        Text(
+                          '근처 제휴 업체 스탬프 인증하기',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       ],
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      onPressed: _showStampVerificationPopup,
+                      child: const Text('인증하기'),
                     ),
                   ],
                 ),
               ),
+            ),
+          ),
 
-              const SizedBox(height: 8),
+          const SizedBox(height: 16),
 
-              // 2. 내 위치 설정 바
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: LocationBar(
-                  currentLocation: _currentLocationText,
-                  onResetLocation: _handleResetLocation,
-                ),
-              ),
+          // 섹션 타이틀
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey),
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              '내위치 기반 추천 테마',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+            ),
+          ),
 
-              const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
-              // 스탬프 인증 대시보드 카드
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    side: const BorderSide(color: Colors.blue, width: 1.5),
-                    borderRadius: BorderRadius.circular(4),
+          // 중간 캐러셀 영역
+          ThemeCarousel(themes: _themes),
+
+          const SizedBox(height: 24),
+
+          // 하단 광고 보고 무료 포인트 받기 배너 (배너 클릭 시에만 AdStationPage 이동 설계 유지!)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: AdBanner(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AdStationPage(),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '지금 매장에 계신가요?',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              '근처 제휴 업체 스탬프 인증하기',
-                              style: TextStyle(fontSize: 12, color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                          onPressed: _showStampVerificationPopup,
-                          child: const Text('인증하기'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  // 🆕 2. 바텀 바 인덱스 번호에 맞춰 화면 본체(Body)를 교체해 주는 라우터 엔진입니다.
+  Widget _buildBody() {
+    switch (_currentTabIndex) {
+      case 0:
+        return _buildHomeContent(); // 0번: 분리해 둔 홈화면 뼈대 렌더링
+      case 1:
+        return const Center(
+          child: Text(
+            '얌얌북 화면 준비 중',
+            style: TextStyle(fontSize: 16, color: Colors.grey, fontWeight: FontWeight.bold),
+          ),
+        );
+      case 2:
+        return const RoadMainScreen(); // 🆕 2번 탭 터치 시 우리가 새로 짠 얌얌로드(커뮤니티) 화면이 드디어 정상 이동합니다!
+      case 3:
+      // 🆕 3번: 기획 사양에 따라 광고페이지가 아닌, 다른 개발자가 쓸 간단한 빈 포인트 안내 화면을 띄워둡니다.
+        return const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.payment, size: 48, color: Colors.grey),
+              SizedBox(height: 12),
+              Text(
+                '포인트 내역 화면',
+                style: TextStyle(fontSize: 16, color: Colors.grey, fontWeight: FontWeight.bold),
               ),
-
-              const SizedBox(height: 16),
-
-              // 3. 섹션 타이틀
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16.0),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                ),
-                alignment: Alignment.center,
-                child: const Text(
-                  '내위치 기반 추천 테마',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1.5),
-                ),
+              SizedBox(height: 4),
+              Text(
+                '(다른 개발자분 작업 예정 영역)',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
-
-              const SizedBox(height: 16),
-
-              // 4. 중간 캐러셀 영역
-              ThemeCarousel(themes: _themes),
-
-              const SizedBox(height: 24),
-
-              // 5. 하단 광고 보고 무료 포인트 받기 배너
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: AdBanner(
-                  onTap: () {
-                    // 빈 광고 충전소 페이지로 화면 라우팅 이동
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AdStationPage(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 32),
             ],
           ),
-        ),
+        );
+      default:
+        return _buildHomeContent();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: _buildBody(), // 하드코딩 리스트 대신 탭 스위처를 대입합니다!
       ),
       bottomNavigationBar: BottomCircleTabBar(
         currentIndex: _currentTabIndex,

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../mypage/mypage_main.dart';
+import '../mypage/mypage_main.dart'; // 마이페이지가 위치한 경로로 정상 수립 완료
 
 class BottomCircleTabBar extends StatelessWidget {
   final int currentIndex;
@@ -25,15 +25,18 @@ class BottomCircleTabBar extends StatelessWidget {
         children: [
           _buildBottomCircleTab(context, 0, '홈', currentIndex == 0),
           _buildBottomCircleTab(context, 1, '얌얌북', currentIndex == 1),
-          _buildBottomCircleTab(context, 2, '커뮤니티\n(냠냠로드)', currentIndex == 2),
+          _buildBottomCircleTab(context, 2, '얌얌로드', currentIndex == 2), // 🆕 '커뮤니티(냠냠로드)'에서 깔끔하게 '얌얌로드'로 통합 완료!
           _buildBottomCircleTab(context, 3, '포인트', currentIndex == 3),
-          _buildBottomCircleTab(context, 4, '마이\n페이지', currentIndex == 4),
+          _buildBottomCircleTab(context, 4, '마이페이지', currentIndex == 4), // 🆕 '마이페이지'로 줄바꿈 없이 정돈
         ],
       ),
     );
   }
 
   Widget _buildBottomCircleTab(BuildContext context, int index, String label, bool isSelected) {
+    // 🆕 '얌얌로드' 탭일 경우 특별 강조 스타일링을 적용하기 위한 판별식
+    final bool isRoadTab = label == '얌얌로드';
+
     return GestureDetector(
       onTap: () {
         if (index == 4) {
@@ -61,13 +64,13 @@ class BottomCircleTabBar extends StatelessWidget {
                 color: isSelected ? Colors.blue : Colors.grey,
                 width: isSelected ? 2.0 : 1.0,
               ),
-              color: label.contains('커뮤니티')
-                  ? Colors.blue[100]
+              color: isRoadTab
+                  ? Colors.blue[100] // 얌얌로드 탭은 항상 산뜻한 하늘색 톤으로 기획서처럼 특별히 강조해 줍니다.
                   : (isSelected ? Colors.blue[50] : Colors.white),
             ),
             alignment: Alignment.center,
             child: Text(
-              label.contains('커뮤니티') ? '커뮤니티' : label.replaceAll('\n', ''),
+              label,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 10,
