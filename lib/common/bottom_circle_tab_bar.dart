@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../mypage/mypage_main.dart';
+import '../mypage/mypage_main.dart';
 
 class BottomCircleTabBar extends StatelessWidget {
   final int currentIndex;

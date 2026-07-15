@@ -3,7 +3,7 @@ import 'widgets/top_circle_button.dart';
 import 'widgets/location_bar.dart';
 import 'widgets/theme_carousel.dart';
 import 'widgets/ad_banner.dart';
-import 'widgets/bottom_circle_tab_bar.dart';
+import '../common/bottom_circle_tab_bar.dart';
 import 'widgets/stamp_verification_dialog.dart';
 import '../ad/ad_station_page.dart'; // 🆕 오직 이 파일만 상위 폴더(../)로 거슬러 올라가서 임포트합니다!
 
