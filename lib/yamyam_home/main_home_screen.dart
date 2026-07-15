@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
-import 'widgets/top_circle_button.dart';
-import 'widgets/location_bar.dart';
-import 'widgets/theme_carousel.dart';
-import 'widgets/ad_banner.dart';
-import 'widgets/stamp_verification_dialog.dart';
-import '../common/bottom_circle_tab_bar.dart'; // 🆕 common 폴더의 바텀바로 경로 수정!
-import '../ad/ad_station_page.dart';          // 🆕 ad 폴더의 광고 페이지 경로 수정!
-import '../road/road_main_screen.dart';       // 🆕 road 폴더의 얌얌로드 메인 화면 임포트!
+import '../common/bottom_circle_tab_bar.dart';
+import '../road/road_main_screen.dart';
+import '../mypage/mypage_main.dart'; // 🆕 바텀바가 버린 마이페이지 라우팅 책임을 부모가 인수 완료!
+import 'widgets/home_content_view.dart'; // 🆕 홈 화면의 순수 UI 콘텐츠 격리 뷰 임포트
 
 class MainHomeScreen extends StatefulWidget {
   const MainHomeScreen({super.key});
@@ -17,243 +13,12 @@ class MainHomeScreen extends StatefulWidget {
 
 class _MainHomeScreenState extends State<MainHomeScreen> {
   int _currentTabIndex = 0;
-  String _currentLocationText = '[자동 위치 설정]\n(e.g., 강남구 역삼동)';
 
-  final List<String> _themes = [
-    '디저트 정복 테마 1',
-    '디저트 정복 테마 2',
-    '디저트 정복 테마 3',
-    '디저트 정복 테마 4',
-    '디저트 정복 테마 5',
-  ];
-
-  // 근처 인증 가능 업체 가상 데이터 리스트
-  final List<VerifiablePlace> _mockVerifiablePlaces = [
-    const VerifiablePlace(
-      placeId: 'place_001',
-      name: '얌얌 마카롱 부평점',
-      category: '마카롱/구움과자',
-      distance: '150m 이내',
-      rating: 4.8,
-      stampCount: 120,
-    ),
-    const VerifiablePlace(
-      placeId: 'place_002',
-      name: '앤티크 케이크 팩토리',
-      category: '조각케이크/디저트',
-      distance: '340m 이내',
-      rating: 4.5,
-      stampCount: 85,
-    ),
-    const VerifiablePlace(
-      placeId: 'place_003',
-      name: '도넛홀릭 문화의거리점',
-      category: '도넛/베이커리',
-      distance: '420m 이내',
-      rating: 4.2,
-      stampCount: 210,
-    ),
-  ];
-
-  void _handleResetLocation() {
-    setState(() {
-      _currentLocationText = '인천광역시 부평구 문화의거리\n(최신 위치 갱신 완료)';
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('GPS 정보를 통해 현재 위치 정보가 데이터베이스에 반영되었습니다.'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
-  // 스탬프 인증 팝업 호출 함수
-  void _showStampVerificationPopup() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StampVerificationDialog(
-          places: _mockVerifiablePlaces,
-          onPlaceSelected: (selectedPlace) {
-            Navigator.pop(context);
-
-            debugPrint('================================================');
-            debugPrint('부모 화면 수신 데이터 [Selected Place ID]: ${selectedPlace.placeId}');
-            debugPrint('================================================');
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  '선택 완료: [${selectedPlace.name}] (ID: ${selectedPlace.placeId})\n콘솔 로그에 ID가 기록되었습니다.',
-                ),
-                backgroundColor: Colors.blue[800],
-                duration: const Duration(seconds: 3),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  // 🆕 1. 기존 홈 화면 레이아웃 코드를 완전히 격리하여 응집도를 보존합니다.
-  Widget _buildHomeContent() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // 상단 바 (AppBar 영역)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey),
-                  ),
-                  child: const Text(
-                    'YamYam Map 로그',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Row(
-                  children: [
-                    TopCircleButton(
-                      text: '알림',
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('새로운 알림이 없습니다.')),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    TopCircleButton(
-                      text: '프로필\n이미지',
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('마이페이지로 이동합니다.')),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // 내 위치 설정 바
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: LocationBar(
-              currentLocation: _currentLocationText,
-              onResetLocation: _handleResetLocation,
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // 스탬프 인증 대시보드 카드
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                side: const BorderSide(color: Colors.blue, width: 1.5),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '지금 매장에 계신가요?',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          '근처 제휴 업체 스탬프 인증하기',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      onPressed: _showStampVerificationPopup,
-                      child: const Text('인증하기'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // 섹션 타이틀
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16.0),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey),
-            ),
-            alignment: Alignment.center,
-            child: const Text(
-              '내위치 기반 추천 테마',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1.5),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // 중간 캐러셀 영역
-          ThemeCarousel(themes: _themes),
-
-          const SizedBox(height: 24),
-
-          // 하단 광고 보고 무료 포인트 받기 배너 (배너 클릭 시에만 AdStationPage 이동 설계 유지!)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: AdBanner(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AdStationPage(),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-
-  // 🆕 2. 바텀 바 인덱스 번호에 맞춰 화면 본체(Body)를 교체해 주는 라우터 엔진입니다.
+  // 🆕 탭 인덱스에 따라 분리된 도메인 위젯만을 반환하여 강한 응집력을 확보합니다.
   Widget _buildBody() {
     switch (_currentTabIndex) {
       case 0:
-        return _buildHomeContent(); // 0번: 분리해 둔 홈화면 뼈대 렌더링
+        return const HomeContentView(); // 0번: 격리 완료한 순수 홈 뷰
       case 1:
         return const Center(
           child: Text(
@@ -262,20 +27,19 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
           ),
         );
       case 2:
-        return const RoadMainScreen(); // 🆕 2번 탭 터치 시 우리가 새로 짠 얌얌로드(커뮤니티) 화면이 드디어 정상 이동합니다!
+        return const RoadMainScreen(); // 2번: 얌얌로드 메인 뷰
       case 3:
-      // 🆕 3번: 기획 사양에 따라 광고페이지가 아닌, 다른 개발자가 쓸 간단한 빈 포인트 안내 화면을 띄워둡니다.
         return const Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.payment, size: 48, color: Colors.grey),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               Text(
                 '포인트 내역 화면',
                 style: TextStyle(fontSize: 16, color: Colors.grey, fontWeight: FontWeight.bold),
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Text(
                 '(다른 개발자분 작업 예정 영역)',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
@@ -284,7 +48,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
           ),
         );
       default:
-        return _buildHomeContent();
+        return const HomeContentView();
     }
   }
 
@@ -292,14 +56,25 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: _buildBody(), // 하드코딩 리스트 대신 탭 스위처를 대입합니다!
+        child: _buildBody(),
       ),
       bottomNavigationBar: BottomCircleTabBar(
         currentIndex: _currentTabIndex,
         onTap: (index) {
-          setState(() {
-            _currentTabIndex = index;
-          });
+          // 🆕 마이페이지(4번 탭) 요청 시 탭 인덱스를 바꾸지 않고 상단 스택에 오버레이
+          if (index == 4) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const MyPageMainScreen(),
+              ),
+            );
+          } else {
+            // 그 외 일반 탭은 인덱스 전환 상태 반영
+            setState(() {
+              _currentTabIndex = index;
+            });
+          }
         },
       ),
     );
