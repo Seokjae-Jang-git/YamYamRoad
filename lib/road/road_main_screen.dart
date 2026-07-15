@@ -4,7 +4,8 @@ import 'widgets/sub_filter_chips.dart';
 import 'widgets/sorting_bar.dart';
 import 'widgets/course_list_card.dart';
 import 'widgets/region_select_page.dart';
-import 'data/road_mock_data.dart'; // 데이터 구조 임포트
+import 'course_detail_screen.dart'; // 🆕 새로 구현한 상세 화면 임포트!
+import 'data/road_mock_data.dart';
 
 class RoadMainScreen extends StatefulWidget {
   const RoadMainScreen({super.key});
@@ -18,13 +19,12 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
   String _selectedFilter = '전체';
   String _selectedSort = '최신순';
 
-  // 🆕 컨텍스트 기반 분리 정렬 필터링 엔진
+  // 필터 및 선택 정렬 연산 수행 루프
   List<CourseData> get _processedCourses {
-    // 1. 현재 탭(지역별 vs 메뉴별)에 부합하는 독립 데이터 원본을 로드합니다.
     List<CourseData> baseCourses = _selectedTab == '지역별' ? regionCourses : menuCourses;
     List<CourseData> result = List.from(baseCourses);
 
-    // 2. 하위 필터 처리 (전체가 아닐 경우에만 동적 키 매칭)
+    // 하위 필터 처리 (전체가 아닐 경우에만 동적 키 매칭)
     if (_selectedFilter != '전체') {
       if (_selectedTab == '지역별') {
         result = result.where((c) => c.region == _selectedFilter).toList();
@@ -33,7 +33,7 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
       }
     }
 
-    // 3. 정렬 시뮬레이션
+    // 정렬 기능 뼈대 시뮬레이션
     if (_selectedSort == '최신순') {
       result.sort((a, b) => b.id.compareTo(a.id));
     } else if (_selectedSort == '이름순') {
@@ -62,7 +62,7 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
     }
   }
 
-  // 피드형 광고 동적 배치 알고리즘
+  // 피드형 광고 동적 배치 알고리즘 (동적 카드 개수 맞춤 분배 방식)
   List<Widget> _buildListWithAds(List<CourseData> listToShow) {
     List<Widget> items = [];
 
@@ -88,7 +88,7 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
         items.add(
           CourseListCard(
             course: course,
-            onTap: () => _onCardPressed(course.title),
+            onTap: () => _onCardPressed(course), // 🆕 SnackBar 대신 데이터 통째로 상세 전달
           ),
         );
       }
@@ -101,7 +101,7 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
         items.add(
           CourseListCard(
             course: course,
-            onTap: () => _onCardPressed(course.title),
+            onTap: () => _onCardPressed(course), // 🆕 SnackBar 대신 데이터 통째로 상세 전달
           ),
         );
 
@@ -114,9 +114,13 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
     return items;
   }
 
-  void _onCardPressed(String title) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('"$title" 상세 코스보기 화면 진입')),
+  // 🆕 [상세화면 완벽 연동]: 코스 터치 시 해당 코스 데이터를 들고 지도+드래그시트 상세뷰로 하이패스 이동!
+  void _onCardPressed(CourseData course) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CourseDetailScreen(course: course),
+      ),
     );
   }
 
@@ -137,7 +141,7 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
               onTabChanged: (tab) {
                 setState(() {
                   _selectedTab = tab;
-                  _selectedFilter = '전체'; // 🆕 탭 전환 즉시 하위 칩 필터 상태 청소!
+                  _selectedFilter = '전체'; // 대분류가 달라지면 하위 필터칩 필터값 자동 클리어!
                 });
               },
               onSearchPressed: () {

@@ -7,6 +7,7 @@ class CourseData {
   final String region;
   final String category;
   final bool isCompleted;
+  final List<String> placeIds; // 🆕 외래키 연동 리스트 완벽 복원 이식!
 
   const CourseData({
     required this.id,
@@ -17,10 +18,11 @@ class CourseData {
     required this.region,
     required this.category,
     required this.isCompleted,
+    required this.placeIds, // 필수 생성자 필드
   });
 }
 
-// 🆕 1. [지역별 탭 전용] 전국 지역 탐방 중심의 코스 테마 목록
+// 🆕 1. [지역별 탭 전용] 전국 지역 탐방 중심의 코스 테마 목록 (14대 데이터 전체 원본 보존 완료!)
 final List<CourseData> regionCourses = [
   const CourseData(
     id: 'course_r1',
@@ -31,6 +33,7 @@ final List<CourseData> regionCourses = [
     region: '서울',
     category: '빵/도넛',
     isCompleted: true,
+    placeIds: ['place_s1_1', 'place_s1_2'], // 성수 소금빵 팩토리, 온화 베이커리 매칭
   ),
   const CourseData(
     id: 'course_r2',
@@ -41,6 +44,7 @@ final List<CourseData> regionCourses = [
     region: '서울',
     category: '커피/차(카페)',
     isCompleted: false,
+    placeIds: ['place_s2_1', 'place_s2_2'], // 스페셜티 딥 망원, 망원 홍차 찻집 매칭
   ),
   const CourseData(
     id: 'course_r3',
@@ -51,6 +55,7 @@ final List<CourseData> regionCourses = [
     region: '경기',
     category: '빵/도넛',
     isCompleted: true,
+    placeIds: ['place_k1_1', 'place_k1_2'], // 행궁 구움과점, 한글 쿠키 매칭
   ),
   const CourseData(
     id: 'course_r4',
@@ -61,6 +66,7 @@ final List<CourseData> regionCourses = [
     region: '인천',
     category: '빵/도넛',
     isCompleted: false,
+    placeIds: ['place_i1_1', 'place_i1_2'], // 구월 타르트, 멜로우 디저트 매칭
   ),
   const CourseData(
     id: 'course_r5',
@@ -71,6 +77,7 @@ final List<CourseData> regionCourses = [
     region: '강원',
     category: '토스트/샌드위치/샐러드',
     isCompleted: true,
+    placeIds: ['place_g1_1', 'place_g1_2'], // 속초 오션, 설악 단풍빵 매칭
   ),
   const CourseData(
     id: 'course_r6',
@@ -81,6 +88,7 @@ final List<CourseData> regionCourses = [
     region: '전남',
     category: '커피/차(카페)',
     isCompleted: true,
+    placeIds: ['place_j1_1', 'place_j1_2'], // 여수 오션 카페, 밤바다 블렌딩 매칭
   ),
   const CourseData(
     id: 'course_r7',
@@ -91,10 +99,11 @@ final List<CourseData> regionCourses = [
     region: '제주',
     category: '빵/도넛',
     isCompleted: false,
+    placeIds: ['place_je1_1', 'place_je1_2'], // 애월 한라봉 도넛, 돌하르방 마카롱 매칭
   ),
 ];
 
-// 🆕 2. [메뉴별 탭 전용] 특정 메뉴 카테고리에 집중된 정통 전문 투어 코스 목록
+// 🆕 2. [메뉴별 탭 전용] 특정 메뉴 카테고리에 집중된 정통 전문 투어 코스 목록 (14대 데이터 전체 원본 보존 완료!)
 final List<CourseData> menuCourses = [
   const CourseData(
     id: 'course_m1',
@@ -105,6 +114,7 @@ final List<CourseData> menuCourses = [
     region: '서울',
     category: '커피/차(카페)',
     isCompleted: false,
+    placeIds: ['place_s2_1', 'place_j1_2'], // 망원 스페셜티 드립숍 & 여수 드립커피숍 N:M 매핑 시너지
   ),
   const CourseData(
     id: 'course_m2',
@@ -115,6 +125,7 @@ final List<CourseData> menuCourses = [
     region: '서울',
     category: '떡/한과',
     isCompleted: true,
+    placeIds: ['place_m2_1', 'place_m2_2'], // 인사동 가온한과, 개성주악 정원 매칭
   ),
   const CourseData(
     id: 'course_m3',
@@ -125,6 +136,7 @@ final List<CourseData> menuCourses = [
     region: '경기',
     category: '빵/도넛',
     isCompleted: true,
+    placeIds: ['place_m3_1', 'place_m3_2'], // 터키 카이막 행궁, 판교 카이막 매칭
   ),
   const CourseData(
     id: 'course_m4',
@@ -135,6 +147,7 @@ final List<CourseData> menuCourses = [
     region: '대구',
     category: '아이스크림/빙수',
     isCompleted: false,
+    placeIds: ['place_m4_1', 'place_m4_2'], // 동성로 빙수, 대구 삼덕 생딸기 매칭
   ),
   const CourseData(
     id: 'course_m5',
@@ -145,6 +158,7 @@ final List<CourseData> menuCourses = [
     region: '부산',
     category: '토스트/샌드위치/샐러드',
     isCompleted: true,
+    placeIds: ['place_m5_1', 'place_m5_2'], // 해운대 수제 샌드위치, 서면 호밀빵 매칭
   ),
   const CourseData(
     id: 'course_m6',
@@ -155,6 +169,7 @@ final List<CourseData> menuCourses = [
     region: '강원',
     category: '떡/한과',
     isCompleted: false,
+    placeIds: ['place_m6_1', 'place_m6_2'], // 강릉 인절미 크림빵, 설악 퓨전 떡카페 매칭
   ),
   const CourseData(
     id: 'course_m7',
@@ -165,5 +180,6 @@ final List<CourseData> menuCourses = [
     region: '인천',
     category: '커피/차(카페)',
     isCompleted: false,
+    placeIds: ['place_m7_1', 'place_m7_2'], // 송도 그린티 하우스, 부평 말차 아인슈페너 매칭
   ),
 ];
