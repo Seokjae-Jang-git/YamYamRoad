@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "964766524983",
+    "project_id": "yamyamroad",
+    "storage_bucket": "yamyamroad.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:964766524983:android:16dd9319b1ecbd8d5d81b2",
+        "android_client_info": {
+          "package_name": "com.example.yamyam_road"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDSONIPlpMqlYbEj5QFH97idF6L7hIlyhs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
