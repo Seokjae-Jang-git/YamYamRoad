@@ -5,7 +5,7 @@ import 'package:flutter_naver_login/flutter_naver_login.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../services/auth_service.dart';
 
-import '../road/main_home_screen.dart';
+import '../yamyam_home/main_home_screen.dart';
 
 // [네이티브 설정 필요]
 //   - Android: AndroidManifest.xml에 카카오/네이버 키 해시, 스킴 등록
