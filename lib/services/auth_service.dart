@@ -11,7 +11,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 ///    바꾸는 것을 권장합니다.
 ///
 /// [pubspec.yaml]에 필요한 패키지:
-///   cloud_firestore: ^5.0.0
+///   firebase_core: ^4.11.0
+///   cloud_firestore: ^6.6.0
 class AuthService {
   AuthService._();
 
@@ -21,9 +22,11 @@ class AuthService {
   /// 앱을 재시작하면 사라지므로, 자동 로그인이 필요하면
   /// shared_preferences 등에 uid를 별도로 저장해서 앱 시작 시 복원하세요.
   static String? _currentUid;
+  static String? _profileImageUrl;
 
   static bool get isLoggedIn => _currentUid != null;
   static String? get currentUid => _currentUid;
+  static String? get profileImageUrl => _profileImageUrl;
 
   /// 카카오 로그인
   static Future<UserModel> loginWithKakao({
@@ -127,11 +130,13 @@ class AuthService {
     }
 
     _currentUid = uid; // 로그인 상태를 메모리에 저장
+    _profileImageUrl = result.profileImageUrl; // ← 추가: 프로필 이미지도 같이 저장
     return result;
   }
 
   static void logout() {
     _currentUid = null;
+    _profileImageUrl = null; // ← 추가
   }
 }
 

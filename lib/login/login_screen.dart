@@ -76,8 +76,6 @@ class _LoginScreenState extends State<LoginScreen> {
         profileImageUrl: kakaoUser.kakaoAccount?.profile?.profileImageUrl,
       );
 
-      LocalAuthState.isLoggedIn = true;
-      LocalAuthState.profileImageUrl = userModel.profileImageUrl;
 
       await _mockSocialDelay();
       _goToHome();
@@ -108,8 +106,6 @@ class _LoginScreenState extends State<LoginScreen> {
           profileImageUrl: account.profileImage,
         );
 
-        LocalAuthState.isLoggedIn = true;
-        LocalAuthState.profileImageUrl = userModel.profileImageUrl;
       } else {
         _showError('네이버 로그인이 취소되었습니다.');
         return;
@@ -139,9 +135,6 @@ class _LoginScreenState extends State<LoginScreen> {
         name: account.displayName,
         profileImageUrl: account.photoUrl,
       );
-
-      LocalAuthState.isLoggedIn = true;
-      LocalAuthState.profileImageUrl = userModel.profileImageUrl;
 
       await _mockSocialDelay();
       _goToHome();
