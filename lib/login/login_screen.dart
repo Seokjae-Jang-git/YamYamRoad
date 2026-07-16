@@ -29,6 +29,31 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLoading = false;
 
+  // ▼ 추가: 싱글톤 인스턴스 + 초기화 여부 플래그
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  bool _googleSignInReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initGoogleSignIn();
+  }
+
+  // ▼ 추가: 앱 시작 시 한 번만 initialize
+  Future<void> _initGoogleSignIn() async {
+    try {
+      await _googleSignIn.initialize(
+        // iOS/macOS를 지원한다면 clientId 지정 필요
+        // clientId: 'YOUR_IOS_CLIENT_ID',
+        // 서버 인증(백엔드 검증)이 필요하면 serverClientId 지정
+        // serverClientId: 'YOUR_WEB_CLIENT_ID',
+      );
+      _googleSignInReady = true;
+    } catch (e) {
+      // 초기화 실패는 조용히 두고, 실제 로그인 시도 시 다시 처리
+    }
+  }
+
   void _setLoading(bool value) {
     if (mounted) setState(() => _isLoading = value);
   }
@@ -99,28 +124,33 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-// ---------------- 구글 로그인 ----------------
+  // ---------------- 구글 로그인 (v7 API) ----------------
   Future<void> _handleGoogleLogin() async {
     _setLoading(true);
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn(scopes: ['email']);
-      final GoogleSignInAccount? account = await googleSignIn.signIn();
-      if (account != null) {
-        final userModel = await AuthService.loginWithGoogle(
-          socialId: account.id,
-          name: account.displayName,
-          profileImageUrl: account.photoUrl,
-        );
-
-        LocalAuthState.isLoggedIn = true;
-        LocalAuthState.profileImageUrl = userModel.profileImageUrl;
-      } else {
-        _showError('구글 로그인이 취소되었습니다.');
-        return;
+      if (!_googleSignInReady) {
+        await _initGoogleSignIn();
       }
+
+      final GoogleSignInAccount account = await _googleSignIn.authenticate();
+
+      final userModel = await AuthService.loginWithGoogle(
+        socialId: account.id,
+        name: account.displayName,
+        profileImageUrl: account.photoUrl,
+      );
+
+      LocalAuthState.isLoggedIn = true;
+      LocalAuthState.profileImageUrl = userModel.profileImageUrl;
 
       await _mockSocialDelay();
       _goToHome();
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled) {
+        _showError('구글 로그인이 취소되었습니다.');
+      } else {
+        _showError('구글 로그인에 실패했습니다.');
+      }
     } catch (e) {
       _showError('구글 로그인에 실패했습니다.');
     } finally {
