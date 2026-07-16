@@ -183,7 +183,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(post.authorNickname,
+                          Text(post.authorNickname ?? '알 수 없는 유저',
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                           Text('${post.region} · ${post.category}',
                               style: const TextStyle(fontSize: 12, color: Colors.grey)),
