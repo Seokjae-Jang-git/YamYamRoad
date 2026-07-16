@@ -71,7 +71,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
         // 🌟 새 글 등록
         final post = CommunityPost(
           id: '',
-          authorId: 'test_user_01',
+          authorId: UserData.uid,
           authorNickname: UserData.nickname,
           authorProfileImage: UserData.profileImagePath,
           region: _selectedRegion,

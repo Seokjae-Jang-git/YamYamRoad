@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class CommunityPost {
   final String id;
   final String authorId;
-  final String authorNickname;
+  final String? authorNickname;
   final String? authorProfileImage;
   final List<String> authorBadges; // 뱃지 이름 리스트 (예: ['그로플러버','성수한주'])
   final String region;   // 지역별 카테고리 (예: 성수동, 가로수길)

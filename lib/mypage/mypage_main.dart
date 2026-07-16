@@ -233,6 +233,8 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
           childAspectRatio: 1,
         ),
         itemBuilder: (context, index) {
+          final String label = menuItems[index]['label'];
+
           return GestureDetector(
             onTap: () {
               // 🌟 1. 다이어리 클릭 시 DiaryScreen으로 이동!

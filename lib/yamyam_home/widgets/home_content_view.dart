@@ -49,15 +49,15 @@ class _HomeContentViewState extends State<HomeContentView> {
     }
   }
 
-  // 🆕 프로필 버튼 탭 시: 비로그인이면 로그인 화면으로, 로그인 상태면 마이페이지 등 별도 동작
+  // 🌟 통합 로직: 프로필/로그인 버튼 탭 처리
   Future<void> _onProfileButtonTap() async {
     if (_currentUser != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('마이페이지로 이동합니다.')),
-      );
+      // 로그인 상태라면 개발자님이 만드신 콜백을 통해 마이페이지(4번 탭)로 이동!
+      widget.onTabChanged(4);
       return;
     }
 
+    // 비로그인 상태라면 로그인 화면으로 이동
     final bool? loginSuccess = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -138,7 +138,7 @@ class _HomeContentViewState extends State<HomeContentView> {
                       },
                     ),
                     const SizedBox(width: 8),
-                    Text(
+                    const Text(
                       'YamYam Road',
                       style: TextStyle(
                         fontSize: 20,
@@ -160,6 +160,8 @@ class _HomeContentViewState extends State<HomeContentView> {
                       },
                     ),
                     const SizedBox(width: 8),
+
+                    // 🌟 UI 통합: 로그인 안 했으면 버튼, 했으면 예쁜 프로필 사진 표시
                     _currentUser == null
                         ? OutlinedButton(
                       onPressed: _onProfileButtonTap,
@@ -174,21 +176,7 @@ class _HomeContentViewState extends State<HomeContentView> {
                       ),
                     )
                         : GestureDetector(
-                      onTap: _onProfileButtonTap,
-                      child: CircleAvatar(
-                        radius: 18,
-                        backgroundColor: Colors.grey[200],
-                        backgroundImage: _currentUser!.profileImageUrl != null
-                            ? NetworkImage(_currentUser!.profileImageUrl!)
-                            : null,
-                        child: _currentUser!.profileImageUrl == null
-                            ? const Icon(Icons.person, size: 20, color: Colors.grey)
-                            : null,
-                    GestureDetector(
-                      onTap: () {
-                        // 🌟 부모(MainHomeScreen)에게 4번(마이페이지)으로 인덱스를 바꿔달라고 요청합니다!
-                        widget.onTabChanged(4);
-                      },
+                      onTap: _onProfileButtonTap, // 누르면 윗부분 함수를 통해 4번 탭으로 이동
                       child: Container(
                         width: 38,
                         height: 38,
@@ -199,11 +187,11 @@ class _HomeContentViewState extends State<HomeContentView> {
                         child: CircleAvatar(
                           radius: 18,
                           backgroundColor: const Color(0xFFF5F5F5),
-                          child: UserData.isDefaultProfileImage || UserData.profileImagePath == null
+                          child: _currentUser!.profileImageUrl == null
                               ? const Icon(Icons.person_outline, size: 24, color: Colors.grey)
                               : ClipOval(
                             child: Image.network(
-                              UserData.profileImagePath!,
+                              _currentUser!.profileImageUrl!,
                               width: 38,
                               height: 38,
                               fit: BoxFit.cover,

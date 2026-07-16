@@ -324,7 +324,7 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
                       : null,
                 ),
                 const SizedBox(width: 8),
-                Text(post.authorNickname,
+                Text(post.authorNickname ?? '알 수 없는 유저',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(width: 6),
                 if (isMine)
