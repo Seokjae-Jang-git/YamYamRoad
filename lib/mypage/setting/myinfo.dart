@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter/material.dart';
-import '../../common/bottom_circle_tab_bar.dart';
 import '../../common/storage_service.dart';
 import '../../common/user_data.dart';
 
@@ -218,7 +217,8 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                       // 2) 만약 사용자가 사진을 새로 선택했다면, 먼저 Firebase Storage에 업로드합니다.
                       if (_selectedImage != null) {
                         // 파일명이 겹치지 않게 타임스탬프를 붙여 고유하게 만들어 줍니다.
-                        String fileName = 'profile_test_user_01_${DateTime.now().millisecondsSinceEpoch}.jpg';
+                        // 🌟 파일명에도 현재 접속 중인 유저의 UID가 동적으로 들어가도록 수정합니다.
+                        String fileName = 'profile_${UserData.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
                         // 아까 만들어둔 공통 스토리지 서비스 호출 (profile_img 폴더로 분류)
                         downloadUrl = await StorageService.uploadImage(
@@ -228,8 +228,7 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                         );
                       }
 
-                      // 3) Firestore DB의 'test_user_01' 문서 정보를 업데이트합니다.
-                      final userDocRef = FirebaseFirestore.instance.collection('users').doc('test_user_01');
+                      final userDocRef = FirebaseFirestore.instance.collection('users').doc('UserData.uid');
 
                       await userDocRef.update({
                         'nickname': _nicknameController.text,
@@ -278,14 +277,6 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
             ],
           ),
         ),
-      ),
-      bottomNavigationBar: BottomCircleTabBar(
-        currentIndex: 4,
-        onTap: (index) {
-          if (index != 4) {
-            Navigator.of(context).popUntil((route) => route.isFirst);
-          }
-        },
       ),
     );
   }
