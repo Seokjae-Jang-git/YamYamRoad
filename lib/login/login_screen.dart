@@ -5,13 +5,9 @@ import 'package:flutter_naver_login/flutter_naver_login.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../services/auth_service.dart';
 
-import '../road/main_home_screen.dart';
 
 // [네이티브 설정 필요]
 //   - Android: AndroidManifest.xml에 카카오/네이버 키 해시, 스킴 등록
-//   - iOS: Info.plist에 URL Scheme, 카카오/네이버 앱 키 등록
-//   - Firebase 프로젝트에 google-services.json / GoogleService-Info.plist 추가
-// ============================================
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,8 +17,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  static const Color bgColor = Color(0xFFF4FAF6); // 바깥 배경 (연한 민트)
-  static const Color cardColor = Color(0xFFFFFDF9); // 카드 배경 (아이보리)
+  static const Color bgColor = Color(0xFFF4FAF6);
+  static const Color cardColor = Color(0xFFFFFDF9);
   static const Color textDark = Color(0xFF3E2723);
   static const Color kakaoColor = Color(0xFFFEE500);
   static const Color naverColor = Color(0xFF03C75A);
@@ -43,20 +39,19 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _initGoogleSignIn() async {
     try {
       await _googleSignIn.initialize(
-        // iOS/macOS를 지원한다면 clientId 지정 필요
-        // clientId: 'YOUR_IOS_CLIENT_ID',
-        // 서버 인증(백엔드 검증)이 필요하면 serverClientId 지정
-        // serverClientId: 'YOUR_WEB_CLIENT_ID',
+        serverClientId: '964766524983-2h5i53gehbvf1ti82ih7aeel99k7aln2.apps.googleusercontent.com',
       );
       _googleSignInReady = true;
+      debugPrint('✅ 구글 SDK 초기화 성공'); // 🆕 추가
     } catch (e) {
-      // 초기화 실패는 조용히 두고, 실제 로그인 시도 시 다시 처리
+      debugPrint('🔴 구글 SDK 초기화 실패: $e');
     }
   }
 
   void _setLoading(bool value) {
     if (mounted) setState(() => _isLoading = value);
   }
+
 
   // ---------------- 카카오 로그인 ----------------
   Future<void> _handleKakaoLogin() async {
@@ -70,16 +65,21 @@ class _LoginScreenState extends State<LoginScreen> {
       User kakaoUser = await UserApi.instance.me();
       final socialId = kakaoUser.id.toString();
 
+      debugPrint('🟢 카카오 로그인 성공: id=$socialId');
+
       final userModel = await AuthService.loginWithKakao(
         socialId: socialId,
         nickname: kakaoUser.kakaoAccount?.profile?.nickname,
         profileImageUrl: kakaoUser.kakaoAccount?.profile?.profileImageUrl,
       );
 
+      debugPrint('🟢 AuthService 카카오 로그인 완료: uid=${userModel.uid}');
 
       await _mockSocialDelay();
       _goToHome();
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('🔴 카카오 로그인 에러: $e');
+      debugPrint('🔴 스택트레이스: $stackTrace');
       _showError('카카오 로그인에 실패했습니다.');
     } finally {
       _setLoading(false);
@@ -91,6 +91,8 @@ class _LoginScreenState extends State<LoginScreen> {
     _setLoading(true);
     try {
       final result = await FlutterNaverLogin.logIn();
+      debugPrint('🟢 네이버 로그인 status: ${result.status}');
+
       if (result.status == NaverLoginStatus.loggedIn) {
         final account = result.account;
         if (account?.id == null) {
@@ -98,26 +100,36 @@ class _LoginScreenState extends State<LoginScreen> {
           return;
         }
 
+        debugPrint('🟢 네이버 계정 정보: id=${account!.id}, name=${account.name}');
+
         final userModel = await AuthService.loginWithNaver(
-          socialId: account!.id!,
+          socialId: account.id!,
           name: account.name,
           nickname: account.nickname,
           phone: account.mobile,
           profileImageUrl: account.profileImage,
         );
 
+        debugPrint('🟢 AuthService 로그인 완료: uid=${userModel.uid}');
       } else {
         _showError('네이버 로그인이 취소되었습니다.');
         return;
       }
 
       await _mockSocialDelay();
-      _goToHome();
-    } catch (e) {
+      _goToHome(); // 🆕 여기서 성공 시 이전 화면(홈)으로 pop
+    } catch (e, stackTrace) {
+      debugPrint('🔴 네이버 로그인 에러: $e');
+      debugPrint('🔴 스택트레이스: $stackTrace');
       _showError('네이버 로그인에 실패했습니다.');
     } finally {
       _setLoading(false);
     }
+  }
+
+  void _goToHome() {
+    if (!mounted) return;
+    Navigator.pop(context, true); // 🆕 로그인 성공 신호를 HomeContentView에 전달
   }
 
   // ---------------- 구글 로그인 (v7 API) ----------------
@@ -129,6 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final GoogleSignInAccount account = await _googleSignIn.authenticate();
+      debugPrint('🟢 구글 로그인 성공: id=${account.id}, email=${account.email}');
 
       final userModel = await AuthService.loginWithGoogle(
         socialId: account.id,
@@ -136,15 +149,20 @@ class _LoginScreenState extends State<LoginScreen> {
         profileImageUrl: account.photoUrl,
       );
 
+      debugPrint('🟢 AuthService 구글 로그인 완료: uid=${userModel.uid}');
+
       await _mockSocialDelay();
       _goToHome();
     } on GoogleSignInException catch (e) {
+      debugPrint('🔴 GoogleSignInException: code=${e.code}, description=${e.description}');
       if (e.code == GoogleSignInExceptionCode.canceled) {
         _showError('구글 로그인이 취소되었습니다.');
       } else {
         _showError('구글 로그인에 실패했습니다.');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('🔴 구글 로그인 알 수 없는 에러: $e');
+      debugPrint('🔴 스택트레이스: $stackTrace');
       _showError('구글 로그인에 실패했습니다.');
     } finally {
       _setLoading(false);
@@ -158,11 +176,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _mockSocialDelay() async {
     await Future.delayed(const Duration(seconds: 1));
-  }
-
-  void _goToHome() {
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/home');
   }
 
   void _showError(String message) {

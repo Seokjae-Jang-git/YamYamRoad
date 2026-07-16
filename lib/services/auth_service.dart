@@ -1,26 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../common/user_data.dart';
 
-/// Spark(무료) 요금제용 인증 서비스.
-///
-/// Firebase Auth 세션을 만들지 않고, Firestore의 users 컬렉션에
-/// `{provider}_{socialId}` 형태의 uid로 문서를 직접 저장/조회합니다.
-///
-/// ⚠️ Firebase Auth가 없으므로 Firestore 보안 규칙에서 request.auth를
-///    사용할 수 없습니다. 개발/포트폴리오 단계에서만 이 방식을 쓰고,
-///    실서비스 전환 시 Cloud Functions + Custom Token 방식으로
-///    바꾸는 것을 권장합니다.
-///
-/// [pubspec.yaml]에 필요한 패키지:
-///   firebase_core: ^4.11.0
-///   cloud_firestore: ^6.6.0
 class AuthService {
   AuthService._();
 
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// 현재 로그인한 uid를 앱 메모리에 들고 있음 (로그아웃 시 초기화)
-  /// 앱을 재시작하면 사라지므로, 자동 로그인이 필요하면
-  /// shared_preferences 등에 uid를 별도로 저장해서 앱 시작 시 복원하세요.
   static String? _currentUid;
   static String? _profileImageUrl;
 
@@ -93,7 +78,7 @@ class AuthService {
       final newUser = {
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
-        'freePointBalance': 0, // TODO: 가입 축하 포인트 정책이 있다면 조정
+        'freePointBalance': 0,
         'paidPointBalance': 0,
         'lastLocation': null,
         'name': name,
@@ -129,14 +114,52 @@ class AuthService {
       );
     }
 
-    _currentUid = uid; // 로그인 상태를 메모리에 저장
-    _profileImageUrl = result.profileImageUrl; // ← 추가: 프로필 이미지도 같이 저장
+    _currentUid = uid;
+    _profileImageUrl = result.profileImageUrl;
+    _syncUserData(result); // 🆕 UserData 동기화
+
     return result;
+  }
+
+  /// 🆕 현재 로그인 상태를 UserModel로 반환 (비로그인이면 null)
+  /// 앱을 껐다 켜면 _currentUid가 초기화되므로 자동 로그인은 유지되지 않습니다.
+  /// (자동 로그인이 필요하면 shared_preferences에 uid 저장 후 복원 로직 추가 필요)
+  static Future<UserModel?> getCurrentUser() async {
+    if (_currentUid == null) return null;
+
+    final docRef = _firestore.collection('users').doc(_currentUid);
+    final snapshot = await docRef.get();
+
+    if (!snapshot.exists) return null;
+
+    final data = snapshot.data() ?? {};
+    final user = UserModel(
+      uid: _currentUid!,
+      isNewUser: false,
+      provider: data['provider'] as String? ?? '',
+      nickname: data['nickname'] as String?,
+      profileImageUrl: data['profileImageUrl'] as String? ?? _profileImageUrl,
+    );
+
+    _syncUserData(user); // 🆕 앱 재진입 시에도 UserData 최신화
+    return user;
+  }
+
+  /// 🆕 UserModel → UserData 정적 필드로 반영하는 헬퍼
+  static void _syncUserData(UserModel user) {
+    UserData.nickname = user.nickname ?? UserData.nickname;
+    UserData.profileImagePath = user.profileImageUrl;
+    UserData.isDefaultProfileImage = user.profileImageUrl == null;
   }
 
   static void logout() {
     _currentUid = null;
-    _profileImageUrl = null; // ← 추가
+    _profileImageUrl = null;
+
+    // 🆕 로그아웃 시 UserData 초기화
+    UserData.nickname = '디저트킬러';
+    UserData.profileImagePath = null;
+    UserData.isDefaultProfileImage = true;
   }
 }
 

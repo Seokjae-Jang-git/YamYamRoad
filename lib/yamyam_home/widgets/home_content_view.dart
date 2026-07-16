@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import '../../services/auth_service.dart';
+import '../../login/login_screen.dart';
 import 'top_circle_button.dart';
 import 'location_bar.dart';
 import 'ad_banner.dart';
 import 'home_stamp_dashboard.dart';
 import 'home_road_swiper.dart';
 import '../../ad/ad_station_page.dart';
-import '../../common/data/temp_user_session.dart'; // 강화군/문화의거리 가상 주소 세션 임포트
-import '../../road/data/road_mock_data.dart'; // 진짜 로드 데이터셋 임포트
-import '../../road/data/place_mock_data.dart'; // 진짜 마스터 가게 데이터셋 임포트
+import '../../common/data/temp_user_session.dart';
+import '../../road/data/road_mock_data.dart';
+import '../../road/data/place_mock_data.dart';
 
 class HomeContentView extends StatefulWidget {
   const HomeContentView({super.key});
@@ -20,11 +22,46 @@ class _HomeContentViewState extends State<HomeContentView> {
   // 세션에 저장해 둔 최초 구동 주소인 '인천광역시 강화군 강화읍'으로 초기화
   String _currentLocationText = initialUserLocation;
 
+  // 🆕 로그인 상태 관리: null이면 비로그인
+  UserModel? _currentUser;
+
   @override
   void initState() {
     super.initState();
     // 앱 처음 진입 시 최초 구동 주소를 강제로 바인딩합니다.
     _currentLocationText = initialUserLocation;
+    _loadCurrentUser(); // 🆕 앱 진입 시 저장된 세션으로 로그인 상태 복원
+  }
+
+  // 🆕 현재 유저 정보 조회 (비로그인이면 null)
+  Future<void> _loadCurrentUser() async {
+    final user = await AuthService.getCurrentUser();
+    if (mounted) {
+      setState(() {
+        _currentUser = user;
+      });
+    }
+  }
+
+  // 🆕 프로필 버튼 탭 시: 비로그인이면 로그인 화면으로, 로그인 상태면 마이페이지 등 별도 동작
+  Future<void> _onProfileButtonTap() async {
+    if (_currentUser != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('마이페이지로 이동합니다.')),
+      );
+      return;
+    }
+
+    final bool? loginSuccess = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const LoginScreen(),
+      ),
+    );
+
+    if (loginSuccess == true) {
+      await _loadCurrentUser(); // 로그인 성공 → 프로필로 전환
+    }
   }
 
   // 🧠 [실시간 최단거리 정복 정렬]: 내 위치에서 가장 가까운 가게를 가진 순서대로 정렬 후 '상위 5개'만 한정 슬라이싱
@@ -39,7 +76,6 @@ class _HomeContentViewState extends State<HomeContentView> {
 
       if (matchedPlaces.isEmpty) continue;
 
-      // 각 로드 내 매칭되는 가게 중 가장 가까운 가게 한 개 추출 (distanceValue 오름차순)
       matchedPlaces.sort((a, b) => a.distanceValue.compareTo(b.distanceValue));
       final nearestPlace = matchedPlaces.first;
 
@@ -50,17 +86,15 @@ class _HomeContentViewState extends State<HomeContentView> {
       });
     }
 
-    // 내 위치에서 '가장 가까운 거리' 기준 정렬 (가장 가까운 미터값 순 오름차순 정렬)
     calculatedList.sort((a, b) => a['distanceValue'].compareTo(b['distanceValue']));
 
-    // 딱 5개만 동적 노출하도록 컷오프
     return calculatedList.take(5).toList();
   }
 
   // 📍 [위치 정보 실시간 재설정 시나리오 작동부]: 강화읍 ➔ 부평 문화의거리로 보정 세팅
   void _handleResetLocation() {
     setState(() {
-      _currentLocationText = updatedUserLocation; // 갱신용 부평 문화의거리 변수로 이식 갱신!
+      _currentLocationText = updatedUserLocation;
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -72,7 +106,6 @@ class _HomeContentViewState extends State<HomeContentView> {
 
   @override
   Widget build(BuildContext context) {
-    // [실데이터 6선]: 가상 데이터를 지워내고 마스터 데이터셋에서 진짜 상위 6대 매장을 실시간 수급합니다!
     final List<PlaceData> stampVerifiablePlaces = masterPlaces.take(6).toList();
     final recommendedRoads = _getClosestTopFiveRoads;
 
@@ -80,13 +113,11 @@ class _HomeContentViewState extends State<HomeContentView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. 상단 바 (로고 이미지 옆 영문명 나란히 조합형 레이아웃 탑재)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // 🆕 로고 이미지 + "YamYam Road" 텍스트 가로 배치 구현
                 Row(
                   children: [
                     Image.asset(
@@ -94,14 +125,13 @@ class _HomeContentViewState extends State<HomeContentView> {
                       height: 36,
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) {
-                        // 이미지 셋이 아직 없을 때는 귀여운 단일 이모지 체리 하나만 쏙 돌려주어 텍스트 중복 방지!
                         return const Text(
                           '🍒',
                           style: TextStyle(fontSize: 22),
                         );
                       },
                     ),
-                    const SizedBox(width: 8), // 이미지와 영문 브랜드명 사이 세련된 간격 설정
+                    const SizedBox(width: 8),
                     Text(
                       'YamYam Road',
                       style: TextStyle(
@@ -124,13 +154,31 @@ class _HomeContentViewState extends State<HomeContentView> {
                       },
                     ),
                     const SizedBox(width: 8),
-                    TopCircleButton(
-                      text: '프로필\n이미지',
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('마이페이지로 이동합니다.')),
-                        );
-                      },
+                    _currentUser == null
+                        ? OutlinedButton(
+                      onPressed: _onProfileButtonTap,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        shape: const StadiumBorder(),
+                        side: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      child: const Text(
+                        '로그인',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF504D46)),
+                      ),
+                    )
+                        : GestureDetector(
+                      onTap: _onProfileButtonTap,
+                      child: CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.grey[200],
+                        backgroundImage: _currentUser!.profileImageUrl != null
+                            ? NetworkImage(_currentUser!.profileImageUrl!)
+                            : null,
+                        child: _currentUser!.profileImageUrl == null
+                            ? const Icon(Icons.person, size: 20, color: Colors.grey)
+                            : null,
+                      ),
                     ),
                   ],
                 ),
@@ -138,7 +186,6 @@ class _HomeContentViewState extends State<HomeContentView> {
             ),
           ),
 
-          // 2. 내 위치 설정 바
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: LocationBar(
@@ -149,7 +196,6 @@ class _HomeContentViewState extends State<HomeContentView> {
 
           const SizedBox(height: 20),
 
-          // 3. 스탬프 인증 대시보드 카드
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: HomeStampDashboard(
@@ -174,7 +220,6 @@ class _HomeContentViewState extends State<HomeContentView> {
 
           const SizedBox(height: 28),
 
-          // 4. 섹션 타이틀
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
@@ -203,12 +248,10 @@ class _HomeContentViewState extends State<HomeContentView> {
 
           const SizedBox(height: 16),
 
-          // 5. 추천 로드 포켓몬 스와이퍼
           HomeRoadSwiper(recommendedRoads: recommendedRoads),
 
           const SizedBox(height: 16),
 
-          // 6. 하단 광고 배너
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: AdBanner(

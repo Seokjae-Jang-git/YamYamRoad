@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // 🌟 Firestore 패키지 임포트 추가!
 import '../common/bottom_circle_tab_bar.dart';
+import '../community/community_main.dart';
 import 'setting/setting.dart';
 import '../common/user_data.dart';
 import 'setting/myinfo.dart';
+import '../inquiry/inquiry_list_screen.dart';
 
 // 🌟 StatelessWidget에서 StatefulWidget으로 변경하여 상태 관리 기능 부여!
 class MyPageMainScreen extends StatefulWidget {
@@ -94,7 +96,9 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
               const SizedBox(height: 24),
               _buildCardSection('다이어리', _buildDiaryContent()),
               const SizedBox(height: 16),
-              _buildCardSection('커뮤니티', _buildCommunityContent()),
+              // 🌟 '자세히 보기'를 누르면 커뮤니티 화면으로 이동하도록 콜백 추가
+              _buildCardSection('커뮤니티', _buildCommunityContent(),
+                  onDetailTap: _openCommunity),
               const SizedBox(height: 16),
               _buildCardSection('스탬프', _buildStampContent()),
               const SizedBox(height: 16),
@@ -102,8 +106,8 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
               const SizedBox(height: 16),
               _buildCardSection('포인트', _buildPointContent()),
               const SizedBox(height: 16),
-              _buildCardSection('문의', _buildInquiryContent()),
-              const SizedBox(height: 16),
+              _buildCardSection('문의', _buildInquiryContent(),
+                  onDetailTap: _openInquiry),
               _buildCardSection('신고', _buildReportContent()),
               const SizedBox(height: 32), // 하단 여유 공간
             ],
@@ -120,6 +124,22 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
           }
         },
       ),
+    );
+  }
+
+  // 🌟 커뮤니티 화면으로 이동하는 함수
+  void _openCommunity() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const CommunityMainScreen()),
+    );
+  }
+
+  // 🌟 문의 화면으로 이동하는 함수
+  void _openInquiry() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const InquiryListScreen()),
     );
   }
 
@@ -223,17 +243,22 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
         itemBuilder: (context, index) {
           return GestureDetector( // 🌟 여기서부터 수정: 클릭 이벤트 추가
             onTap: () {
-              // 클릭한 아이콘의 라벨이 '설정'일 때만 이동합니다.
-              if (menuItems[index]['label'] == '설정') {
+              final label = menuItems[index]['label'];
+              // 🌟 클릭한 아이콘의 라벨에 따라 알맞은 화면으로 이동합니다.
+              if (label == '설정') {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const SettingScreen()),
                 );
+              } else if (label == '커뮤니티') {
+                _openCommunity();
+              } else if (label == '문의') {
+                _openInquiry();
               } else {
                 // 다른 메뉴를 눌렀을 때의 임시 피드백
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                      content: Text('${menuItems[index]['label']} 화면 준비중'),
+                      content: Text('$label 화면 준비중'),
                       duration: const Duration(seconds: 1)
                   ),
                 );
@@ -262,7 +287,8 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
   }
 
   // 공통 카드 섹션 컨테이너 (타이틀 + 자세히보기 + 내용)
-  Widget _buildCardSection(String title, Widget content) {
+  // 🌟 onDetailTap 콜백을 추가하여 섹션별로 다른 화면으로 이동할 수 있게 함
+  Widget _buildCardSection(String title, Widget content, {VoidCallback? onDetailTap}) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -277,7 +303,7 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
             children: [
               Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               TextButton(
-                onPressed: () {},
+                onPressed: onDetailTap ?? () {},
                 style: TextButton.styleFrom(
                   minimumSize: Size.zero,
                   padding: EdgeInsets.zero,
@@ -306,12 +332,16 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
   }
 
   Widget _buildCommunityContent() {
-    return Column(
-      children: [
-        _buildListRow('커뮤니티 글 내용.... 오늘은 카페 라떼를....', '', showIcons: true),
-        const SizedBox(height: 8),
-        _buildListRow('커뮤니티 글 내용.... 오늘은 성수동에 유명한....', '', showIcons: true),
-      ],
+    // 🌟 커뮤니티 미리보기 글도 누르면 바로 커뮤니티 화면으로 이동하도록 GestureDetector로 감쌈
+    return GestureDetector(
+      onTap: _openCommunity,
+      child: Column(
+        children: [
+          _buildListRow('커뮤니티 글 내용.... 오늘은 카페 라떼를....', '', showIcons: true),
+          const SizedBox(height: 8),
+          _buildListRow('커뮤니티 글 내용.... 오늘은 성수동에 유명한....', '', showIcons: true),
+        ],
+      ),
     );
   }
 
