@@ -1,6 +1,5 @@
 package com.example.yamyam_road
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity: FlutterActivity() {
-}
+class MainActivity: FlutterFragmentActivity()
