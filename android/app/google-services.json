@@ -12,7 +12,20 @@
           "package_name": "com.example.yamyam_road"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "964766524983-u2g4rh80kbhs4lrgftkhmejk4fhsucoj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.yamyam_road",
+            "certificate_hash": "0cd419921ec5b563fd7c07e66afe984212cfb700"
+          }
+        },
+        {
+          "client_id": "964766524983-2h5i53gehbvf1ti82ih7aeel99k7aln2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDSONIPlpMqlYbEj5QFH97idF6L7hIlyhs"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "964766524983-2h5i53gehbvf1ti82ih7aeel99k7aln2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "964766524983-coehtqehq17s09qbefa1tvmkud87gjre.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.yamyamRoad"
+              }
+            }
+          ]
         }
       }
     }
