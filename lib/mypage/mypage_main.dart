@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // 🌟 Firestore 패키지 임포트 추가!
 import '../common/bottom_circle_tab_bar.dart';
-import 'setting/setting.dart';
 import '../common/user_data.dart';
+import 'setting/setting.dart';
+import 'diary/diary.dart';
 import 'setting/myinfo.dart';
+
 
 // 🌟 StatelessWidget에서 StatefulWidget으로 변경하여 상태 관리 기능 부여!
 class MyPageMainScreen extends StatefulWidget {
@@ -22,12 +24,11 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
     _loadUserData(); // 🌟 화면이 처음 켜질 때 Firestore에서 최신 유저 정보를 동기화합니다.
   }
 
-  // 🌟 Firestore에서 test_user_01 데이터를 읽어와 로컬 메모리와 동기화하는 비동기 함수
   Future<void> _loadUserData() async {
     try {
       DocumentSnapshot userDoc = await FirebaseFirestore.instance
           .collection('users')
-          .doc('test_user_01')
+          .doc(UserData.uid)
           .get();
 
       if (userDoc.exists) {
@@ -110,16 +111,6 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: BottomCircleTabBar(
-        currentIndex: 4, // 마이페이지이므로 인덱스를 4로 고정합니다.
-        onTap: (index) {
-          if (index != 4) {
-            // 마이페이지가 아닌 다른 탭(홈, 얌얌북 등)을 누르면,
-            // 현재 화면(마이페이지)을 닫고 원래 있던 홈 화면으로 돌아가게 합니다.
-            Navigator.pop(context);
-          }
-        },
-      ),
     );
   }
 
@@ -152,7 +143,7 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
             const SizedBox(width: 16),
             Expanded(
               child: Text(
-                UserData.nickname,
+                UserData.nickname ?? '로딩중...',
                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
             ),
@@ -221,16 +212,24 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
           childAspectRatio: 1,
         ),
         itemBuilder: (context, index) {
-          return GestureDetector( // 🌟 여기서부터 수정: 클릭 이벤트 추가
+          return GestureDetector(
             onTap: () {
-              // 클릭한 아이콘의 라벨이 '설정'일 때만 이동합니다.
-              if (menuItems[index]['label'] == '설정') {
+              // 🌟 1. 다이어리 클릭 시 DiaryScreen으로 이동!
+              if (menuItems[index]['label'] == '다이어리') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const DiaryScreen()),
+                );
+              }
+              // 🌟 2. 설정 클릭 시 SettingScreen으로 이동!
+              else if (menuItems[index]['label'] == '설정') {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const SettingScreen()),
                 );
-              } else {
-                // 다른 메뉴를 눌렀을 때의 임시 피드백
+              }
+              // 🌟 3. 나머지 메뉴는 임시 스낵바 띄우기
+              else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                       content: Text('${menuItems[index]['label']} 화면 준비중'),
@@ -239,7 +238,7 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
                 );
               }
             },
-            child: Column( // 🌟 기존에 있던 Column 위젯을 그대로 child로 넣습니다.
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
