@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:yamyam_road/mypage/setting/location_info.dart';
-import 'package:yamyam_road/mypage/setting/privacy.dart';
-import '../../common/bottom_circle_tab_bar.dart';
+import 'location_info.dart';
+import 'privacy.dart';
 import 'agreement.dart';
 import 'myinfo.dart';
+import 'withdrawn.dart';
 
 class SettingScreen extends StatelessWidget {
   const SettingScreen({super.key});
@@ -43,16 +43,6 @@ class SettingScreen extends StatelessWidget {
           ),
         ),
       ),
-      // 🌟 하단 네비게이션 바 유지
-      bottomNavigationBar: BottomCircleTabBar(
-        currentIndex: 4, // 마이페이지(설정) 영역이므로 4 유지
-        onTap: (index) {
-          if (index != 4) {
-            // 다른 탭을 누르면 현재 쌓여있는 화면들(설정, 마이페이지)을 모두 닫고 홈으로 돌아갑니다.
-            Navigator.of(context).popUntil((route) => route.isFirst);
-          }
-        },
-      ),
     );
   }
 
@@ -76,6 +66,11 @@ class SettingScreen extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const MyInfoScreen()),
+          );
+        } else if (title == '계정 삭제') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const WithdrawnScreen()),
           );
         } else if (title == '이용약관') {
           Navigator.push(

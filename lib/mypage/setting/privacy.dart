@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../common/bottom_circle_tab_bar.dart'; // 🌟 하단 탭바 임포트
 
 class PrivacyScreen extends StatelessWidget {
   const PrivacyScreen({super.key});
@@ -108,14 +107,6 @@ class PrivacyScreen extends StatelessWidget {
             style: const TextStyle(fontSize: 14, height: 1.6, color: Colors.black87), // 줄간격(height)을 넓혀 가독성을 높였습니다.
           ),
         ),
-      ),
-      bottomNavigationBar: BottomCircleTabBar(
-        currentIndex: 4,
-        onTap: (index) {
-          if (index != 4) {
-            Navigator.of(context).popUntil((route) => route.isFirst);
-          }
-        },
       ),
     );
   }

@@ -7,12 +7,18 @@ import 'ad_banner.dart';
 import 'home_stamp_dashboard.dart';
 import 'home_road_swiper.dart';
 import '../../ad/ad_station_page.dart';
-import '../../common/data/temp_user_session.dart';
-import '../../road/data/road_mock_data.dart';
-import '../../road/data/place_mock_data.dart';
+import '../../common/user_data.dart';
+import '../../common/data/temp_user_session.dart'; // 강화군/문화의거리 가상 주소 세션 임포트
+import '../../road/data/road_mock_data.dart'; // 진짜 로드 데이터셋 임포트
+import '../../road/data/place_mock_data.dart'; // 진짜 마스터 가게 데이터셋 임포트
 
 class HomeContentView extends StatefulWidget {
-  const HomeContentView({super.key});
+  final ValueChanged<int> onTabChanged;
+
+  const HomeContentView({
+    super.key,
+    required this.onTabChanged, // 🌟 필수 매개변수로 지정
+  });
 
   @override
   State<HomeContentView> createState() => _HomeContentViewState();
@@ -178,6 +184,35 @@ class _HomeContentViewState extends State<HomeContentView> {
                         child: _currentUser!.profileImageUrl == null
                             ? const Icon(Icons.person, size: 20, color: Colors.grey)
                             : null,
+                    GestureDetector(
+                      onTap: () {
+                        // 🌟 부모(MainHomeScreen)에게 4번(마이페이지)으로 인덱스를 바꿔달라고 요청합니다!
+                        widget.onTabChanged(4);
+                      },
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.grey.shade300, width: 1),
+                        ),
+                        child: CircleAvatar(
+                          radius: 18,
+                          backgroundColor: const Color(0xFFF5F5F5),
+                          child: UserData.isDefaultProfileImage || UserData.profileImagePath == null
+                              ? const Icon(Icons.person_outline, size: 24, color: Colors.grey)
+                              : ClipOval(
+                            child: Image.network(
+                              UserData.profileImagePath!,
+                              width: 38,
+                              height: 38,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(Icons.person_outline, size: 24, color: Colors.grey);
+                              },
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],
