@@ -81,6 +81,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.7.1"
+  cloud_functions:
+    dependency: "direct main"
+    description:
+      name: cloud_functions
+      sha256: "25d7e53f309b0b799d237d5350793bcef69306f0096f2a5fd06226a4de747404"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.3.5"
+  cloud_functions_platform_interface:
+    dependency: transitive
+    description:
+      name: cloud_functions_platform_interface
+      sha256: "0fa886ea6189a9e3c1e58dfcb09a9549f788ce9950d2b01a2aae0f6d7429bfa5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.0.5"
+  cloud_functions_web:
+    dependency: transitive
+    description:
+      name: cloud_functions_web
+      sha256: e97ea992822c404412ef21539d9b2d5b51922dfe8350922b2255ee7c4a7f54fd
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.1.11"
   collection:
     dependency: transitive
     description:
@@ -201,6 +225,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.9.3+5"
+  firebase_app_check:
+    dependency: "direct main"
+    description:
+      name: firebase_app_check
+      sha256: "28c1cc87389132c710236a008ee6688df510d3ce8b542ec377274ed8777006d6"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.5+2"
+  firebase_app_check_platform_interface:
+    dependency: transitive
+    description:
+      name: firebase_app_check_platform_interface
+      sha256: "1cccf087884425f595f6ae7159c568bb0bcb8aaff3acb6dd150bde9b421b06d2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.1+2"
+  firebase_app_check_web:
+    dependency: transitive
+    description:
+      name: firebase_app_check_web
+      sha256: "1049ce1073c43f8e3efc97190206132182ed2f71f4686efe9ada54a2bba27442"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.5+2"
   firebase_core:
     dependency: "direct main"
     description:
@@ -304,6 +352,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.3.3+1"
+  google_mlkit_commons:
+    dependency: transitive
+    description:
+      name: google_mlkit_commons
+      sha256: c7fc384bdb66c3b83e24e3a41818e61d7a378d900f65f5e775344fbca95a0917
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.12.0"
+  google_mlkit_text_recognition:
+    dependency: "direct main"
+    description:
+      name: google_mlkit_text_recognition
+      sha256: "8324fdc2628ebeb63568ad06437b984b716d938d87e4ce63ab24dfd3eeebf08a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.16.0"
   google_sign_in:
     dependency: "direct main"
     description:
@@ -608,6 +672,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.9.1"
+  safe_device:
+    dependency: "direct main"
+    description:
+      name: safe_device
+      sha256: ad1b32a564484c710f6d52b5a526838c8a7d999c8ab2e14890ff55c06a018248
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.1"
   shared_preferences:
     dependency: transitive
     description:
