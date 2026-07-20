@@ -11,10 +11,10 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
-        <!-- 네이버 지도 SDK Client ID (지도 출력용) -->
+        <!-- 구글 지도 API Key 설정 (.env의 GOOGLE_MAPS_API_KEY를 build.gradle.kts를 통해 전달받음) -->
         <meta-data
-            android:name="com.naver.maps.map.CLIENT_ID"
-            android:value="8lra5wnbp9" />
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
 
         <activity
             android:name=".MainActivity"
@@ -42,7 +42,7 @@
         <!-- 카카오 로그인 AppKey -->
         <meta-data android:name="com.kakao.sdk.AppKey" android:value="069a7990957fdbe501532762273b49dc" />
 
-        <!-- 카카오 로그인 인증 Activity (android:exported="true" 추가) -->
+        <!-- 카카오 로그인 인증 Activity -->
         <activity
             android:name="com.kakao.sdk.flutter.AuthCodeCustomTabsActivity"
             android:exported="true">

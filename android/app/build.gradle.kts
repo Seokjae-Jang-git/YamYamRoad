@@ -1,8 +1,22 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // 플러터 엔진과 네이티브 라이브러리를 연결해주는 핵심 플러그인
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val envProperties = Properties()
+val envFile = rootProject.file(".env")
+if (envFile.exists()) {
+    envFile.forEachLine { line ->
+        val trimmedLine = line.trim()
+        if (trimmedLine.isNotEmpty() && !trimmedLine.startsWith("#") && trimmedLine.contains("=")) {
+            val keyVal = trimmedLine.split("=", limit = 2)
+            envProperties.setProperty(keyVal[0].trim(), keyVal[1].trim())
+        }
+    }
 }
 
 android {
@@ -25,6 +39,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        manifestPlaceholders["MAPS_API_KEY"] = envProperties.getProperty("GOOGLE_MAPS_API_KEY") ?: ""
     }
 
     buildTypes {
