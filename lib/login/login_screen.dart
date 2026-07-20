@@ -81,7 +81,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _goToHome() {
     if (!mounted) return;
-    Navigator.pop(context, true); // 로그인 성공 신호를 HomeContentView에 전달
+
+    // 🌟 [수정 완료] main.dart의 StreamBuilder가 로그인을 감지하여 화면을 자동으로 바꿔주므로
+    // 여기서는 강제 이동 내비게이터를 쓰지 않고 함수를 안전하게 끝마칩니다.
+    // 만약 로그인 화면이 push 형태로 열렸던 구조라면 아래 주석을 해제해 줍니다.
+    // Navigator.pop(context, true);
   }
 
 // ---------------- 네이버 로그인 ----------------

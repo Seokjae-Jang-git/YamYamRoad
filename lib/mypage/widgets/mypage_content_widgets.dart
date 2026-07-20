@@ -36,7 +36,11 @@ Widget buildDiaryContent() {
           int index = entries.indexOf(entry);
           return Column(
             children: [
-              buildListRow(entry['title'], entry['note']),
+              // 🌟 [핵심 수정] 없는 필드인 'title' 대신 'storeName'을 사용하고 null 처리를 합니다!
+              buildListRow(
+                entry['storeName'] ?? '가게명 없음',
+                entry['note'] ?? '내용 없음',
+              ),
               if (index < entries.length - 1) const SizedBox(height: 8),
             ],
           );

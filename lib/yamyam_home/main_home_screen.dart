@@ -35,7 +35,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         return const RoadMainScreen();
       case 3:
         return PointMainScreen(
-          userId: AuthService.currentUid ?? 'test_user_01',
+          userId: AuthService.currentUser?.uid ?? 'test_user_01',
         );
     // 🌟 여기에 case 4를 추가해서 마이페이지를 끼워 넣습니다!
       case 4:

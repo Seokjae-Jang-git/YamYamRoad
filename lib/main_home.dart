@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
+import 'common/user_data.dart';
 import 'yamyam_home/main_home_screen.dart'; // road 폴더 아래의 메인 홈 스크린 임포트
 import 'package:firebase_core/firebase_core.dart'; // 🌟 파이어베이스 코어 패키지 추가
 import 'firebase_options.dart';
@@ -38,21 +40,24 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.white,
         useMaterial3: true,
       ),
-      // 🌟 3. 처음 화면을 고정하지 않고, FutureBuilder로 로그인 상태를 먼저 묻습니다.
-      home: FutureBuilder(
-        future: AuthService.getCurrentUser(),
+      // main_home.dart의 StreamBuilder 내부 body 영역 수정
+      home: StreamBuilder<User?>(
+        stream: AuthService.authStateChanges,
         builder: (context, snapshot) {
-          // 데이터를 기다리는 아주 짧은 찰나에는 기본 로딩을 보여줍니다.
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(body: Center(child: CircularProgressIndicator(color: Colors.black)));
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator(color: Colors.black)),
+            );
           }
 
-          // 로그인 데이터가 존재한다면 바로 홈 화면으로 보냅니다.
+          // 🌟 [핵심 보완] 로그인 데이터가 존재한다면!
           if (snapshot.hasData && snapshot.data != null) {
+            // ➔ 하위 화면들(다이어리, 얌얌북)이 내 데이터를 정상 조회할 수 있도록 전역 UID를 먼저 심어줍니다!
+            UserData.uid = snapshot.data!.uid;
+
             return const MainHomeScreen();
           }
 
-          // 그 외의 경우(비로그인 상태)에는 로그인 화면을 띄웁니다.
           return const LoginScreen();
         },
       ),
