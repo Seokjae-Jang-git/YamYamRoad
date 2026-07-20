@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../services/auth_service.dart';
-import '../../login/login_screen.dart';
 import 'top_circle_button.dart';
 import 'location_bar.dart';
 import 'ad_banner.dart';
@@ -28,46 +26,11 @@ class _HomeContentViewState extends State<HomeContentView> {
   // 세션에 저장해 둔 최초 구동 주소인 '인천광역시 강화군 강화읍'으로 초기화
   String _currentLocationText = initialUserLocation;
 
-  // 🆕 로그인 상태 관리: null이면 비로그인
-  UserModel? _currentUser;
-
   @override
   void initState() {
     super.initState();
     // 앱 처음 진입 시 최초 구동 주소를 강제로 바인딩합니다.
     _currentLocationText = initialUserLocation;
-    _loadCurrentUser(); // 🆕 앱 진입 시 저장된 세션으로 로그인 상태 복원
-  }
-
-  // 🆕 현재 유저 정보 조회 (비로그인이면 null)
-  Future<void> _loadCurrentUser() async {
-    final user = await AuthService.getCurrentUser();
-    if (mounted) {
-      setState(() {
-        _currentUser = user;
-      });
-    }
-  }
-
-  // 🌟 통합 로직: 프로필/로그인 버튼 탭 처리
-  Future<void> _onProfileButtonTap() async {
-    if (_currentUser != null) {
-      // 로그인 상태라면 개발자님이 만드신 콜백을 통해 마이페이지(4번 탭)로 이동!
-      widget.onTabChanged(4);
-      return;
-    }
-
-    // 비로그인 상태라면 로그인 화면으로 이동
-    final bool? loginSuccess = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const LoginScreen(),
-      ),
-    );
-
-    if (loginSuccess == true) {
-      await _loadCurrentUser(); // 로그인 성공 → 프로필로 전환
-    }
   }
 
   // 🧠 [실시간 최단거리 정복 정렬]: 내 위치에서 가장 가까운 가게를 가진 순서대로 정렬 후 '상위 5개'만 한정 슬라이싱
@@ -161,22 +124,11 @@ class _HomeContentViewState extends State<HomeContentView> {
                     ),
                     const SizedBox(width: 8),
 
-                    // 🌟 UI 통합: 로그인 안 했으면 버튼, 했으면 예쁜 프로필 사진 표시
-                    _currentUser == null
-                        ? OutlinedButton(
-                      onPressed: _onProfileButtonTap,
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        shape: const StadiumBorder(),
-                        side: BorderSide(color: Colors.grey[300]!),
-                      ),
-                      child: const Text(
-                        '로그인',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF504D46)),
-                      ),
-                    )
-                        : GestureDetector(
-                      onTap: _onProfileButtonTap, // 누르면 윗부분 함수를 통해 4번 탭으로 이동
+                    // 🌟 다이어트 완료: 로그인 체크 로직 삭제! 프로필 탭 시 무조건 마이페이지로 이동합니다.
+                    GestureDetector(
+                      onTap: () {
+                        widget.onTabChanged(4);
+                      },
                       child: Container(
                         width: 38,
                         height: 38,
@@ -187,11 +139,11 @@ class _HomeContentViewState extends State<HomeContentView> {
                         child: CircleAvatar(
                           radius: 18,
                           backgroundColor: const Color(0xFFF5F5F5),
-                          child: _currentUser!.profileImageUrl == null
+                          child: UserData.isDefaultProfileImage || UserData.profileImagePath == null
                               ? const Icon(Icons.person_outline, size: 24, color: Colors.grey)
                               : ClipOval(
                             child: Image.network(
-                              _currentUser!.profileImageUrl!,
+                              UserData.profileImagePath!,
                               width: 38,
                               height: 38,
                               fit: BoxFit.cover,
