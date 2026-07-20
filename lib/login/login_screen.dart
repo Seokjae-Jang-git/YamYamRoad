@@ -130,7 +130,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _goToHome() {
     if (!mounted) return;
-    Navigator.pop(context, true); // 🆕 로그인 성공 신호를 HomeContentView에 전달
+
+    // ❌ 기존 코드: Navigator.pop(context, true);
+    // 🌟 수정 코드: 바탕화면(LoginScreen)을 MainHomeScreen으로 완전히 교체합니다!
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const MainHomeScreen(),
+      ),
+    );
   }
 
   // ---------------- 구글 로그인 (v7 API) ----------------
