@@ -63,17 +63,9 @@ class _LoginScreenState extends State<LoginScreen> {
           ? await UserApi.instance.loginWithKakaoTalk()
           : await UserApi.instance.loginWithKakaoAccount();
 
-      User kakaoUser = await UserApi.instance.me();
-      final socialId = kakaoUser.id.toString();
+      debugPrint('🟢 카카오 로그인 성공');
 
-      debugPrint('🟢 카카오 로그인 성공: id=$socialId');
-
-      final userModel = await AuthService.loginWithKakao(
-        socialId: socialId,
-        nickname: kakaoUser.kakaoAccount?.profile?.nickname,
-        profileImageUrl: kakaoUser.kakaoAccount?.profile?.profileImageUrl,
-      );
-
+      final userModel = await AuthService.loginWithKakao(token.accessToken);
       debugPrint('🟢 AuthService 카카오 로그인 완료: uid=${userModel.uid}');
 
       await _mockSocialDelay();
@@ -87,6 +79,11 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _goToHome() {
+    if (!mounted) return;
+    Navigator.pop(context, true); // 로그인 성공 신호를 HomeContentView에 전달
+  }
+
 // ---------------- 네이버 로그인 ----------------
   Future<void> _handleNaverLogin() async {
     _setLoading(true);
@@ -94,31 +91,18 @@ class _LoginScreenState extends State<LoginScreen> {
       final result = await FlutterNaverLogin.logIn();
       debugPrint('🟢 네이버 로그인 status: ${result.status}');
 
-      if (result.status == NaverLoginStatus.loggedIn) {
-        final account = result.account;
-        if (account?.id == null) {
-          _showError('네이버 계정 정보를 가져오지 못했습니다.');
-          return;
-        }
-
-        debugPrint('🟢 네이버 계정 정보: id=${account!.id}, name=${account.name}');
-
-        final userModel = await AuthService.loginWithNaver(
-          socialId: account.id!,
-          name: account.name,
-          nickname: account.nickname,
-          phone: account.mobile,
-          profileImageUrl: account.profileImage,
-        );
-
-        debugPrint('🟢 AuthService 로그인 완료: uid=${userModel.uid}');
-      } else {
+      if (result.status != NaverLoginStatus.loggedIn) {
         _showError('네이버 로그인이 취소되었습니다.');
         return;
       }
 
+      // 네이버는 로그인 성공 후 액세스 토큰을 별도로 조회해야 합니다.
+      final tokenResult = await FlutterNaverLogin.getCurrentAccessToken();
+      final userModel = await AuthService.loginWithNaver(tokenResult.accessToken);
+      debugPrint('🟢 AuthService 네이버 로그인 완료: uid=${userModel.uid}');
+
       await _mockSocialDelay();
-      _goToHome(); // 🆕 여기서 성공 시 이전 화면(홈)으로 pop
+      _goToHome();
     } catch (e, stackTrace) {
       debugPrint('🔴 네이버 로그인 에러: $e');
       debugPrint('🔴 스택트레이스: $stackTrace');
@@ -128,12 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _goToHome() {
-    if (!mounted) return;
-    Navigator.pop(context, true); // 🆕 로그인 성공 신호를 HomeContentView에 전달
-  }
-
-  // ---------------- 구글 로그인 (v7 API) ----------------
+// ---------------- 구글 로그인 (v7 API) ----------------
   Future<void> _handleGoogleLogin() async {
     _setLoading(true);
     try {
@@ -142,20 +121,15 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final GoogleSignInAccount account = await _googleSignIn.authenticate();
-      debugPrint('🟢 구글 로그인 성공: id=${account.id}, email=${account.email}');
+      final idToken = account.authentication.idToken;
 
-      final userModel = await AuthService.loginWithGoogle(
-        socialId: account.id,
-        name: account.displayName,
-        profileImageUrl: account.photoUrl,
-      );
-
+      final userModel = await AuthService.loginWithGoogle(idToken: idToken);
       debugPrint('🟢 AuthService 구글 로그인 완료: uid=${userModel.uid}');
 
       await _mockSocialDelay();
       _goToHome();
     } on GoogleSignInException catch (e) {
-      debugPrint('🔴 GoogleSignInException: code=${e.code}, description=${e.description}');
+      debugPrint('🔴 GoogleSignInException: code=${e.code}');
       if (e.code == GoogleSignInExceptionCode.canceled) {
         _showError('구글 로그인이 취소되었습니다.');
       } else {
@@ -170,9 +144,11 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
   // ---------------- 휴대폰 번호 로그인 ----------------
-  void _handlePhoneLogin() {
-    // 인증번호 발송 화면으로 이동 (Firebase Phone Auth 등 별도 화면에서 처리)
-    Navigator.pushNamed(context, '/login/phone');
+  Future<void> _handlePhoneLogin() async {
+    final bool? success = await Navigator.pushNamed<bool>(context, '/login/phone');
+    if (success == true) {
+      _goToHome(); // 휴대폰 인증도 성공하면 로그인 화면 자체를 닫고 홈으로
+    }
   }
 
   Future<void> _mockSocialDelay() async {

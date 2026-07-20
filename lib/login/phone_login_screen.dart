@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 // TODO: firebase_auth 패키지 추가 후 아래 주석 해제
-// import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 // ============================================
 // 얌얌(YumYum) 휴대폰 번호 로그인 화면
