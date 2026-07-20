@@ -3,6 +3,8 @@ import '../common/bottom_circle_tab_bar.dart';
 import '../road/road_main_screen.dart';
 import '../mypage/mypage_main.dart'; // 🆕 바텀바가 버린 마이페이지 라우팅 책임을 부모가 인수 완료!
 import 'widgets/home_content_view.dart'; // 🆕 홈 화면의 순수 UI 콘텐츠 격리 뷰 임포트
+import '../point/point_main_screen.dart';
+import '../services/auth_service.dart';
 
 
 class MainHomeScreen extends StatefulWidget {
@@ -32,17 +34,8 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
       case 2:
         return const RoadMainScreen();
       case 3:
-        return const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.payment, size: 48, color: Colors.grey),
-              SizedBox(height: 12),
-              Text('포인트 내역', style: TextStyle(fontSize: 16, color: Colors.grey, fontWeight: FontWeight.bold)),
-              SizedBox(height: 4),
-              Text('화면 준비중', style: TextStyle(fontSize: 12, color: Colors.grey)),
-            ],
-          ),
+        return PointMainScreen(
+          userId: AuthService.currentUid ?? 'test_user_01',
         );
     // 🌟 여기에 case 4를 추가해서 마이페이지를 끼워 넣습니다!
       case 4:
