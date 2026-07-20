@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../road/data/road_mock_data.dart';
-import '../../road/data/place_mock_data.dart';
+import '../../road/models/road.dart';
+import '../../road/models/place_model.dart';
 import '../../road/course_detail_screen.dart';
 
 class HomeRoadSwiper extends StatefulWidget {
@@ -32,7 +32,7 @@ class _HomeRoadSwiperState extends State<HomeRoadSwiper> {
 
   @override
   void dispose() {
-    _pageController.dispose(); // 컨트롤러 메모리 해제를 이 위젯 내부로 완벽히 격리!
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -54,8 +54,8 @@ class _HomeRoadSwiperState extends State<HomeRoadSwiper> {
           }
 
           final item = widget.recommendedRoads[index];
-          final CourseData course = item['course'];
-          final PlaceData nearestPlace = item['nearestPlace'];
+          final Road road = item['road'] ?? item['course'];
+          final PlaceModel? nearestPlace = item['nearestPlace'];
 
           final labels = [
             '🔥 대세 추천 로드',
@@ -73,7 +73,7 @@ class _HomeRoadSwiperState extends State<HomeRoadSwiper> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => CourseDetailScreen(course: course),
+                    builder: (context) => CourseDetailScreen(road: road),
                   ),
                 );
               },
@@ -89,7 +89,6 @@ class _HomeRoadSwiperState extends State<HomeRoadSwiper> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // [포켓몬 카드 상층]: 복숭아 샐러드 대표 이미지와 라벨 뱃지
                     Expanded(
                       flex: 5,
                       child: Stack(
@@ -129,7 +128,6 @@ class _HomeRoadSwiperState extends State<HomeRoadSwiper> {
                         ],
                       ),
                     ),
-                    // [포켓몬 카드 하층]: 설명 텍스트 및 가장 가까운 가게 정보 카드
                     Expanded(
                       flex: 4,
                       child: Container(
@@ -142,7 +140,7 @@ class _HomeRoadSwiperState extends State<HomeRoadSwiper> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  course.title,
+                                  road.title,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
@@ -153,7 +151,7 @@ class _HomeRoadSwiperState extends State<HomeRoadSwiper> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${course.region} | ${course.category}',
+                                  '${road.region} | ${road.categoryIds.join(', ')}',
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: Colors.grey[600],
@@ -163,58 +161,59 @@ class _HomeRoadSwiperState extends State<HomeRoadSwiper> {
                               ],
                             ),
 
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.orange[50]!.withOpacity(0.5),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.orange[100]!, width: 0.8),
-                              ),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.location_on, color: Colors.orange, size: 14),
-                                      const SizedBox(width: 4),
-                                      Expanded(
-                                        child: Text(
-                                          '관문: ${nearestPlace.name}',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black87,
+                            if (nearestPlace != null)
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[50]!.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.orange[100]!, width: 0.8),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.location_on, color: Colors.orange, size: 14),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            '관문: ${nearestPlace.name}',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        '🏃 ${nearestPlace.distance}',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.grey[700],
-                                          fontWeight: FontWeight.w600,
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          '🏃 ${nearestPlace.distance}',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey[700],
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
-                                      ),
-                                      Text(
-                                        '🍒 ${nearestPlace.stampCount}개',
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.redAccent,
-                                          fontWeight: FontWeight.bold,
+                                        Text(
+                                          '🍒 ${nearestPlace.stampCount}개',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.redAccent,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ),

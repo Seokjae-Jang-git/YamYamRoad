@@ -23,6 +23,13 @@ class PlaceModel {
     required this.isActive,
   });
 
+  // UI 호환성 및 정렬용 게터 (UI 에러 방지 및 기본값 제공)
+  double get distanceValue => 0.0;
+  String get distance => '0m';
+  int get stampCount => 0;
+  double get rating => 0.0;
+  String get description => address;
+
   // Firestore 문서 데이터를 PlaceModel 객체로 변환
   factory PlaceModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};

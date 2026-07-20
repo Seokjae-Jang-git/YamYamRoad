@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'data/road_mock_data.dart';
-import 'data/place_mock_data.dart';
-import 'widgets/detail_mock_map.dart'; // 가상 지도 컴포넌트 임포트
-import 'widgets/detail_place_card.dart'; // 가게 카드 컴포넌트 임포트
+import 'models/road.dart';
+import 'models/place_model.dart';
+import 'repositories/place_repository.dart';
+import 'widgets/detail_place_card.dart';
 
 class CourseDetailScreen extends StatefulWidget {
-  final CourseData course;
+  final Road road;
 
   const CourseDetailScreen({
     super.key,
-    required this.course,
+    required this.road,
   });
 
   @override
@@ -17,34 +17,62 @@ class CourseDetailScreen extends StatefulWidget {
 }
 
 class _CourseDetailScreenState extends State<CourseDetailScreen> {
-  String _sortOption = '거리순'; // 기본 정렬 옵션 설정
+  final PlaceRepository _placeRepository = PlaceRepository();
 
-  // 외래키 리스트를 활용해 실시간으로 매칭되는 마스터 가게 데이터 추출 및 필터 정렬
-  List<PlaceData> get _getMatchedPlaces {
-    // 1. 코스 모델의 placeIds에 등록된 가게만 필터링
-    List<PlaceData> filtered = masterPlaces
-        .where((place) => widget.course.placeIds.contains(place.placeId))
-        .toList();
+  String _sortOption = '거리순';
+  List<PlaceModel> _places = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
-    // 2. 선택된 기획 사양 정렬 옵션 대입
+  @override
+  void initState() {
+    super.initState();
+    _fetchPlaces();
+  }
+
+  /// 코스의 placeIds를 기반으로 Firestore에서 실제 장소 목록을 조회합니다.
+  Future<void> _fetchPlaces() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final fetchedPlaces = await _placeRepository.fetchPlacesByIds(widget.road.placeIds);
+      setState(() {
+        _places = fetchedPlaces;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = '장소 정보를 불러오지 못했습니다: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  // 실시간 매칭된 장소 데이터를 선택된 옵션으로 정렬하여 반환
+  List<PlaceModel> get _getSortedPlaces {
+    List<PlaceModel> sorted = List.from(_places);
+
     if (_sortOption == '거리순') {
-      filtered.sort((a, b) => a.distanceValue.compareTo(b.distanceValue));
+      sorted.sort((a, b) => a.distanceValue.compareTo(b.distanceValue));
     } else if (_sortOption == '스탬프 순') {
-      filtered.sort((a, b) => b.stampCount.compareTo(a.stampCount));
+      sorted.sort((a, b) => b.stampCount.compareTo(a.stampCount));
     }
 
-    return filtered;
+    return sorted;
   }
 
   @override
   Widget build(BuildContext context) {
-    final matchedPlaces = _getMatchedPlaces;
+    final sortedPlaces = _getSortedPlaces;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
-          widget.course.title,
+          widget.road.title,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black),
         ),
         centerTitle: true,
@@ -56,23 +84,36 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           child: Divider(color: Colors.black12, height: 1.0, thickness: 0.5),
         ),
       ),
-      body: Stack(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+          ? Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            _errorMessage!,
+            style: const TextStyle(color: Colors.red, fontSize: 13),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      )
+          : Stack(
         children: [
-          // 🗺️ 상단 레이어: 가상 상호작용 지도 뷰 (고응집 컴포넌트로 온전히 위임!)
+          // 🗺️ 상단 레이어: 지도 영역 대체 위젯
           Positioned(
             top: 0,
             left: 0,
             right: 0,
             height: MediaQuery.of(context).size.height * 0.45,
-            child: DetailMockMap(places: matchedPlaces),
+            child: _buildMapArea(),
           ),
 
-          // 🛗 하단 레이어: 드래그 가능한 슬라이딩 시트 (기획서 기조 반영)
+          // 🛗 하단 레이어: 드래그 가능한 슬라이딩 시트
           Positioned.fill(
             child: DraggableScrollableSheet(
-              initialChildSize: 0.50, // 최초 실행 시 50% 높이 차지
-              minChildSize: 0.45,     // 최소 높이 45%
-              maxChildSize: 0.85,     // 최대 펼쳤을 때 85%
+              initialChildSize: 0.50,
+              minChildSize: 0.45,
+              maxChildSize: 0.85,
               builder: (context, scrollController) {
                 return Container(
                   decoration: const BoxDecoration(
@@ -91,7 +132,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   ),
                   child: Column(
                     children: [
-                      // 시트 상단 조작 핸들바 테코레이션
                       Container(
                         margin: const EdgeInsets.only(top: 12, bottom: 8),
                         width: 40,
@@ -102,7 +142,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                         ),
                       ),
 
-                      // 1. 기획안 헤더: 코스명 & 개수 표시 및 정렬 칩 배치
+                      // 1. 헤더: 코스명 & 개수 표시 및 정렬 칩
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                         child: Row(
@@ -111,12 +151,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                             Row(
                               children: [
                                 Text(
-                                  widget.course.title,
+                                  widget.road.title,
                                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  '${widget.course.placeCount}개',
+                                  '${sortedPlaces.length}개',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Colors.orange[800],
@@ -125,7 +165,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                                 ),
                               ],
                             ),
-                            // 거리순 / 스탬프 순 세그먼트 정렬 바
                             Row(
                               children: [
                                 _buildSortOptionChip('거리순'),
@@ -138,13 +177,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                       ),
                       const Divider(color: Colors.black12, height: 1.0),
 
-                      // 2. 동적 스크롤 가능한 실시간 목록 영역
+                      // 2. 실시간 장소 목록 영역
                       Expanded(
                         child: ListView.builder(
                           controller: scrollController,
-                          itemCount: matchedPlaces.length,
+                          itemCount: sortedPlaces.length,
                           itemBuilder: (context, index) {
-                            final place = matchedPlaces[index];
+                            final place = sortedPlaces[index];
                             return DetailPlaceCard(
                               index: index + 1,
                               place: place,
@@ -163,7 +202,34 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  // 정렬 제어 칩 빌더
+  /// 지도 영역 (네이버 지도 SDK 제거 및 대체 안내 영역)
+  Widget _buildMapArea() {
+    return Container(
+      color: Colors.grey[200],
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.map_outlined,
+              size: 48,
+              color: Colors.grey,
+            ),
+            SizedBox(height: 8),
+            Text(
+              '지도 영역',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSortOptionChip(String title) {
     final bool isSelected = _sortOption == title;
     return GestureDetector(

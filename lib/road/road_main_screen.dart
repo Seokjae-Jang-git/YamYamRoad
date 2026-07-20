@@ -131,9 +131,11 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
   }
 
   void _onCardPressed(Road road) {
-    // 4단계에서 코스 상세 및 지도 마커 연동 시 수정 예정
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${road.title} 코스가 선택되었습니다.')),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CourseDetailScreen(road: road),
+      ),
     );
   }
 
