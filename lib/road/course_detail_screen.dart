@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_naver_map/flutter_naver_map.dart'; // 👈 네이버 지도 위젯 패키지 임포트
 import 'models/road.dart';
 import 'models/place_model.dart';
 import 'repositories/place_repository.dart';
@@ -99,7 +100,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       )
           : Stack(
         children: [
-          // 🗺️ 상단 레이어: 지도 영역 대체 위젯
+          // 🗺️ 상단 레이어: 실제 네이버 지도 영역
           Positioned(
             top: 0,
             left: 0,
@@ -202,31 +203,20 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  /// 지도 영역 (네이버 지도 SDK 제거 및 대체 안내 영역)
+  /// 네이버 지도 위젯 영역
   Widget _buildMapArea() {
-    return Container(
-      color: Colors.grey[200],
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.map_outlined,
-              size: 48,
-              color: Colors.grey,
-            ),
-            SizedBox(height: 8),
-            Text(
-              '지도 영역',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+    return NaverMap(
+      options: const NaverMapViewOptions(
+        initialCameraPosition: NCameraPosition(
+          target: NLatLng(37.5666102, 126.9783881), // 기본 중심 좌표 (서울시청)
+          zoom: 14,
         ),
+        locationButtonEnable: false, // 현재 위치 버튼 비활성화 (필요시 true)
+        indoorEnable: true,
       ),
+      onMapReady: (NaverMapController controller) {
+        debugPrint("네이버 지도 엔진 준비 완료!");
+      },
     );
   }
 

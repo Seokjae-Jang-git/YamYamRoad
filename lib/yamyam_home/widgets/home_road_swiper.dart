@@ -36,6 +36,33 @@ class _HomeRoadSwiperState extends State<HomeRoadSwiper> {
     super.dispose();
   }
 
+  /// dynamic 객체(CourseData 등)를 안전하게 Road 객체로 파싱하는 헬퍼 함수
+  Road _parseToRoad(dynamic rawItem) {
+    if (rawItem is Road) {
+      return rawItem;
+    }
+
+    final dynamic d = rawItem;
+    return Road(
+      id: d?.id?.toString() ?? '',
+      title: d?.title?.toString() ?? '제목 없음',
+      description: d?.description?.toString() ?? '',
+      region: d?.region?.toString() ?? '전체',
+      categoryIds: (d?.categoryIds is List)
+          ? List<String>.from((d.categoryIds as List).map((e) => e.toString()))
+          : <String>[],
+      placeIds: (d?.placeIds is List)
+          ? List<String>.from((d.placeIds as List).map((e) => e.toString()))
+          : <String>[],
+      imageUrl: d?.imageUrl?.toString() ?? '',
+      badgeName: d?.badgeName?.toString() ?? '',
+      rewardPoints: (d?.rewardPoints as num?)?.toInt() ?? 0,
+      estimatedTimeMinutes: (d?.estimatedTimeMinutes as num?)?.toInt() ?? 0,
+      totalDistanceKm: (d?.totalDistanceKm as num?)?.toDouble() ?? 0.0,
+      createdAt: (d?.createdAt is DateTime) ? d.createdAt : DateTime.now(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -54,7 +81,8 @@ class _HomeRoadSwiperState extends State<HomeRoadSwiper> {
           }
 
           final item = widget.recommendedRoads[index];
-          final Road road = item['road'] ?? item['course'];
+          final rawRoadItem = item['road'] ?? item['course'];
+          final Road road = _parseToRoad(rawRoadItem);
           final PlaceModel? nearestPlace = item['nearestPlace'];
 
           final labels = [
