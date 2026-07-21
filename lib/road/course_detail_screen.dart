@@ -31,7 +31,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     _fetchPlaces();
   }
 
-  /// 코스의 placeIds를 기반으로 Firestore에서 실제 장소 목록을 조회합니다.
+  /// 코스의 roadPlace(장소 ID 목록)를 기반으로 Firestore에서 실제 장소 목록을 조회합니다.
   Future<void> _fetchPlaces() async {
     setState(() {
       _isLoading = true;
@@ -39,7 +39,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     });
 
     try {
-      final fetchedPlaces = await _placeRepository.fetchPlacesByIds(widget.road.placeIds);
+      final fetchedPlaces = await _placeRepository.fetchPlacesByIds(widget.road.roadPlace);
       setState(() {
         _places = fetchedPlaces;
         _isLoading = false;

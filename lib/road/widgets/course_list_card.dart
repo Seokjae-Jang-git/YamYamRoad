@@ -36,9 +36,9 @@ class CourseListCard extends StatelessWidget {
                   border: Border.all(color: Colors.grey[200]!),
                 ),
                 alignment: Alignment.center,
-                child: road.imageUrl.isNotEmpty
+                child: road.thumbnailUrl.isNotEmpty
                     ? Image.network(
-                  road.imageUrl,
+                  road.thumbnailUrl,
                   width: 64,
                   height: 64,
                   fit: BoxFit.cover,
@@ -65,7 +65,7 @@ class CourseListCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '${road.description.isNotEmpty ? road.description : "${road.region} 코스"}  ·  🍒 스탬프 ${road.rewardPoints}개',
+                      '${road.description.isNotEmpty ? road.description : "${road.regionId} 코스"}  ·  🍒 스탬프 ${road.stampRewardPoint}개',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[700],

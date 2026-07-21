@@ -36,31 +36,33 @@ class _HomeRoadSwiperState extends State<HomeRoadSwiper> {
     super.dispose();
   }
 
-  /// dynamic 객체(CourseData 등)를 안전하게 Road 객체로 파싱하는 헬퍼 함수
+  /// dynamic 객체 또는 Map을 안전하게 하위 호환 적용된 Road 객체로 파싱하는 헬퍼 함수
   Road _parseToRoad(dynamic rawItem) {
     if (rawItem is Road) {
       return rawItem;
     }
 
+    if (rawItem is Map<String, dynamic>) {
+      return Road.fromMap(rawItem, rawItem['id']?.toString() ?? '');
+    }
+
     final dynamic d = rawItem;
-    return Road(
-      id: d?.id?.toString() ?? '',
-      title: d?.title?.toString() ?? '제목 없음',
-      description: d?.description?.toString() ?? '',
-      region: d?.region?.toString() ?? '전체',
-      categoryIds: (d?.categoryIds is List)
-          ? List<String>.from((d.categoryIds as List).map((e) => e.toString()))
-          : <String>[],
-      placeIds: (d?.placeIds is List)
-          ? List<String>.from((d.placeIds as List).map((e) => e.toString()))
-          : <String>[],
-      imageUrl: d?.imageUrl?.toString() ?? '',
-      badgeName: d?.badgeName?.toString() ?? '',
-      rewardPoints: (d?.rewardPoints as num?)?.toInt() ?? 0,
-      estimatedTimeMinutes: (d?.estimatedTimeMinutes as num?)?.toInt() ?? 0,
-      totalDistanceKm: (d?.totalDistanceKm as num?)?.toDouble() ?? 0.0,
-      createdAt: (d?.createdAt is DateTime) ? d.createdAt : DateTime.now(),
-    );
+    final Map<String, dynamic> mapData = {
+      'title': d?.title,
+      'description': d?.description,
+      'regionId': d?.regionId ?? d?.region,
+      'categoryIds': d?.categoryIds,
+      'roadPlace': d?.roadPlace ?? d?.placeIds,
+      'thumbnailUrl': d?.thumbnailUrl ?? d?.imageUrl,
+      'badgeName': d?.badgeName,
+      'stampRewardPoint': d?.stampRewardPoint ?? d?.rewardPoints,
+      'estimatedTimeMinutes': d?.estimatedTimeMinutes,
+      'searchKeywords': d?.searchKeywords,
+      'isActive': d?.isActive,
+      'createdAt': d?.createdAt,
+    };
+
+    return Road.fromMap(mapData, d?.id?.toString() ?? '');
   }
 
   @override
@@ -179,7 +181,7 @@ class _HomeRoadSwiperState extends State<HomeRoadSwiper> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${road.region} | ${road.categoryIds.join(', ')}',
+                                  '${road.regionId} | ${road.categoryIds.join(', ')}',
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: Colors.grey[600],

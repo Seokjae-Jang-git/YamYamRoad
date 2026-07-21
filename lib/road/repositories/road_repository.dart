@@ -16,11 +16,11 @@ class RoadRepository {
     try {
       Query<Map<String, dynamic>> query = _firestore.collection('road');
 
-      // 1. 선택된 탭 조건에 맞춰 단일 조건 쿼리 적용
+      // 1. 선택된 탭 조건에 맞춰 단일 조건 쿼리 적용 (최신 규격 regionId 기준)
       if (selectedRegion != null &&
           selectedRegion.isNotEmpty &&
           selectedRegion != '전체') {
-        query = query.where('region', isEqualTo: selectedRegion);
+        query = query.where('regionId', isEqualTo: selectedRegion);
       } else if (selectedCategory != null &&
           selectedCategory.isNotEmpty &&
           selectedCategory != '전체') {
@@ -30,7 +30,7 @@ class RoadRepository {
       // 2. 파이어스토어에서 데이터 가져오기
       final querySnapshot = await query.get();
 
-      // 3. DocumentSnapshot -> Road 객체 목록 변환
+      // 3. DocumentSnapshot -> Road 객체 목록 변환 (Fallback 매핑 적용)
       List<Road> roads = querySnapshot.docs
           .map((doc) => Road.fromFirestore(doc))
           .toList();
@@ -42,7 +42,7 @@ class RoadRepository {
           break;
         case '스탬프 순':
         case '포인트 순':
-          roads.sort((a, b) => b.rewardPoints.compareTo(a.rewardPoints));
+          roads.sort((a, b) => b.stampRewardPoint.compareTo(a.stampRewardPoint));
           break;
         case '최신순':
         default:

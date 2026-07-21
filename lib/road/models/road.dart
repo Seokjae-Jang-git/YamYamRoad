@@ -4,66 +4,119 @@ class Road {
   final String id;
   final String title;
   final String description;
-  final String region;
+  final String regionId;
   final List<String> categoryIds;
-  final List<String> placeIds;
-  final String imageUrl;
+  final List<String> roadPlace;
+  final String thumbnailUrl;
   final String badgeName;
-  final int rewardPoints;
+  final int stampRewardPoint;
   final int estimatedTimeMinutes;
-  final double totalDistanceKm;
+  final List<String> searchKeywords;
+  final bool isActive;
   final DateTime createdAt;
 
   Road({
     required this.id,
     required this.title,
     required this.description,
-    required this.region,
+    required this.regionId,
     required this.categoryIds,
-    required this.placeIds,
-    required this.imageUrl,
+    required this.roadPlace,
+    required this.thumbnailUrl,
     required this.badgeName,
-    required this.rewardPoints,
+    required this.stampRewardPoint,
     required this.estimatedTimeMinutes,
-    required this.totalDistanceKm,
+    required this.searchKeywords,
+    required this.isActive,
     required this.createdAt,
   });
 
-  /// Firestore DocumentSnapshot을 Road 객체로 변환
-  factory Road.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data() ?? {};
+  /// 파이어스토어 DocumentSnapshot ➔ Road 객체 변환 (하위 호환 Fallback 적용)
+  factory Road.fromFirestore(DocumentSnapshot doc) {
+    final map = doc.data() as Map<String, dynamic>? ?? {};
+    return Road.fromMap(map, doc.id);
+  }
+
+  /// Map ➔ Road 객체 변환 (옛날 DB 필드와 새 DB 필드 모두 지원 및 타입 방어)
+  factory Road.fromMap(Map<String, dynamic> map, String docId) {
+    // DateTime 파싱 헬퍼
+    DateTime parseCreatedAt(dynamic value) {
+      if (value is Timestamp) {
+        return value.toDate();
+      } else if (value is DateTime) {
+        return value;
+      } else if (value is String) {
+        return DateTime.tryParse(value) ?? DateTime.now();
+      }
+      return DateTime.now();
+    }
+
+    // bool 타입 안전 파싱 헬퍼 (String, num, bool 모두 대응)
+    bool parseBool(dynamic value) {
+      if (value is bool) return value;
+      if (value is String) {
+        final lower = value.trim().toLowerCase();
+        return lower == 'true' || lower == 'y' || lower == '1';
+      }
+      if (value is num) {
+        return value == 1;
+      }
+      return true; // 기본값
+    }
 
     return Road(
-      id: doc.id,
-      title: data['title'] as String? ?? '',
-      description: data['description'] as String? ?? '',
-      region: data['region'] as String? ?? '',
-      categoryIds: List<String>.from(data['categoryIds'] ?? []),
-      placeIds: List<String>.from(data['placeIds'] ?? []),
-      imageUrl: data['imageUrl'] as String? ?? '',
-      badgeName: data['badgeName'] as String? ?? '',
-      rewardPoints: (data['rewardPoints'] as num?)?.toInt() ?? 0,
-      estimatedTimeMinutes: (data['estimatedTimeMinutes'] as num?)?.toInt() ?? 0,
-      totalDistanceKm: (data['totalDistanceKm'] as num?)?.toDouble() ?? 0.0,
-      createdAt: (data['createdAt'] is Timestamp)
-          ? (data['createdAt'] as Timestamp).toDate()
-          : DateTime.now(),
+      id: docId,
+      title: map['title']?.toString() ?? '제목 없음',
+      description: map['description']?.toString() ?? '',
+
+      // regionId가 없으면 기존 region 필드 탐색
+      regionId: map['regionId']?.toString() ?? map['region']?.toString() ?? '전체',
+
+      categoryIds: (map['categoryIds'] is List)
+          ? List<String>.from((map['categoryIds'] as List).map((e) => e.toString()))
+          : <String>[],
+
+      // roadPlace가 없으면 기존 placeIds 필드 탐색
+      roadPlace: (map['roadPlace'] is List)
+          ? List<String>.from((map['roadPlace'] as List).map((e) => e.toString()))
+          : (map['placeIds'] is List)
+          ? List<String>.from((map['placeIds'] as List).map((e) => e.toString()))
+          : <String>[],
+
+      // thumbnailUrl이 없으면 기존 imageUrl 필드 탐색
+      thumbnailUrl: map['thumbnailUrl']?.toString() ?? map['imageUrl']?.toString() ?? '',
+
+      badgeName: map['badgeName']?.toString() ?? '',
+
+      // stampRewardPoint가 없으면 기존 rewardPoints 필드 탐색
+      stampRewardPoint: ((map['stampRewardPoint'] ?? map['rewardPoints']) as num?)?.toInt() ?? 0,
+
+      estimatedTimeMinutes: (map['estimatedTimeMinutes'] as num?)?.toInt() ?? 0,
+
+      searchKeywords: (map['searchKeywords'] is List)
+          ? List<String>.from((map['searchKeywords'] as List).map((e) => e.toString()))
+          : <String>[],
+
+      isActive: parseBool(map['isActive']),
+
+      createdAt: parseCreatedAt(map['createdAt']),
     );
   }
 
-  /// Road 객체를 Firestore에 저장 가능한 Map 구조로 변환
+  /// Road 객체 ➔ 파이어스토어 저장용 Map 변환 (최신 DB 규격 기준)
   Map<String, dynamic> toMap() {
     return {
       'title': title,
       'description': description,
-      'region': region,
+      'regionId': regionId,
       'categoryIds': categoryIds,
-      'placeIds': placeIds,
-      'imageUrl': imageUrl,
+      'roadPlace': roadPlace,
+      'thumbnailUrl': thumbnailUrl,
       'badgeName': badgeName,
-      'rewardPoints': rewardPoints,
+      'stampRewardPoint': stampRewardPoint,
       'estimatedTimeMinutes': estimatedTimeMinutes,
-      'totalDistanceKm': totalDistanceKm,
+      'searchKeywords': searchKeywords,
+      'isActive': isActive,
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }
