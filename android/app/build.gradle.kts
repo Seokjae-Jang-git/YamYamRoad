@@ -1,10 +1,23 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
-    // START: FlutterFire Configuration
-    id("com.google.gms.google-services")
-    // END: FlutterFire Configuration
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id("kotlin-android")
+    // 플러터 엔진과 네이티브 라이브러리를 연결해주는 핵심 플러구인
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val envProperties = Properties()
+// 👈 플러터 프로젝트 루트 디렉토리의 .env 파일을 가리키도록 상위 경로(../.env)로 수정했습니다.
+val envFile = rootProject.file("../.env")
+if (envFile.exists()) {
+    envFile.forEachLine { line ->
+        val trimmedLine = line.trim()
+        if (trimmedLine.isNotEmpty() && !trimmedLine.startsWith("#") && trimmedLine.contains("=")) {
+            val keyVal = trimmedLine.split("=", limit = 2)
+            envProperties.setProperty(keyVal[0].trim(), keyVal[1].trim())
+        }
+    }
 }
 
 android {
@@ -17,29 +30,24 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }
+
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.yamyam_road"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        manifestPlaceholders["MAPS_API_KEY"] = envProperties.getProperty("GOOGLE_MAPS_API_KEY") ?: ""
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
-    }
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 

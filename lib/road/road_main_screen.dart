@@ -4,8 +4,9 @@ import 'widgets/sub_filter_chips.dart';
 import 'widgets/sorting_bar.dart';
 import 'widgets/course_list_card.dart';
 import 'widgets/region_select_page.dart';
-import 'course_detail_screen.dart'; // 🆕 새로 구현한 상세 화면 임포트!
-import 'data/road_mock_data.dart';
+import 'course_detail_screen.dart';
+import 'models/road.dart';
+import 'repositories/road_repository.dart';
 
 class RoadMainScreen extends StatefulWidget {
   const RoadMainScreen({super.key});
@@ -15,34 +16,48 @@ class RoadMainScreen extends StatefulWidget {
 }
 
 class _RoadMainScreenState extends State<RoadMainScreen> {
+  final RoadRepository _roadRepository = RoadRepository();
+
   String _selectedTab = '지역별';
   String _selectedFilter = '전체';
   String _selectedSort = '최신순';
 
-  // 필터 및 선택 정렬 연산 수행 루프
-  List<CourseData> get _processedCourses {
-    List<CourseData> baseCourses = _selectedTab == '지역별' ? regionCourses : menuCourses;
-    List<CourseData> result = List.from(baseCourses);
+  List<Road> _roads = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
-    // 하위 필터 처리 (전체가 아닐 경우에만 동적 키 매칭)
-    if (_selectedFilter != '전체') {
-      if (_selectedTab == '지역별') {
-        result = result.where((c) => c.region == _selectedFilter).toList();
-      } else if (_selectedTab == '메뉴별') {
-        result = result.where((c) => c.category == _selectedFilter).toList();
-      }
+  @override
+  void initState() {
+    super.initState();
+    _fetchRoadsFromFirestore();
+  }
+
+  /// Firestore에서 비동기로 실데이터 가져오는 로직
+  Future<void> _fetchRoadsFromFirestore() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final isRegionTab = _selectedTab == '지역별';
+
+      final fetchedRoads = await _roadRepository.fetchRoads(
+        selectedRegion: isRegionTab ? _selectedFilter : null,
+        selectedCategory: !isRegionTab ? _selectedFilter : null,
+        sortBy: _selectedSort,
+      );
+
+      setState(() {
+        _roads = fetchedRoads;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = '데이터를 불러오지 못했습니다: $e';
+        _isLoading = false;
+      });
     }
-
-    // 정렬 기능 뼈대 시뮬레이션
-    if (_selectedSort == '최신순') {
-      result.sort((a, b) => b.id.compareTo(a.id));
-    } else if (_selectedSort == '이름순') {
-      result.sort((a, b) => a.title.compareTo(b.title));
-    } else if (_selectedSort == '스탬프 순') {
-      result.sort((a, b) => b.stampCount.compareTo(a.stampCount));
-    }
-
-    return result;
   }
 
   // '지역 더보기' 전체 화면 선택 창 띄우기 로직
@@ -59,11 +74,12 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
       setState(() {
         _selectedFilter = selectedRegion;
       });
+      _fetchRoadsFromFirestore();
     }
   }
 
-  // 피드형 광고 동적 배치 알고리즘 (동적 카드 개수 맞춤 분배 방식)
-  List<Widget> _buildListWithAds(List<CourseData> listToShow) {
+  // 피드형 광고 동적 배치 알고리즘 (기존 구조 유지)
+  List<Widget> _buildListWithAds(List<Road> listToShow) {
     List<Widget> items = [];
 
     if (listToShow.isEmpty) {
@@ -84,11 +100,11 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
 
     // 카드 수가 2개 이하인 경우 바로 밑에 노출
     if (listToShow.length <= 2) {
-      for (var course in listToShow) {
+      for (var road in listToShow) {
         items.add(
           CourseListCard(
-            course: course,
-            onTap: () => _onCardPressed(course), // 🆕 SnackBar 대신 데이터 통째로 상세 전달
+            road: road,
+            onTap: () => _onCardPressed(road),
           ),
         );
       }
@@ -97,11 +113,11 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
     // 카드 수가 3개 이상인 경우 3개 카드 마다 광고 획득 배치
     else {
       for (int i = 0; i < listToShow.length; i++) {
-        final course = listToShow[i];
+        final road = listToShow[i];
         items.add(
           CourseListCard(
-            course: course,
-            onTap: () => _onCardPressed(course), // 🆕 SnackBar 대신 데이터 통째로 상세 전달
+            road: road,
+            onTap: () => _onCardPressed(road),
           ),
         );
 
@@ -114,80 +130,112 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
     return items;
   }
 
-  // 🆕 [상세화면 완벽 연동]: 코스 터치 시 해당 코스 데이터를 들고 지도+드래그시트 상세뷰로 하이패스 이동!
-  void _onCardPressed(CourseData course) {
+  void _onCardPressed(Road road) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CourseDetailScreen(course: course),
+        builder: (context) => CourseDetailScreen(road: road),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final listToShow = _processedCourses;
-    final uiItems = _buildListWithAds(listToShow);
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. 최상단 대분류 및 검색 버튼
+            // 1. 최상단 대분류 및 검색 버튼 (기존 위젯)
             CategoryTabs(
               selectedTab: _selectedTab,
               onTabChanged: (tab) {
-                setState(() {
-                  _selectedTab = tab;
-                  _selectedFilter = '전체'; // 대분류가 달라지면 하위 필터칩 필터값 자동 클리어!
-                });
+                if (_selectedTab != tab) {
+                  setState(() {
+                    _selectedTab = tab;
+                    _selectedFilter = '전체';
+                  });
+                  _fetchRoadsFromFirestore();
+                }
               },
               onSearchPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('검색 페이지 연동을 환영합니다!')),
+                  const SnackBar(content: Text('검색 페이지 연동 예정입니다.')),
                 );
               },
             ),
 
             const SizedBox(height: 4),
 
-            // 2. 가로 스크롤형 동적 필터 칩 영역 (대분류 탭 정보 전달 연계)
+            // 2. 가로 스크롤형 동적 필터 칩 영역 (기존 위젯)
             SubFilterChips(
               selectedTab: _selectedTab,
               selectedFilter: _selectedFilter,
               onFilterSelected: (filter) {
-                setState(() {
-                  _selectedFilter = filter;
-                });
+                if (_selectedFilter != filter) {
+                  setState(() {
+                    _selectedFilter = filter;
+                  });
+                  _fetchRoadsFromFirestore();
+                }
               },
               onMorePressed: _openRegionSelectPage,
             ),
 
             const SizedBox(height: 4),
 
-            // 3. 정렬 상태 제어 바
+            // 3. 정렬 상태 제어 바 (기존 위젯)
             SortingBar(
               selectedSort: _selectedSort,
               onSortChanged: (sort) {
-                setState(() {
-                  _selectedSort = sort;
-                });
+                if (_selectedSort != sort) {
+                  setState(() {
+                    _selectedSort = sort;
+                  });
+                  _fetchRoadsFromFirestore();
+                }
               },
             ),
 
-            // 4. 리스트 렌더링 영역
+            // 4. Firestore 리스트 렌더링 영역
             Expanded(
-              child: ListView.builder(
-                itemCount: uiItems.length,
-                itemBuilder: (context, index) {
-                  return uiItems[index];
-                },
-              ),
+              child: _buildListContent(),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// 로딩 / 에러 / 실데이터 연동 영역
+  Widget _buildListContent() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            _errorMessage!,
+            style: const TextStyle(color: Colors.red, fontSize: 13),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    final uiItems = _buildListWithAds(_roads);
+
+    return RefreshIndicator(
+      onRefresh: _fetchRoadsFromFirestore,
+      child: ListView.builder(
+        itemCount: uiItems.length,
+        itemBuilder: (context, index) {
+          return uiItems[index];
+        },
       ),
     );
   }

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../data/place_mock_data.dart';
-import '../../common/data/temp_user_session.dart'; // 공용 사용자 임시 세션 파일 임포트
+import '../models/place_model.dart';
+import '../../common/data/temp_user_session.dart';
 import '../../common/utils/map_launcher.dart';
 
 class DetailPlaceCard extends StatelessWidget {
   final int index;
-  final PlaceData place;
+  final PlaceModel place;
 
   const DetailPlaceCard({
     super.key,
@@ -16,7 +16,7 @@ class DetailPlaceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // [개인화 비즈니스 로직]: 공용 세션의 완료 Set 데이터에 해당 가게 ID가 매칭되는가?
-    final bool isCompleted = completedPlaceIdsOfCurrentUser.contains(place.placeId);
+    final bool isCompleted = completedPlaceIdsOfCurrentUser.contains(place.id);
 
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -43,7 +43,7 @@ class DetailPlaceCard extends StatelessWidget {
                       height: 72,
                       color: Colors.orange[100],
                       alignment: Alignment.center,
-                      child: const Text('🍒', style: TextStyle(fontSize: 28)), // 체리 스탬프 디테일
+                      child: const Text('🍒', style: TextStyle(fontSize: 28)),
                     );
                   },
                 ),
@@ -60,7 +60,6 @@ class DetailPlaceCard extends StatelessWidget {
                       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
                     ),
                     const SizedBox(height: 6),
-                    // 기획안 "★ 4.8 🍒 120 | 내 위치에서 200m" 스펙 완벽 대입
                     Row(
                       children: [
                         const Icon(Icons.star, color: Colors.amber, size: 16),
@@ -71,7 +70,7 @@ class DetailPlaceCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          '🍒 ${place.stampCount}', // 🍒 체리 스탬프 변경 완료!
+                          '🍒 ${place.stampCount}',
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.redAccent),
                         ),
                         const SizedBox(width: 8),
@@ -90,7 +89,7 @@ class DetailPlaceCard extends StatelessWidget {
                 ),
               ),
 
-              // [완료 여부 조건부 이모지 렌더링]: 공용 세션과 반응하여 완료 시 🍒, 미완 시 😋 출력
+              // [완료 여부 조건부 이모지 렌더링]
               Text(
                 isCompleted ? '🍒' : '😋',
                 style: const TextStyle(fontSize: 22),
@@ -111,8 +110,8 @@ class DetailPlaceCard extends StatelessWidget {
                   onPressed: () {
                     MapLauncher.showMapSelectionBottomSheet(
                       context: context,
-                      latitude: place.latitude,
-                      longitude: place.longitude,
+                      latitude: place.lat,
+                      longitude: place.lng,
                       name: place.name,
                     );
                   },
@@ -131,7 +130,7 @@ class DetailPlaceCard extends StatelessWidget {
                   ),
                   onPressed: () {
                     debugPrint('==================================================');
-                    debugPrint('[얌얌로드 코스 상세 인증 트리거] Selected Place ID: ${place.placeId}');
+                    debugPrint('[얌얌로드 코스 상세 인증 트리거] Selected Place ID: ${place.id}');
                     debugPrint('==================================================');
 
                     showDialog(
@@ -140,7 +139,7 @@ class DetailPlaceCard extends StatelessWidget {
                         return AlertDialog(
                           title: const Text('스탬프 인증 요청'),
                           content: Text(
-                            '선택한 가게: [${place.name}]\n전송 데이터(ID): ${place.placeId}\n\n스탬프 엔진에 해당 고유 아이디가 성공적으로 매칭 전송되었습니다! 🍒',
+                            '선택한 가게: [${place.name}]\n전송 데이터(ID): ${place.id}\n\n스탬프 엔진에 해당 고유 아이디가 성공적으로 매칭 전송되었습니다! 🍒',
                             style: const TextStyle(fontSize: 13),
                           ),
                           actions: [
