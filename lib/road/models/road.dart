@@ -10,7 +10,6 @@ class Road {
   final String thumbnailUrl;
   final String badgeName;
   final int stampRewardPoint;
-  final int estimatedTimeMinutes;
   final List<String> searchKeywords;
   final bool isActive;
   final DateTime createdAt;
@@ -25,7 +24,6 @@ class Road {
     required this.thumbnailUrl,
     required this.badgeName,
     required this.stampRewardPoint,
-    required this.estimatedTimeMinutes,
     required this.searchKeywords,
     required this.isActive,
     required this.createdAt,
@@ -91,8 +89,6 @@ class Road {
       // stampRewardPoint가 없으면 기존 rewardPoints 필드 탐색
       stampRewardPoint: ((map['stampRewardPoint'] ?? map['rewardPoints']) as num?)?.toInt() ?? 0,
 
-      estimatedTimeMinutes: (map['estimatedTimeMinutes'] as num?)?.toInt() ?? 0,
-
       searchKeywords: (map['searchKeywords'] is List)
           ? List<String>.from((map['searchKeywords'] as List).map((e) => e.toString()))
           : <String>[],
@@ -114,7 +110,6 @@ class Road {
       'thumbnailUrl': thumbnailUrl,
       'badgeName': badgeName,
       'stampRewardPoint': stampRewardPoint,
-      'estimatedTimeMinutes': estimatedTimeMinutes,
       'searchKeywords': searchKeywords,
       'isActive': isActive,
       'createdAt': Timestamp.fromDate(createdAt),
