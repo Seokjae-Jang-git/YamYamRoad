@@ -7,14 +7,15 @@
 //    serviceAccountKey.json 파일을 받아서 이 스크립트와 같은 폴더에 둡니다.
 // 2. npm install firebase-admin
 
-const admin = require('firebase-admin');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 const serviceAccount = require('./serviceAccountKey.json');
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+initializeApp({
+  credential: cert(serviceAccount),
 });
 
-const db = admin.firestore();
+const db = getFirestore();
 
 const characterFiles = [
   '01_smile.svg', '02_bigsmile.svg', '03_sad.svg', '04_crying.svg',
@@ -38,7 +39,7 @@ async function seed() {
   const packs = [
     {
       id: 'emo_character_test',
-      name: '이모티콘 테스트팩 (캐릭터형)',
+      name: '곰돌이 냠냠팩',
       imageUrl: 'assets/emoticons/character/01_smile.svg',
       pricePoint: 500,
       isActive: true,
@@ -46,7 +47,7 @@ async function seed() {
     },
     {
       id: 'emo_emoji_test',
-      name: '이모티콘 테스트팩 (이모지형)',
+      name: '찐텐 이모지팩',
       imageUrl: 'assets/emoticons/emoji/01_smile.svg',
       pricePoint: 500,
       isActive: true,
@@ -54,7 +55,7 @@ async function seed() {
     },
     {
       id: 'emo_meme_test',
-      name: '이모티콘 테스트팩 (밈/리액션형)',
+      name: '리액션 폭발팩',
       imageUrl: 'assets/emoticons/meme/01_smile.svg',
       pricePoint: 500,
       isActive: true,
