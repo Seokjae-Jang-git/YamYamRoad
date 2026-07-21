@@ -1,25 +1,122 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class CourseData {
-  final String id;
-  final String title;
-  final String description;
-  final int placeCount;
-  final int stampCount;
-  final String region;
-  final String category;
-  final bool isCompleted;
-  final List<String> placeIds; // 🆕 외래키 연동 리스트 완벽 복원 이식!
+  final String id; // 문서 ID (유일한 필수 값)
+
+  // 🌟 1. UI 더미 데이터 및 구형 스펙 필드들
+  final int? stampCount;
+  final String? category;
+  final bool? isCompleted;
+  final String? imageUrl;
+  final String? region;
+  final int? rewardPoints;
+
+  // 🌟 2. 신형 DB 및 Road 클래스 일치 필드들
+  final String? badgeName;
+  final List<String>? categoryIds;
+  final DateTime? createdAt;
+  final String? description;
+  final int? estimatedTimeMinutes;
+  final int? placeCount;
+  final List<String>? placeIds;
+  final String? regionId;
+  final String? title;
+  final double? totalDistanceKm;
+  final DateTime? updatedAt;
+  final dynamic roadPlace;
+  final String? thumbnailUrl;
+  final int? stampRewardPoint;
+  final List<String>? searchKeywords;
+  final bool? isActive;
 
   const CourseData({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.placeCount,
-    required this.stampCount,
-    required this.region,
-    required this.category,
-    required this.isCompleted,
-    required this.placeIds, // 필수 생성자 필드
+    required this.id, // id만 필수로 받습니다.
+
+    // 1. UI 더미 데이터 및 구형 필드
+    this.stampCount,
+    this.category,
+    this.isCompleted,
+    this.imageUrl,
+    this.region,
+    this.rewardPoints,
+
+    // 2. 신형 DB 및 Road 클래스 대응 필드
+    this.badgeName,
+    this.categoryIds,
+    this.createdAt,
+    this.description,
+    this.estimatedTimeMinutes,
+    this.placeCount,
+    this.placeIds,
+    this.regionId,
+    this.title,
+    this.totalDistanceKm,
+    this.updatedAt,
+    this.roadPlace,
+    this.thumbnailUrl,
+    this.stampRewardPoint,
+    this.searchKeywords,
+    this.isActive,
   });
+
+  /// 🌟 3. Firestore 데이터를 안전하게 변환하는 팩토리 함수 (구/신형 DB 필드 이름 호환 처리)
+  factory CourseData.fromMap(Map<String, dynamic> map, String docId) {
+    // DateTime 파싱 헬퍼
+    DateTime? parseDateTime(dynamic value) {
+      if (value is DateTime) return value;
+      if (value is Timestamp) return value.toDate();
+      if (value is String) return DateTime.tryParse(value);
+      return null;
+    }
+
+    return CourseData(
+      id: docId,
+      title: map['title']?.toString(),
+      description: map['description']?.toString(),
+
+      // regionId가 없을 경우 region 필드도 확인
+      regionId: map['regionId']?.toString() ?? map['region']?.toString(),
+      region: map['region']?.toString() ?? map['regionId']?.toString(),
+
+      // 카테고리 ID 리스트
+      categoryIds: map['categoryIds'] != null ? List<String>.from(map['categoryIds']) : null,
+      category: map['category']?.toString(),
+
+      // 장소 ID (roadPlace와 placeIds 모두 호환)
+      roadPlace: map['roadPlace'] ?? map['placeIds'],
+      placeIds: map['placeIds'] != null
+          ? List<String>.from(map['placeIds'])
+          : (map['roadPlace'] != null ? List<String>.from(map['roadPlace']) : null),
+
+      // 이미지 URL (thumbnailUrl과 imageUrl 모두 호환)
+      thumbnailUrl: map['thumbnailUrl']?.toString() ?? map['imageUrl']?.toString(),
+      imageUrl: map['imageUrl']?.toString() ?? map['thumbnailUrl']?.toString(),
+
+      badgeName: map['badgeName']?.toString(),
+
+      // 스탬프 보상 포인트 (stampRewardPoint와 rewardPoints 모두 호환)
+      stampRewardPoint: ((map['stampRewardPoint'] ?? map['rewardPoints']) as num?)?.toInt(),
+      rewardPoints: ((map['rewardPoints'] ?? map['stampRewardPoint']) as num?)?.toInt(),
+
+      searchKeywords: map['searchKeywords'] != null ? List<String>.from(map['searchKeywords']) : null,
+
+      isActive: map['isActive'] is bool ? map['isActive'] : true,
+
+      placeCount: (map['placeCount'] as num?)?.toInt(),
+      stampCount: (map['stampCount'] as num?)?.toInt(),
+      estimatedTimeMinutes: (map['estimatedTimeMinutes'] as num?)?.toInt(),
+      totalDistanceKm: (map['totalDistanceKm'] as num?)?.toDouble(),
+      isCompleted: map['isCompleted'] as bool?,
+
+      createdAt: parseDateTime(map['createdAt']),
+      updatedAt: parseDateTime(map['updatedAt']),
+    );
+  }
+
+  factory CourseData.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    return CourseData.fromMap(data, doc.id);
+  }
 }
 
 // 🆕 1. [지역별 탭 전용] 전국 지역 탐방 중심의 코스 테마 목록 (14대 데이터 전체 원본 보존 완료!)
