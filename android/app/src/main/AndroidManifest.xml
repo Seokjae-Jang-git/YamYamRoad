@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 필수 및 위치/저장소 권한 -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
 
@@ -6,6 +10,11 @@
         android:label="yamyam_road"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+
+        <!-- 구글 지도 API Key 설정 (.env의 GOOGLE_MAPS_API_KEY를 build.gradle.kts를 통해 전달받음) -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
 
         <activity
             android:name=".MainActivity"
@@ -17,9 +26,9 @@
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
             <meta-data
-              android:name="io.flutter.embedding.android.NormalTheme"
-              android:resource="@style/NormalTheme"
-              />
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme"
+                />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -30,17 +39,22 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
+        <!-- 카카오 로그인 AppKey -->
         <meta-data android:name="com.kakao.sdk.AppKey" android:value="069a7990957fdbe501532762273b49dc" />
-        <activity android:name="com.kakao.sdk.flutter.AuthCodeCustomTabsActivity">
+
+        <!-- 카카오 로그인 인증 Activity -->
+        <activity
+            android:name="com.kakao.sdk.flutter.AuthCodeCustomTabsActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:host="oauth" android:scheme="069a7990957fdbe501532762273b49dc" />
+                <data android:host="oauth" android:scheme="kakao069a7990957fdbe501532762273b49dc" />
             </intent-filter>
         </activity>
 
-        <!-- 여기로 합침, android:name 속성은 삭제 -->
+        <!-- 네이버 로그인 SDK 설정 -->
         <meta-data
             android:name="com.naver.sdk.clientId"
             android:value="_U6u6K8IKdUkf_HA1WaD" />
@@ -59,7 +73,6 @@
         </intent>
 
         <package android:name="com.nhn.android.nmap" />
-
         <package android:name="net.daum.android.map" />
 
         <intent>

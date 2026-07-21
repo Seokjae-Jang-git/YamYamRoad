@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import '../data/road_mock_data.dart'; // 🆕 분리된 데이터 모델 파일을 상대경로로 안전하게 임포트합니다.
+import '../models/road.dart';
 
 class CourseListCard extends StatelessWidget {
-  final CourseData course;
+  final Road road;
   final VoidCallback onTap;
 
   const CourseListCard({
     super.key,
-    required this.course,
+    required this.road,
     required this.onTap,
   });
 
@@ -27,7 +27,7 @@ class CourseListCard extends StatelessWidget {
           padding: const EdgeInsets.all(12.0),
           child: Row(
             children: [
-              // 가상 관리자 수급 사진 영역
+              // 코스 대표 이미지 (Firestore URL 또는 가상 박스)
               Container(
                 width: 64,
                 height: 64,
@@ -36,10 +36,16 @@ class CourseListCard extends StatelessWidget {
                   border: Border.all(color: Colors.grey[200]!),
                 ),
                 alignment: Alignment.center,
-                child: Text(
-                  '코스사진',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 11),
-                ),
+                child: road.thumbnailUrl.isNotEmpty
+                    ? Image.network(
+                  road.thumbnailUrl,
+                  width: 64,
+                  height: 64,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      _buildPlaceholderText(),
+                )
+                    : _buildPlaceholderText(),
               ),
               const SizedBox(width: 14),
               // 코스 정보 및 스탬프 수량 컴팩트 정렬 영역
@@ -48,42 +54,40 @@ class CourseListCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      course.title,
+                      road.title,
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '${course.description}  ·  🍒 스탬프 ${course.stampCount}개',
+                      '${road.description.isNotEmpty ? road.description : "${road.regionId} 코스"}  ·  🍒 스탬프 ${road.stampRewardPoint}개',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[700],
                         fontWeight: FontWeight.w500,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              // 완료한 코스일 때 보여주는 🍊 귤 배너 데코레이션
-              if (course.isCompleted)
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.orange[50],
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Text(
-                    '🍊',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPlaceholderText() {
+    return Text(
+      '코스사진',
+      style: TextStyle(color: Colors.grey[500], fontSize: 11),
     );
   }
 }

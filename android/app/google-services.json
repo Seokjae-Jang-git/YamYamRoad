@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "964766524983-gssbj23euv6i4mr54du1mk2jrrtj6d0n.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.yamyam_road",
+            "certificate_hash": "071faf4250998ec0c493bbd48e0c0dbae39bca1e"
+          }
+        },
+        {
           "client_id": "964766524983-ipsg2idhq1dm8i8vs2mvn57v3hhk4moq.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

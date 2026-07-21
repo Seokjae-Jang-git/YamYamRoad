@@ -1,5 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../repository/mypage_repository.dart';
+import '../stamp/repository/stamp_repository.dart';
 
 // 헬퍼 공통 가로 행 위젯
 Widget buildListRow(String leftText, String rightText) {
@@ -36,7 +39,11 @@ Widget buildDiaryContent() {
           int index = entries.indexOf(entry);
           return Column(
             children: [
-              buildListRow(entry['title'], entry['note']),
+              // 🌟 [핵심 수정] 없는 필드인 'title' 대신 'storeName'을 사용하고 null 처리를 합니다!
+              buildListRow(
+                entry['storeName'] ?? '가게명 없음',
+                entry['note'] ?? '내용 없음',
+              ),
               if (index < entries.length - 1) const SizedBox(height: 8),
             ],
           );
@@ -85,19 +92,89 @@ Widget buildYamyamBookContent() {
   );
 }
 
-// 3. 스탬프 콘텐츠
+// 3. 스탬프 콘텐츠 (최근 수집한 스탬프 5개 연동)
 Widget buildStampContent() {
-  return Row(
-    mainAxisAlignment: MainAxisAlignment.spaceAround,
-    children: List.generate(5, (index) {
-      return Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.grey.shade400)),
-        alignment: Alignment.center,
-        child: const Text('스탬프', style: TextStyle(fontSize: 10)),
+  return StreamBuilder<List<Map<String, dynamic>>>(
+    stream: StampRepository.getMyLatest5StampsStream(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const SizedBox(
+          height: 55,
+          child: Center(child: CircularProgressIndicator(color: Colors.orange, strokeWidth: 2)),
+        );
+      }
+
+      final fetchedStamps = snapshot.data ?? [];
+
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: List.generate(5, (index) {
+          // 수집한 스탬프 데이터가 존재하면 도장 표시, 없으면 빈 슬롯 표시
+          if (index < fetchedStamps.length) {
+            final stamp = fetchedStamps[index];
+            final String storeName = stamp['storeName'] ?? '매장';
+
+            String dateStr = '';
+            if (stamp['issuedAt'] != null) {
+              final DateTime dt = (stamp['issuedAt'] as Timestamp).toDate();
+              dateStr = DateFormat('yy.MM.dd').format(dt);
+            }
+
+            // 🌟 획득한 스탬프 (빨간 도장 스타일)
+            return Transform.rotate(
+              angle: -0.1, // 비스듬하게 찍힌 도장 느낌
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.red.shade700, width: 1.8),
+                  color: Colors.red.shade50.withOpacity(0.3),
+                ),
+                padding: const EdgeInsets.all(2),
+                alignment: Alignment.center,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      storeName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.red.shade700,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 9,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      dateStr,
+                      style: TextStyle(
+                        color: Colors.red.shade700,
+                        fontSize: 7.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          } else {
+            // 🌟 아직 미수집된 빈 스탬프 슬롯
+            return Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.grey.shade300, width: 1.2),
+                color: Colors.grey.shade50,
+              ),
+              alignment: Alignment.center,
+              child: Icon(Icons.add, size: 18, color: Colors.grey.shade400),
+            );
+          }
+        }),
       );
-    }),
+    },
   );
 }
 

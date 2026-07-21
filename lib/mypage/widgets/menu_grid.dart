@@ -5,12 +5,14 @@ import '../setting/setting.dart';
 class MenuGrid extends StatelessWidget {
   final VoidCallback openDiary;
   final VoidCallback openCommunity;
+  final VoidCallback openStamp;
   final VoidCallback openInquiry;
   final VoidCallback openSetting;
 
   const MenuGrid({
     Key? key,
     required this.openDiary,
+    required this.openStamp,
     required this.openCommunity,
     required this.openInquiry,
     required this.openSetting,
@@ -39,12 +41,14 @@ class MenuGrid extends StatelessWidget {
           onTap: () {
             if (label == '다이어리') {
               openDiary();
-            } else if (label == '설정') {
-              openSetting();
             } else if (label == '얌얌북') {
               openCommunity();
+            } else if (label == '스탬프') {
+              openStamp();
             } else if (label == '문의') {
               openInquiry();
+            } else if (label == '설정') {
+              openSetting();
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('$label 화면 준비중'), duration: const Duration(seconds: 1)),

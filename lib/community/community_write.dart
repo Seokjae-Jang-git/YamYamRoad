@@ -71,8 +71,9 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
         // 🌟 새 글 등록
         final post = CommunityPost(
           id: '',
-          authorId: UserData.uid,
-          authorNickname: UserData.nickname,
+          // 🌟 [수정] UserData.uid가 null일 경우를 대비해 기본값 처리를 해줍니다.
+          authorId: UserData.uid ?? 'unknown_uid',
+          authorNickname: UserData.nickname ?? '이름없음', // 닉네임도 안전하게 처리
           authorProfileImage: UserData.profileImagePath,
           region: _selectedRegion,
           category: _selectedCategory,
@@ -80,6 +81,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
           imageUrls: _imageUrls,
           createdAt: DateTime.now(),
         );
+
         await FirebaseFirestore.instance
             .collection('community_posts')
             .add(post.toMap());

@@ -45,6 +45,7 @@ class MypageRepository {
 
         combinedEntries.add({
           'title': '$shortDate $storeName',
+          'storeName': storeName, // 🌟 UI에서 가게명만 단독으로 뽑아 쓸 수 있도록 키 추가
           'note': note,
         });
       }
