@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart'; // 👈 구글 지도 패키지 임포트
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'models/road.dart';
 import 'models/place_model.dart';
 import 'repositories/place_repository.dart';
@@ -25,6 +25,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   bool _isLoading = true;
   String? _errorMessage;
 
+  // 구글 지도 조작을 위한 컨트롤러 변수
+  GoogleMapController? _mapController;
+
   @override
   void initState() {
     super.initState();
@@ -44,12 +47,56 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         _places = fetchedPlaces;
         _isLoading = false;
       });
+
+      // 데이터 조회가 끝나면 마커들이 모두 보이도록 카메라 위치 이동
+      _moveCameraToFitPlaces();
     } catch (e) {
       setState(() {
         _errorMessage = '장소 정보를 불러오지 못했습니다: $e';
         _isLoading = false;
       });
     }
+  }
+
+  /// 장소 데이터 목록을 기반으로 구글 지도 마커(핀) Set을 생성합니다.
+  Set<Marker> get _markers {
+    return _places.map((place) {
+      return Marker(
+        markerId: MarkerId(place.id),
+        position: LatLng(place.lat, place.lng),
+        infoWindow: InfoWindow(
+          title: place.name,
+          snippet: place.address,
+        ),
+      );
+    }).toSet();
+  }
+
+  /// 불러온 장소들의 위도/경도 최댓값과 최솟값을 계산하여
+  /// 모든 마커가 화면에 한눈에 들어오도록 카메라를 이동시킵니다.
+  void _moveCameraToFitPlaces() {
+    if (_mapController == null || _places.isEmpty) return;
+
+    double minLat = _places.first.lat;
+    double maxLat = _places.first.lat;
+    double minLng = _places.first.lng;
+    double maxLng = _places.first.lng;
+
+    for (var place in _places) {
+      if (place.lat < minLat) minLat = place.lat;
+      if (place.lat > maxLat) maxLat = place.lat;
+      if (place.lng < minLng) minLng = place.lng;
+      if (place.lng > maxLng) maxLng = place.lng;
+    }
+
+    final bounds = LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
+
+    _mapController!.animateCamera(
+      CameraUpdate.newLatLngBounds(bounds, 60.0), // 여백 60px 지정
+    );
   }
 
   // 실시간 매칭된 장소 데이터를 선택된 옵션으로 정렬하여 반환
@@ -207,13 +254,16 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   Widget _buildMapArea() {
     return GoogleMap(
       initialCameraPosition: const CameraPosition(
-        target: LatLng(37.5666102, 126.9783881), // 기본 중심 좌표 (서울시청)
+        target: LatLng(37.5666102, 126.9783881), // 기본 임시 중심 좌표 (서울시청)
         zoom: 14,
       ),
+      markers: _markers, // 👈 DB 장소 마커 연결
       myLocationButtonEnabled: false,
       indoorViewEnabled: true,
       onMapCreated: (GoogleMapController controller) {
-        debugPrint("구글 지도 엔진 준비 완료!");
+        _mapController = controller;
+        // 지도가 생성되었을 때 장소 데이터가 준비되어 있다면 카메라 이동
+        _moveCameraToFitPlaces();
       },
     );
   }
