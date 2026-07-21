@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../road/models/place_model.dart';
 import 'top_circle_button.dart';
 import 'location_bar.dart';
 import 'ad_banner.dart';
@@ -75,16 +74,14 @@ class _HomeContentViewState extends State<HomeContentView> {
 
     for (var course in allCourses) {
       final matchedPlaces = masterPlaces
-      // 🌟 placeIds 널 안전성(Null Safety) 적용
-          .where((place) => course.placeIds?.contains(place.placeId) ?? false)
+          .where((place) => course.placeIds.contains(place.placeId))
           .toList();
 
       if (matchedPlaces.isEmpty) continue;
 
       matchedPlaces.sort((a, b) => a.distanceValue.compareTo(b.distanceValue));
-      final nearestPlace = matchedPlaces.first; // PlaceData 타입
+      final nearestPlace = matchedPlaces.first;
 
-      // 🌟 복잡한 변환 코드 싹 지우고 원래 있던 PlaceData를 그냥 넘깁니다!
       calculatedList.add({
         'course': course,
         'nearestPlace': nearestPlace,

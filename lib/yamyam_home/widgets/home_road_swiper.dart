@@ -85,7 +85,7 @@ class _HomeRoadSwiperState extends State<HomeRoadSwiper> {
           final item = widget.recommendedRoads[index];
           final rawRoadItem = item['road'] ?? item['course'];
           final Road road = _parseToRoad(rawRoadItem);
-          final dynamic nearestPlace = item['nearestPlace'];
+          final PlaceModel? nearestPlace = item['nearestPlace'];
 
           final labels = [
             '🔥 대세 추천 로드',
