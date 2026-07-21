@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'point_models.dart';
+import 'gifticon_purchase_api_client.dart';
+import '../models/point_models.dart';
 import 'point_usage_calculator.dart';
 
 abstract interface class PointPurchaseService {
@@ -18,11 +19,15 @@ abstract interface class PointPurchaseService {
 class FirestorePointPurchaseService implements PointPurchaseService {
   FirestorePointPurchaseService({
     FirebaseFirestore? firestore,
+    GifticonPurchaseApiClient? gifticonPurchaseApiClient,
     this._pointUsageCalculator = const PointUsageCalculator(),
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _gifticonPurchaseApiClient =
+           gifticonPurchaseApiClient ?? GifticonPurchaseApiClient(),
        super();
 
   final FirebaseFirestore _firestore;
+  final GifticonPurchaseApiClient _gifticonPurchaseApiClient;
   final PointUsageCalculator _pointUsageCalculator;
 
   @override
@@ -84,59 +89,10 @@ class FirestorePointPurchaseService implements PointPurchaseService {
     required String userId,
     required String gifticonId,
   }) {
-    if (userId.isEmpty || gifticonId.isEmpty) {
-      throw const PointPurchaseException(
-        'invalid_argument',
-        '구매 정보가 올바르지 않습니다.',
-      );
-    }
-
-    final userRef = _firestore.collection('users').doc(userId);
-    final itemRef = _firestore.collection('gifticon').doc(gifticonId);
-    final purchaseRef = userRef.collection('users_purchase').doc();
-    final purchaseId = purchaseRef.id;
-
-    return _firestore.runTransaction((transaction) async {
-      final userSnapshot = await transaction.get(userRef);
-      final itemSnapshot = await transaction.get(itemRef);
-
-      if (!itemSnapshot.exists || itemSnapshot.data()?['isActive'] == false) {
-        throw const PointPurchaseException(
-          'not_available',
-          '현재 구매할 수 없는 기프티콘입니다.',
-        );
-      }
-
-      final itemData = itemSnapshot.data()!;
-      final stockCount = itemData['stockCount'];
-      if (stockCount != null && asPointInt(stockCount) <= 0) {
-        throw const PointPurchaseException('sold_out', '품절된 기프티콘입니다.');
-      }
-
-      final requiredPoint = asPointInt(itemData['requiredPoint']);
-      final balance = _readBalance(userSnapshot);
-      final usage = _pointUsageCalculator.calculate(
-        freePointBalance: balance.freePoint,
-        paidPointBalance: balance.paidPoint,
-        pricePoint: requiredPoint,
-      );
-
-      _writePurchase(
-        transaction: transaction,
-        userRef: userRef,
-        purchaseRef: purchaseRef,
-        purchaseId: purchaseId,
-        purchaseType: 'gifticon',
-        itemId: gifticonId,
-        usage: usage,
-      );
-
-      if (stockCount != null) {
-        transaction.update(itemRef, {'stockCount': asPointInt(stockCount) - 1});
-      }
-
-      return _buildResult(purchaseId, usage);
-    });
+    return _gifticonPurchaseApiClient.purchaseGifticon(
+      userId: userId,
+      gifticonId: gifticonId,
+    );
   }
 
   _PointBalance _readBalance(
