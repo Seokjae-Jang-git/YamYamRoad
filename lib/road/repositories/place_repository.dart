@@ -12,7 +12,8 @@ class PlaceRepository {
     if (placeIds.isEmpty) return [];
 
     try {
-      final futures = placeIds.map((id) => _firestore.collection('places').doc(id).get());
+      // 👈 실제 파이어스토어 컬렉션명인 'place'로 수정되었습니다.
+      final futures = placeIds.map((id) => _firestore.collection('place').doc(id).get());
       final snapshots = await Future.wait(futures);
 
       final List<PlaceModel> places = [];

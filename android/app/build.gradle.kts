@@ -3,12 +3,13 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // 플러터 엔진과 네이티브 라이브러리를 연결해주는 핵심 플러그인
+    // 플러터 엔진과 네이티브 라이브러리를 연결해주는 핵심 플러구인
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 val envProperties = Properties()
-val envFile = rootProject.file(".env")
+// 👈 플러터 프로젝트 루트 디렉토리의 .env 파일을 가리키도록 상위 경로(../.env)로 수정했습니다.
+val envFile = rootProject.file("../.env")
 if (envFile.exists()) {
     envFile.forEachLine { line ->
         val trimmedLine = line.trim()
