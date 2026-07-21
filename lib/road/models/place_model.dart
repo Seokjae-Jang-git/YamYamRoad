@@ -10,6 +10,8 @@ class PlaceModel {
   final List<String> categoryIds;
   final List<String> searchKeywords;
   final bool isActive;
+  final String thumbnailUrl;
+  final List<String> imageUrls;
 
   PlaceModel({
     required this.id,
@@ -21,6 +23,8 @@ class PlaceModel {
     required this.categoryIds,
     required this.searchKeywords,
     required this.isActive,
+    this.thumbnailUrl = '',
+    this.imageUrls = const [],
   });
 
   // UI 호환성 및 정렬용 게터 (UI 에러 방지 및 기본값 제공)
@@ -43,6 +47,8 @@ class PlaceModel {
       categoryIds: List<String>.from(data['categoryIds'] ?? []),
       searchKeywords: List<String>.from(data['searchKeywords'] ?? []),
       isActive: data['isActive'] ?? true,
+      thumbnailUrl: data['thumbnailUrl'] ?? '',
+      imageUrls: List<String>.from(data['imageUrls'] ?? []),
     );
   }
 
@@ -56,6 +62,8 @@ class PlaceModel {
       'categoryIds': categoryIds,
       'searchKeywords': searchKeywords,
       'isActive': isActive,
+      'thumbnailUrl': thumbnailUrl,
+      'imageUrls': imageUrls,
     };
   }
 }

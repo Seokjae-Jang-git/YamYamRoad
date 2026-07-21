@@ -29,14 +29,30 @@ class DetailPlaceCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. 메인 사진 placeholder
+              // 1. 메인 썸네일 사진 (네트워크 이미지 연동 및 Fallback 예외 처리)
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
-                child: Image.asset(
-                  'assets/temp_images/seoul.PNG',
+                child: place.thumbnailUrl.isNotEmpty
+                    ? Image.network(
+                  place.thumbnailUrl,
                   width: 72,
                   height: 72,
                   fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      width: 72,
+                      height: 72,
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    );
+                  },
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
                       width: 72,
@@ -46,6 +62,13 @@ class DetailPlaceCard extends StatelessWidget {
                       child: const Text('🍒', style: TextStyle(fontSize: 28)),
                     );
                   },
+                )
+                    : Container(
+                  width: 72,
+                  height: 72,
+                  color: Colors.orange[100],
+                  alignment: Alignment.center,
+                  child: const Text('🍒', style: TextStyle(fontSize: 28)),
                 ),
               ),
               const SizedBox(width: 14),
