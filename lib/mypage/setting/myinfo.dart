@@ -228,7 +228,7 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                         );
                       }
 
-                      final userDocRef = FirebaseFirestore.instance.collection('users').doc('UserData.uid');
+                      final userDocRef = FirebaseFirestore.instance.collection('users').doc(UserData.uid);
 
                       await userDocRef.update({
                         'nickname': _nicknameController.text,

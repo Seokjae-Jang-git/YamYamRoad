@@ -1,4 +1,4 @@
-import 'point_models.dart';
+import '../models/point_models.dart';
 
 class PointUsageCalculation {
   const PointUsageCalculation({

@@ -5,6 +5,7 @@ import '../../services/auth_service.dart';
 import 'diary/diary.dart';
 import 'community_my/community_my.dart';
 import '../inquiry/inquiry_list_screen.dart';
+import 'stamp/stamp_main_screen.dart';
 
 // 분리한 컴포넌트들 임포트
 import 'setting/setting.dart';
@@ -61,6 +62,7 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
   void _openCommunity() => Navigator.push(context, MaterialPageRoute(builder: (context) => const CommunityMyScreen()));
   void _openInquiry() => Navigator.push(context, MaterialPageRoute(builder: (context) => const InquiryListScreen()));
   void _openSetting() => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingScreen()));
+  void _openStamp() => Navigator.push(context, MaterialPageRoute(builder: (context) => const StampMainScreen()));
 
   @override
   Widget build(BuildContext context) {
@@ -97,6 +99,7 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
               MenuGrid(
                   openDiary: _openDiary,
                   openCommunity: _openCommunity,
+                  openStamp: _openStamp,
                   openInquiry: _openInquiry,
                   openSetting: _openSetting,
               ),
@@ -107,7 +110,7 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
               const SizedBox(height: 16),
               _buildCardSection('얌얌북', buildYamyamBookContent(), onDetailTap: _openCommunity),
               const SizedBox(height: 16),
-              _buildCardSection('스탬프', buildStampContent()),
+              _buildCardSection('스탬프', buildStampContent(), onDetailTap: _openStamp),
               const SizedBox(height: 16),
               _buildCardSection('뱃지', buildBadgeContent()),
               const SizedBox(height: 16),

@@ -1,13 +1,12 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:intl/intl.dart';
 
-import 'google_play_billing_service.dart';
-import 'point_models.dart';
-import 'point_purchase_service.dart';
-import 'point_repository.dart';
+import 'logic/point_purchase_service.dart';
+import 'logic/point_repository.dart';
+import 'logic/portone_point_payment_api_client.dart';
+import 'models/point_models.dart';
+import 'widgets/gifticon_detail_screen.dart';
+import 'widgets/portone_payment_screen.dart';
 
 typedef PointPackagePurchaseHandler =
     Future<void> Function(PointPackage pointPackage);
@@ -29,7 +28,7 @@ class PointMainScreen extends StatefulWidget {
     required this.userId,
     this.repository,
     this.purchaseService,
-    this.billingService,
+    this.pointPaymentApiClient,
     this.initialTab = PointShopTab.emoticon,
     this.onPointPackagePurchase,
   });
@@ -37,7 +36,7 @@ class PointMainScreen extends StatefulWidget {
   final String userId;
   final PointShopRepository? repository;
   final PointPurchaseService? purchaseService;
-  final GooglePlayBillingService? billingService;
+  final PortonePointPaymentApiClient? pointPaymentApiClient;
   final PointShopTab initialTab;
   final PointPackagePurchaseHandler? onPointPackagePurchase;
 
@@ -48,15 +47,9 @@ class PointMainScreen extends StatefulWidget {
 class _PointMainScreenState extends State<PointMainScreen> {
   late final PointShopRepository _repository;
   late final PointPurchaseService _purchaseService;
-  late final GooglePlayBillingService _billingService;
-  late final StreamSubscription<GooglePlayPurchaseEvent>
-  _billingEventSubscription;
+  late final PortonePointPaymentApiClient _pointPaymentApiClient;
   late PointShopTab _selectedTab;
   bool _isPurchasing = false;
-  bool _isBillingCatalogLoading = false;
-  Set<String> _requestedProductIds = const {};
-  Map<String, ProductDetails> _googleProducts = const {};
-  String _billingNotice = 'Google Play 상품 정보를 확인하고 있습니다.';
 
   @override
   void initState() {
@@ -64,20 +57,9 @@ class _PointMainScreenState extends State<PointMainScreen> {
     _repository = widget.repository ?? FirestorePointShopRepository();
     _purchaseService =
         widget.purchaseService ?? FirestorePointPurchaseService();
-    _billingService = widget.billingService ?? GooglePlayBillingService();
-    _billingEventSubscription = _billingService.events.listen(
-      _handleGooglePlayPurchaseEvent,
-    );
+    _pointPaymentApiClient =
+        widget.pointPaymentApiClient ?? PortonePointPaymentApiClient();
     _selectedTab = widget.initialTab;
-  }
-
-  @override
-  void dispose() {
-    _billingEventSubscription.cancel();
-    if (widget.billingService == null) {
-      _billingService.dispose();
-    }
-    super.dispose();
   }
 
   @override
@@ -189,9 +171,7 @@ class _PointMainScreenState extends State<PointMainScreen> {
                 final gifticon = gifticons[index];
                 return _GifticonCard(
                   gifticon: gifticon,
-                  onTap: gifticon.isSoldOut
-                      ? null
-                      : () => _purchaseGifticon(gifticon),
+                  onTap: () => _openGifticonDetail(gifticon),
                 );
               },
             );
@@ -209,7 +189,6 @@ class _PointMainScreenState extends State<PointMainScreen> {
           snapshot: snapshot,
           emptyMessage: '구매 가능한 포인트 상품이 없습니다.',
           builder: (packages) {
-            _requestGooglePlayProducts(packages);
             return ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
               itemCount: packages.length + 3,
@@ -220,10 +199,7 @@ class _PointMainScreenState extends State<PointMainScreen> {
               },
               itemBuilder: (context, index) {
                 if (index == 0) {
-                  return _PointShopBanner(
-                    billingNotice: _billingNotice,
-                    isLoading: _isBillingCatalogLoading,
-                  );
+                  return const _PointShopBanner();
                 }
 
                 if (index == packages.length + 1) {
@@ -235,17 +211,10 @@ class _PointMainScreenState extends State<PointMainScreen> {
                 }
 
                 final pointPackage = packages[index - 1];
-                final googleProduct = _googleProducts[pointPackage.id];
                 return _PointPackageTile(
                   pointPackage: pointPackage,
-                  displayPrice:
-                      googleProduct?.price ??
-                      '${_formatNumber(pointPackage.priceCash)}원',
-                  onTap:
-                      googleProduct == null &&
-                          widget.onPointPackagePurchase == null
-                      ? null
-                      : () => _purchasePointPackage(pointPackage),
+                  displayPrice: '${_formatNumber(pointPackage.priceCash)}원',
+                  onTap: () => _purchasePointPackage(pointPackage),
                 );
               },
             );
@@ -298,73 +267,72 @@ class _PointMainScreenState extends State<PointMainScreen> {
     );
   }
 
+  Future<void> _openGifticonDetail(GifticonProduct gifticon) {
+    return Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => GifticonDetailScreen(
+          gifticon: gifticon,
+          onPurchase: () => _purchaseGifticon(gifticon),
+        ),
+      ),
+    );
+  }
+
   Future<void> _purchasePointPackage(PointPackage pointPackage) async {
     final callback = widget.onPointPackagePurchase;
     try {
       if (callback != null) {
         await callback(pointPackage);
-      } else {
-        await _billingService.buyConsumable(pointPackage.id);
+        return;
       }
+
+      setState(() => _isPurchasing = true);
+      final preparation = await _pointPaymentApiClient.preparePayment(
+        userId: widget.userId,
+        pointPackageId: pointPackage.id,
+      );
+      if (!mounted) return;
+
+      setState(() => _isPurchasing = false);
+      final checkoutResult = await Navigator.of(context)
+          .push<PortoneCheckoutResult>(
+            MaterialPageRoute<PortoneCheckoutResult>(
+              builder: (context) => PortonePaymentScreen(
+                userId: widget.userId,
+                preparation: preparation,
+              ),
+            ),
+          );
+      if (!mounted || checkoutResult == null) return;
+
+      if (!checkoutResult.isSuccess) {
+        _showMessage(checkoutResult.errorMessage ?? '결제가 취소되었습니다.');
+        return;
+      }
+
+      setState(() => _isPurchasing = true);
+      final result = await _pointPaymentApiClient.completePayment(
+        userId: widget.userId,
+        paymentId: checkoutResult.paymentId,
+      );
+      if (!mounted) return;
+
+      _showMessage(
+        '${_formatNumber(pointPackage.pointAmount)} 유료 포인트가 충전되었습니다. '
+        '현재 유료 포인트는 ${_formatNumber(result.remainingPaidPoint)} P입니다.',
+      );
     } catch (error) {
       if (mounted) {
         _showMessage(
-          error is StateError ? error.message : 'Google Play 결제를 시작하지 못했습니다.',
+          error is PointPurchaseException
+              ? error.message
+              : '포인트 결제를 처리하지 못했습니다.',
         );
       }
-    }
-  }
-
-  void _requestGooglePlayProducts(List<PointPackage> packages) {
-    final productIds = packages.map((item) => item.id).toSet();
-    if (_sameStringSet(_requestedProductIds, productIds)) return;
-    _requestedProductIds = productIds;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _loadGooglePlayProducts(productIds);
-    });
-  }
-
-  Future<void> _loadGooglePlayProducts(Set<String> productIds) async {
-    setState(() {
-      _isBillingCatalogLoading = true;
-      _billingNotice = 'Google Play 상품 정보를 확인하고 있습니다.';
-    });
-
-    final catalog = await _billingService.loadProducts(productIds);
-    if (!mounted) return;
-
-    setState(() {
-      _isBillingCatalogLoading = false;
-      _googleProducts = catalog.products;
-      if (catalog.errorMessage != null) {
-        _billingNotice = catalog.errorMessage!;
-      } else if (catalog.notFoundProductIds.isNotEmpty) {
-        _billingNotice =
-            'Play Console에서 찾지 못한 상품: '
-            '${catalog.notFoundProductIds.join(', ')}';
-      } else {
-        _billingNotice = 'Google Play 테스트 결제를 사용할 수 있습니다.';
+    } finally {
+      if (mounted && _isPurchasing) {
+        setState(() => _isPurchasing = false);
       }
-    });
-  }
-
-  void _handleGooglePlayPurchaseEvent(GooglePlayPurchaseEvent event) {
-    if (!mounted) return;
-
-    switch (event.type) {
-      case GooglePlayPurchaseEventType.pending:
-        setState(() => _isPurchasing = true);
-        break;
-      case GooglePlayPurchaseEventType.received:
-        setState(() => _isPurchasing = false);
-        _showMessage('${event.message} 포인트 지급은 아직 실행하지 않습니다.');
-        break;
-      case GooglePlayPurchaseEventType.canceled:
-      case GooglePlayPurchaseEventType.error:
-        setState(() => _isPurchasing = false);
-        _showMessage(event.message);
-        break;
     }
   }
 
@@ -456,7 +424,10 @@ class _PointShopTabBar extends StatelessWidget {
                   onTap: () => onSelected(tab),
                   borderRadius: BorderRadius.circular(6),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
+                    duration: isSelected
+                        ? const Duration(milliseconds: 90)
+                        : Duration.zero,
+                    curve: Curves.easeOut,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: isSelected ? Colors.white : Colors.transparent,
@@ -703,13 +674,7 @@ class _GifticonCard extends StatelessWidget {
 }
 
 class _PointShopBanner extends StatelessWidget {
-  const _PointShopBanner({
-    required this.billingNotice,
-    required this.isLoading,
-  });
-
-  final String billingNotice;
-  final bool isLoading;
+  const _PointShopBanner();
 
   @override
   Widget build(BuildContext context) {
@@ -739,24 +704,15 @@ class _PointShopBanner extends StatelessWidget {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  billingNotice,
+                const Text(
+                  '테스트 버전입니다.',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF666666),
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: Color(0xFF666666), fontSize: 11),
                 ),
               ],
             ),
           ),
-          if (isLoading)
-            const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
         ],
       ),
     );
@@ -1091,7 +1047,3 @@ class _PageMessage extends StatelessWidget {
 
 String _formatNumber(int value) =>
     NumberFormat.decimalPattern('ko_KR').format(value);
-
-bool _sameStringSet(Set<String> left, Set<String> right) {
-  return left.length == right.length && left.containsAll(right);
-}
