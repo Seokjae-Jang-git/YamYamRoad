@@ -91,7 +91,10 @@ class _DiaryScreenState extends State<DiaryScreen> {
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: DiaryRepository.getDiaryStream(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          // 🌟 [핵심 수정 1]
+          // 로딩 상태(waiting)이더라도 기존 데이터(snapshot.hasData)가 있다면 로딩 스피너를 띄우지 않습니다.
+          // 오직 앱을 처음 켰을 때(데이터가 아예 없을 때)만 로딩 스피너를 보여줍니다.
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator(color: Colors.black));
           }
 
@@ -158,6 +161,9 @@ class _DiaryScreenState extends State<DiaryScreen> {
                       return eventsMap[normalizedDay] ?? [];
                     },
                     onDaySelected: (selectedDay, focusedDay) {
+                      // 🌟 [핵심 수정 2]
+                      // setState로 날짜가 바뀔 때 달력이 즉시 리빌드되므로
+                      // 렌더링이 완전히 완료된 후 스크롤을 부드럽게 이동시킵니다.
                       setState(() {
                         _selectedDay = selectedDay;
                         _focusedDay = focusedDay;
@@ -180,13 +186,13 @@ class _DiaryScreenState extends State<DiaryScreen> {
               ),
               const SizedBox(height: 16),
 
-              // 3. 리스트 영역 (🌟 스크롤 하단 슬롯 패딩 보완 완료)
+              // 3. 리스트 영역
               Expanded(
                 child: displayList.isEmpty
                     ? const Center(child: Text('이번 달에 작성된 다이어리가 없습니다.', style: TextStyle(color: Colors.grey)))
                     : ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 450.0), // 🌟 가상 공간 확보
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 450.0),
                   itemCount: displayList.length,
                   itemBuilder: (context, index) {
                     final entry = displayList[index];
@@ -197,12 +203,11 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     }
 
                     DateTime entryDate = DiaryRepository.parseDateStr(entry['date']);
-                    // 🌟 내가 달력에서 클릭한 날짜와 이 아이템의 날짜가 일치하는지 판별
                     bool isTargetHighlight = isSameDay(_selectedDay, entryDate);
 
-                    return AnimatedContainer( // 🌟 [수정] 일반 Container에서 AnimatedContainer로 변경!
+                    return AnimatedContainer(
                       key: _itemKeys[diaryId],
-                      duration: const Duration(milliseconds: 300), // 이제 정상 작동합니다.
+                      duration: const Duration(milliseconds: 300),
                       decoration: BoxDecoration(
                         color: isTargetHighlight ? Colors.orange.shade50.withOpacity(0.5) : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
@@ -244,7 +249,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
     return GestureDetector(
       onTap: () => _showEditDialog(entry),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0), // 하이라이트 배경을 고려해 패딩 미세 조정
+        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
