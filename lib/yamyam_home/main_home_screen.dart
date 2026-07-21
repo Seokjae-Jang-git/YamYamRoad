@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
 import '../common/bottom_circle_tab_bar.dart';
+import '../community/community_main.dart';
 import '../road/road_main_screen.dart';
 import '../mypage/mypage_main.dart'; // 🆕 바텀바가 버린 마이페이지 라우팅 책임을 부모가 인수 완료!
 import 'widgets/home_content_view.dart'; // 🆕 홈 화면의 순수 UI 콘텐츠 격리 뷰 임포트
+import '../point/point_main_screen.dart';
+import '../services/auth_service.dart';
+
+// 🌟 얌얌북(커뮤니티) 화면 임포트
+// TODO: 실제 community_main_screen.dart 파일 경로에 맞게 수정해주세요
+
+
 
 class MainHomeScreen extends StatefulWidget {
   const MainHomeScreen({super.key});
@@ -25,23 +33,13 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
           },
         );
       case 1:
-        return const Center(
-          child: Text('얌얌북 화면 준비 중', style: TextStyle(fontSize: 16, color: Colors.grey, fontWeight: FontWeight.bold)),
-        );
+      // 🌟 얌얌북 탭: 커뮤니티 메인 화면으로 연결
+        return const CommunityMainScreen();
       case 2:
         return const RoadMainScreen();
       case 3:
-        return const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.payment, size: 48, color: Colors.grey),
-              SizedBox(height: 12),
-              Text('포인트 내역', style: TextStyle(fontSize: 16, color: Colors.grey, fontWeight: FontWeight.bold)),
-              SizedBox(height: 4),
-              Text('화면 준비중', style: TextStyle(fontSize: 12, color: Colors.grey)),
-            ],
-          ),
+        return PointMainScreen(
+          userId: AuthService.currentUser?.uid ?? 'test_user_01',
         );
     // 🌟 여기에 case 4를 추가해서 마이페이지를 끼워 넣습니다!
       case 4:

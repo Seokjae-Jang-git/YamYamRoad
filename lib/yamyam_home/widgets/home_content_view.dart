@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/auth_service.dart';
-import '../../login/login_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'top_circle_button.dart';
 import 'location_bar.dart';
 import 'ad_banner.dart';
@@ -11,6 +10,7 @@ import '../../common/user_data.dart';
 import '../../common/data/temp_user_session.dart'; // 강화군/문화의거리 가상 주소 세션 임포트
 import '../../road/data/road_mock_data.dart'; // 진짜 로드 데이터셋 임포트
 import '../../road/data/place_mock_data.dart'; // 진짜 마스터 가게 데이터셋 임포트
+import '../../services/auth_service.dart';
 
 class HomeContentView extends StatefulWidget {
   final ValueChanged<int> onTabChanged;
@@ -28,45 +28,42 @@ class _HomeContentViewState extends State<HomeContentView> {
   // 세션에 저장해 둔 최초 구동 주소인 '인천광역시 강화군 강화읍'으로 초기화
   String _currentLocationText = initialUserLocation;
 
-  // 🆕 로그인 상태 관리: null이면 비로그인
-  UserModel? _currentUser;
-
   @override
   void initState() {
     super.initState();
     // 앱 처음 진입 시 최초 구동 주소를 강제로 바인딩합니다.
     _currentLocationText = initialUserLocation;
-    _loadCurrentUser(); // 🆕 앱 진입 시 저장된 세션으로 로그인 상태 복원
+    // 🌟 로그인 직후 홈 화면에 바로 진입했을 때도 프로필(닉네임/사진)이
+    // 반영되도록, 마이페이지를 열지 않아도 여기서 미리 불러옵니다.
+    _loadProfileIfNeeded();
   }
 
-  // 🆕 현재 유저 정보 조회 (비로그인이면 null)
-  Future<void> _loadCurrentUser() async {
-    final user = await AuthService.getCurrentUser();
-    if (mounted) {
-      setState(() {
-        _currentUser = user;
-      });
-    }
-  }
+  // 🌟 UserData에 아직 현재 로그인한 사용자의 정보가 없으면 Firestore에서 불러와 채웁니다.
+  // (마이페이지 화면의 _loadUserData()와 같은 로직 - 두 곳 모두 동일하게 유지해주세요)
+  Future<void> _loadProfileIfNeeded() async {
+    final String? currentUid = AuthService.currentUser?.uid;
+    if (currentUid == null) return;
 
-  // 🌟 통합 로직: 프로필/로그인 버튼 탭 처리
-  Future<void> _onProfileButtonTap() async {
-    if (_currentUser != null) {
-      // 로그인 상태라면 개발자님이 만드신 콜백을 통해 마이페이지(4번 탭)로 이동!
-      widget.onTabChanged(4);
-      return;
-    }
+    // 이미 같은 사용자의 정보가 로드되어 있으면 다시 불러올 필요 없음
+    if (UserData.uid == currentUid && UserData.nickname != null) return;
 
-    // 비로그인 상태라면 로그인 화면으로 이동
-    final bool? loginSuccess = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const LoginScreen(),
-      ),
-    );
-
-    if (loginSuccess == true) {
-      await _loadCurrentUser(); // 로그인 성공 → 프로필로 전환
+    try {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUid).get();
+      if (!mounted) return;
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>;
+        setState(() {
+          UserData.uid = currentUid;
+          UserData.nickname = data['nickname'] ?? '이름없음';
+          UserData.name = data['name'] ?? '';
+          UserData.phone = data['phone'] ?? '';
+          UserData.profileImagePath = data['profileImageUrl'];
+          UserData.isDefaultProfileImage =
+          (data['profileImageUrl'] == null || data['profileImageUrl'].toString().isEmpty);
+        });
+      }
+    } catch (e) {
+      debugPrint('🔴 홈 화면 프로필 로드 실패: $e');
     }
   }
 
@@ -108,6 +105,96 @@ class _HomeContentViewState extends State<HomeContentView> {
         duration: Duration(seconds: 2),
       ),
     );
+  }
+
+  // 🌟 프로필 아이콘 탭 시 "마이페이지" / "로그아웃" 팝업 메뉴 표시
+  void _showProfileMenu(BuildContext context, TapDownDetails details) {
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(details.globalPosition, details.globalPosition),
+      Offset.zero & overlay.size,
+    );
+
+    showMenu<String>(
+      context: context,
+      position: position,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      items: [
+        const PopupMenuItem<String>(
+          value: 'mypage',
+          child: Row(
+            children: [
+              Icon(Icons.person_outline, size: 18, color: Colors.black87),
+              SizedBox(width: 10),
+              Text('마이페이지'),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(height: 1),
+        const PopupMenuItem<String>(
+          value: 'logout',
+          child: Row(
+            children: [
+              Icon(Icons.logout, size: 18, color: Colors.redAccent),
+              SizedBox(width: 10),
+              Text('로그아웃', style: TextStyle(color: Colors.redAccent)),
+            ],
+          ),
+        ),
+      ],
+    ).then((selected) {
+      if (selected == 'mypage') {
+        widget.onTabChanged(4);
+      } else if (selected == 'logout') {
+        _confirmLogout(context);
+      }
+    });
+  }
+
+  void _confirmLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('로그아웃'),
+        content: const Text('정말 로그아웃하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _handleLogout();
+            },
+            child: const Text('로그아웃', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🌟 실제 로그아웃 처리: Firebase 세션 종료 + 로컬 유저 데이터 초기화
+  // 화면 전환(로그인 화면으로 이동)은 main.dart의 StreamBuilder(authStateChanges)가
+  // signOut() 이후 자동으로 처리합니다. 여기서 수동으로 Navigator를 건드리면
+  // StreamBuilder가 관리하는 네비게이터 스택과 충돌해서 재로그인 후 화면 전환이
+  // 안 되는 문제가 생기니, 절대 여기서 push/pop을 직접 하지 마세요.
+  Future<void> _handleLogout() async {
+    try {
+      await AuthService.logout();
+
+      UserData.uid = null;
+      UserData.nickname = null;
+      UserData.name = null;
+      UserData.phone = null;
+      UserData.profileImagePath = null;
+      UserData.isDefaultProfileImage = true;
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('로그아웃 중 오류가 발생했습니다: $e')),
+      );
+    }
   }
 
   @override
@@ -161,22 +248,9 @@ class _HomeContentViewState extends State<HomeContentView> {
                     ),
                     const SizedBox(width: 8),
 
-                    // 🌟 UI 통합: 로그인 안 했으면 버튼, 했으면 예쁜 프로필 사진 표시
-                    _currentUser == null
-                        ? OutlinedButton(
-                      onPressed: _onProfileButtonTap,
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        shape: const StadiumBorder(),
-                        side: BorderSide(color: Colors.grey[300]!),
-                      ),
-                      child: const Text(
-                        '로그인',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF504D46)),
-                      ),
-                    )
-                        : GestureDetector(
-                      onTap: _onProfileButtonTap, // 누르면 윗부분 함수를 통해 4번 탭으로 이동
+                    // 🌟 프로필 탭 시 "마이페이지"/"로그아웃" 팝업 메뉴 표시
+                    GestureDetector(
+                      onTapDown: (details) => _showProfileMenu(context, details),
                       child: Container(
                         width: 38,
                         height: 38,
@@ -187,11 +261,11 @@ class _HomeContentViewState extends State<HomeContentView> {
                         child: CircleAvatar(
                           radius: 18,
                           backgroundColor: const Color(0xFFF5F5F5),
-                          child: _currentUser!.profileImageUrl == null
+                          child: UserData.isDefaultProfileImage || UserData.profileImagePath == null
                               ? const Icon(Icons.person_outline, size: 24, color: Colors.grey)
                               : ClipOval(
                             child: Image.network(
-                              _currentUser!.profileImageUrl!,
+                              UserData.profileImagePath!,
                               width: 38,
                               height: 38,
                               fit: BoxFit.cover,

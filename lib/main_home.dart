@@ -2,7 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'yamyam_home/main_home_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
+import 'common/user_data.dart';
 import 'firebase_options.dart';
+
+// 🌟 로그인 판별을 위해 필요한 두 파일 임포트 추가
+import 'login/login_screen.dart';
+import 'services/auth_service.dart';
 
 void main() async {
   // 1. 플러터 프레임워크가 완전히 준비될 때까지 기다립니다.
@@ -15,6 +22,12 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // 카카오 SDK 초기화 - 반드시 앱 시작 시 한 번 호출해야 함
+  kakao.KakaoSdk.init(
+    nativeAppKey: '069a7990957fdbe501532762273b49dc', // 카카오 개발자센터에서 발급받은 값
+  );
+
 
   runApp(const MyApp());
 }
@@ -31,7 +44,27 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.white,
         useMaterial3: true,
       ),
-      home: const MainHomeScreen(),
+      // main_home.dart의 StreamBuilder 내부 body 영역 수정
+      home: StreamBuilder<User?>(
+        stream: AuthService.authStateChanges,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator(color: Colors.black)),
+            );
+          }
+
+          // 🌟 [핵심 보완] 로그인 데이터가 존재한다면!
+          if (snapshot.hasData && snapshot.data != null) {
+            // ➔ 하위 화면들(다이어리, 얌얌북)이 내 데이터를 정상 조회할 수 있도록 전역 UID를 먼저 심어줍니다!
+            UserData.uid = snapshot.data!.uid;
+
+            return const MainHomeScreen();
+          }
+
+          return const LoginScreen();
+        },
+      ),
     );
   }
 }

@@ -5,8 +5,6 @@ import 'package:flutter_naver_login/flutter_naver_login.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../services/auth_service.dart';
 
-import '../yamyam_home/main_home_screen.dart';
-
 // [네이티브 설정 필요]
 //   - Android: AndroidManifest.xml에 카카오/네이버 키 해시, 스킴 등록
 
@@ -43,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
         serverClientId: '964766524983-2h5i53gehbvf1ti82ih7aeel99k7aln2.apps.googleusercontent.com',
       );
       _googleSignInReady = true;
-      debugPrint('✅ 구글 SDK 초기화 성공'); // 🆕 추가
+      debugPrint('✅ 구글 SDK 초기화 성공');
     } catch (e) {
       debugPrint('🔴 구글 SDK 초기화 실패: $e');
     }
@@ -52,7 +50,6 @@ class _LoginScreenState extends State<LoginScreen> {
   void _setLoading(bool value) {
     if (mounted) setState(() => _isLoading = value);
   }
-
 
   // ---------------- 카카오 로그인 ----------------
   Future<void> _handleKakaoLogin() async {
@@ -63,21 +60,15 @@ class _LoginScreenState extends State<LoginScreen> {
           ? await UserApi.instance.loginWithKakaoTalk()
           : await UserApi.instance.loginWithKakaoAccount();
 
-      User kakaoUser = await UserApi.instance.me();
-      final socialId = kakaoUser.id.toString();
+      debugPrint('🟢 카카오 로그인 성공');
 
-      debugPrint('🟢 카카오 로그인 성공: id=$socialId');
-
-      final userModel = await AuthService.loginWithKakao(
-        socialId: socialId,
-        nickname: kakaoUser.kakaoAccount?.profile?.nickname,
-        profileImageUrl: kakaoUser.kakaoAccount?.profile?.profileImageUrl,
-      );
-
+      final userModel = await AuthService.loginWithKakao(token.accessToken);
       debugPrint('🟢 AuthService 카카오 로그인 완료: uid=${userModel.uid}');
 
-      await _mockSocialDelay();
-      _goToHome();
+      // 🌟 여기서 직접 화면을 넘기지 않습니다.
+      // AuthService.loginWithKakao 내부의 signInWithCustomToken이 성공하면
+      // main.dart의 StreamBuilder(authStateChanges)가 이를 감지해서
+      // 자동으로 홈 화면으로 전환해줍니다. 화면 전환은 그쪽에서 100% 책임집니다.
     } catch (e, stackTrace) {
       debugPrint('🔴 카카오 로그인 에러: $e');
       debugPrint('🔴 스택트레이스: $stackTrace');
@@ -87,38 +78,24 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-// ---------------- 네이버 로그인 ----------------
+  // ---------------- 네이버 로그인 ----------------
   Future<void> _handleNaverLogin() async {
     _setLoading(true);
     try {
       final result = await FlutterNaverLogin.logIn();
       debugPrint('🟢 네이버 로그인 status: ${result.status}');
 
-      if (result.status == NaverLoginStatus.loggedIn) {
-        final account = result.account;
-        if (account?.id == null) {
-          _showError('네이버 계정 정보를 가져오지 못했습니다.');
-          return;
-        }
-
-        debugPrint('🟢 네이버 계정 정보: id=${account!.id}, name=${account.name}');
-
-        final userModel = await AuthService.loginWithNaver(
-          socialId: account.id!,
-          name: account.name,
-          nickname: account.nickname,
-          phone: account.mobile,
-          profileImageUrl: account.profileImage,
-        );
-
-        debugPrint('🟢 AuthService 로그인 완료: uid=${userModel.uid}');
-      } else {
+      if (result.status != NaverLoginStatus.loggedIn) {
         _showError('네이버 로그인이 취소되었습니다.');
         return;
       }
 
-      await _mockSocialDelay();
-      _goToHome(); // 🆕 여기서 성공 시 이전 화면(홈)으로 pop
+      // 네이버는 로그인 성공 후 액세스 토큰을 별도로 조회해야 합니다.
+      final tokenResult = await FlutterNaverLogin.getCurrentAccessToken();
+      final userModel = await AuthService.loginWithNaver(tokenResult.accessToken);
+      debugPrint('🟢 AuthService 네이버 로그인 완료: uid=${userModel.uid}');
+
+      // 🌟 카카오와 동일하게, 화면 전환은 StreamBuilder가 자동으로 처리합니다.
     } catch (e, stackTrace) {
       debugPrint('🔴 네이버 로그인 에러: $e');
       debugPrint('🔴 스택트레이스: $stackTrace');
@@ -126,11 +103,6 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       _setLoading(false);
     }
-  }
-
-  void _goToHome() {
-    if (!mounted) return;
-    Navigator.pop(context, true); // 🆕 로그인 성공 신호를 HomeContentView에 전달
   }
 
   // ---------------- 구글 로그인 (v7 API) ----------------
@@ -142,20 +114,14 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final GoogleSignInAccount account = await _googleSignIn.authenticate();
-      debugPrint('🟢 구글 로그인 성공: id=${account.id}, email=${account.email}');
+      final idToken = account.authentication.idToken;
 
-      final userModel = await AuthService.loginWithGoogle(
-        socialId: account.id,
-        name: account.displayName,
-        profileImageUrl: account.photoUrl,
-      );
-
+      final userModel = await AuthService.loginWithGoogle(idToken: idToken);
       debugPrint('🟢 AuthService 구글 로그인 완료: uid=${userModel.uid}');
 
-      await _mockSocialDelay();
-      _goToHome();
+      // 🌟 카카오/네이버와 동일하게, 화면 전환은 StreamBuilder가 자동으로 처리합니다.
     } on GoogleSignInException catch (e) {
-      debugPrint('🔴 GoogleSignInException: code=${e.code}, description=${e.description}');
+      debugPrint('🔴 GoogleSignInException: code=${e.code}');
       if (e.code == GoogleSignInExceptionCode.canceled) {
         _showError('구글 로그인이 취소되었습니다.');
       } else {
@@ -169,14 +135,13 @@ class _LoginScreenState extends State<LoginScreen> {
       _setLoading(false);
     }
   }
-  // ---------------- 휴대폰 번호 로그인 ----------------
-  void _handlePhoneLogin() {
-    // 인증번호 발송 화면으로 이동 (Firebase Phone Auth 등 별도 화면에서 처리)
-    Navigator.pushNamed(context, '/login/phone');
-  }
 
-  Future<void> _mockSocialDelay() async {
-    await Future.delayed(const Duration(seconds: 1));
+  // ---------------- 휴대폰 번호 로그인 ----------------
+  Future<void> _handlePhoneLogin() async {
+    // 휴대폰 인증 화면 자체가 Firebase Phone Auth로 signInWithCredential을 호출하면
+    // 마찬가지로 StreamBuilder가 자동으로 홈 화면으로 전환해줍니다.
+    // 여기서는 화면만 열어주면 됩니다.
+    await Navigator.pushNamed<bool>(context, '/login/phone');
   }
 
   void _showError(String message) {
@@ -209,7 +174,6 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 로고
                   const _AppLogo(),
                   const SizedBox(height: 14),
                   const Text(
@@ -228,7 +192,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   const SizedBox(height: 36),
 
-                  // 카카오 로그인
                   _SocialButton(
                     label: '카카오로 시작하기',
                     backgroundColor: kakaoColor,
@@ -239,18 +202,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // 네이버 로그인
                   _SocialButton(
                     label: '네이버로 시작하기',
                     backgroundColor: naverColor,
                     textColor: Colors.white,
-                    icon: Icons.abc, // TODO: 네이버 N 로고 asset으로 교체 권장
+                    icon: Icons.abc,
                     loading: _isLoading,
                     onPressed: _handleNaverLogin,
                   ),
                   const SizedBox(height: 10),
 
-                  // 구글 로그인
                   _SocialButton(
                     label: '구글로 시작하기',
                     backgroundColor: Colors.white,
@@ -279,7 +240,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   const SizedBox(height: 20),
 
-                  // 휴대폰 번호 로그인
                   _SocialButton(
                     label: '휴대폰 번호로 시작하기',
                     backgroundColor: Colors.white,
@@ -308,7 +268,6 @@ class _LoginScreenState extends State<LoginScreen> {
 }
 
 // 로고 위젯 - 도넛 + 지도핀 모티프
-// 실제 디자인 asset이 있다면 Image.asset('assets/images/logo.png')로 교체 권장
 class _AppLogo extends StatelessWidget {
   const _AppLogo();
 
@@ -335,7 +294,6 @@ class _PinLogoPainter extends CustomPainter {
     final double w = size.width;
     final double h = size.height;
 
-    // 핀(물방울) 모양
     final Path pinPath = Path()
       ..moveTo(w * 0.5, h * 0.05)
       ..cubicTo(w * 0.85, h * 0.05, w * 0.95, h * 0.35, w * 0.95, h * 0.5)
@@ -347,7 +305,6 @@ class _PinLogoPainter extends CustomPainter {
     canvas.drawPath(pinPath, pinPaint);
     canvas.drawCircle(Offset(w * 0.5, h * 0.42), w * 0.16, holePaint);
 
-    // 스프링클 점
     canvas.drawCircle(Offset(w * 0.38, h * 0.3), w * 0.035, sprinkleDark);
     canvas.drawCircle(Offset(w * 0.62, h * 0.28), w * 0.035, sprinklePink);
     canvas.drawCircle(Offset(w * 0.68, h * 0.45), w * 0.035, sprinkleDark);

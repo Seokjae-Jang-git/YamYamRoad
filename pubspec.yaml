@@ -44,11 +44,14 @@ dependencies:
   safe_device: ^1.4.1
   firebase_app_check: ^0.4.5+2
   cloud_functions: ^6.3.5
+  in_app_purchase: ^3.3.0
+
 
   image_picker: ^1.2.3
   firebase_storage: ^13.4.5
   table_calendar: ^3.2.0
   intl: ^0.20.3
+  firebase_auth: ^6.5.6
 
   # 구글 지도 SDK 패키지 추가
   google_maps_flutter: ^2.10.0
