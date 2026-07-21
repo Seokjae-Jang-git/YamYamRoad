@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'point_models.dart';
+import '../models/point_models.dart';
 
 abstract interface class PointShopRepository {
   Stream<List<EmoticonProduct>> watchEmoticons();

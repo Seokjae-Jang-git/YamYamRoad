@@ -29,7 +29,7 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
   }
 
   Future<void> _loadUserData() async {
-    final String? currentUid = AuthService.currentUid;
+    final String? currentUid = AuthService.currentUser?.uid;
     if (currentUid == null) {
       setState(() => _isLoading = false);
       return;
