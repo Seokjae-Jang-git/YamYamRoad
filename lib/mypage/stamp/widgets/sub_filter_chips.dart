@@ -5,6 +5,8 @@ class SubFilterChips extends StatelessWidget {
   final String selectedFilter;
   final ValueChanged<String> onFilterSelected;
   final VoidCallback onMorePressed;
+  final List<String> menuFilters;
+  final List<String> regionFilters; // 🌟 DB에서 받아올 전체 지역 리스트
 
   const SubFilterChips({
     super.key,
@@ -12,20 +14,9 @@ class SubFilterChips extends StatelessWidget {
     required this.selectedFilter,
     required this.onFilterSelected,
     required this.onMorePressed,
+    this.menuFilters = const ['전체'],
+    this.regionFilters = const ['전체', '서울', '경기', '인천'], // 기본 예비값
   });
-
-  // 1. 지역별 기본 칩 (4개 + 더보기 1개 = 총 5개)
-  static const List<String> _regionFilters = ['전체', '서울', '인천', '경기'];
-
-  // 2. 메뉴별 필터 목록
-  static const List<String> _menuFilters = [
-    '전체',
-    '커피/차(카페)',
-    '떡/한과',
-    '빵/도넛',
-    '아이스크림/빙수',
-    '토스트/샌드위치/샐러드'
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -35,15 +26,15 @@ class SubFilterChips extends StatelessWidget {
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          itemCount: _menuFilters.length,
+          itemCount: menuFilters.length,
           itemBuilder: (context, index) {
-            final filter = _menuFilters[index];
+            final filter = menuFilters[index];
             final isSelected = filter == selectedFilter;
 
             return Padding(
               padding: const EdgeInsets.only(right: 8.0),
               child: ChoiceChip(
-                showCheckmark: false, // 🌟 체크 아이콘 제거
+                showCheckmark: false,
                 label: Text(filter),
                 selected: isSelected,
                 onSelected: (_) => onFilterSelected(filter),
@@ -68,11 +59,16 @@ class SubFilterChips extends StatelessWidget {
       );
     }
 
-    final bool isDefaultSelected = _regionFilters.contains(selectedFilter);
+    // 🌟 [동적 지역 칩 렌더링]
+    // 상단 가로 칩에는 DB 지역 목록 중 상위 4개만 기본 노출 ('전체' + 앞쪽 3개 지역)
+    final List<String> defaultDisplayRegions = regionFilters.length >= 4
+        ? regionFilters.sublist(0, 4)
+        : regionFilters;
+
+    final bool isDefaultSelected = defaultDisplayRegions.contains(selectedFilter);
     final String moreChipLabel = isDefaultSelected ? '지역 더보기' : '$selectedFilter ▾';
     final bool isMoreChipActive = !isDefaultSelected;
 
-    // 🌟 [수정] 스크롤 대신 Row + spaceBetween으로 하단 정렬 바(16px 패딩)와 양끝을 딱 맞춥니다!
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: SizedBox(
@@ -80,10 +76,10 @@ class SubFilterChips extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            ..._regionFilters.map((filter) {
+            ...defaultDisplayRegions.map((filter) {
               final isSelected = filter == selectedFilter;
               return ChoiceChip(
-                showCheckmark: false, // 🌟 체크 아이콘 제거
+                showCheckmark: false,
                 label: Text(filter),
                 selected: isSelected,
                 onSelected: (_) => onFilterSelected(filter),
@@ -107,7 +103,7 @@ class SubFilterChips extends StatelessWidget {
 
             // 지역 더보기 칩
             ChoiceChip(
-              showCheckmark: false, // 🌟 체크 아이콘 제거
+              showCheckmark: false,
               label: Text(moreChipLabel),
               selected: isMoreChipActive,
               onSelected: (_) => onMorePressed(),

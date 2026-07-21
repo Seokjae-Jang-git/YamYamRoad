@@ -18,12 +18,29 @@ class _StampMainScreenState extends State<StampMainScreen> {
   String _selectedFilter = '전체';
   String _selectedSort = '최신순';
 
-  // 1. 메뉴 더보기 팝업 모달
+  List<String> _dbMenuFilters = ['전체'];
+  List<String> _dbRegionFilters = ['전체'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategoriesAndRegions(); // 🌟 화면 시작 시 DB 데이터 동시 로드
+  }
+
+  void _loadCategoriesAndRegions() async {
+    final categories = await StampRepository.getCategoryNames();
+    final regions = await StampRepository.getRegionNames();
+    if (mounted) {
+      setState(() {
+        _dbMenuFilters = categories;
+        _dbRegionFilters = regions; // DB 지역 세팅
+      });
+    }
+  }
+
+  // 1. 🌟 메뉴 더보기 팝업 모달
   void _openMenuSelectModal() async {
-    final List<String> menuOptions = [
-      '전체', '커피/차(카페)', '떡/한과', '빵/도넛',
-      '아이스크림/빙수', '토스트/샌드위치/샐러드', '케이크', '쿠키'
-    ];
+    final List<String> menuOptions = _dbMenuFilters;
 
     final String? selected = await showModalBottomSheet<String>(
       context: context,
@@ -34,7 +51,7 @@ class _StampMainScreenState extends State<StampMainScreen> {
       ),
       builder: (context) {
         return Container(
-          height: MediaQuery.of(context).size.height * 0.6,
+          height: MediaQuery.of(context).size.height * 0.5,
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
@@ -50,23 +67,29 @@ class _StampMainScreenState extends State<StampMainScreen> {
               ),
               const Divider(),
               Expanded(
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: menuOptions.map((menu) {
-                    final bool isSelected = menu == _selectedFilter;
-                    return ChoiceChip(
-                      label: Text(menu),
-                      selected: isSelected,
-                      selectedColor: Colors.orange[50],
-                      backgroundColor: Colors.white,
-                      labelStyle: TextStyle(
-                        color: isSelected ? Colors.orange[800] : Colors.black87,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      ),
-                      onSelected: (_) => Navigator.pop(context, menu),
-                    );
-                  }).toList(),
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: menuOptions.map((menu) {
+                        final bool isSelected = menu == _selectedFilter;
+                        return ChoiceChip(
+                          showCheckmark: false,
+                          label: Text(menu),
+                          selected: isSelected,
+                          selectedColor: Colors.orange[50],
+                          backgroundColor: Colors.white,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.orange[800] : Colors.black87,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          onSelected: (_) => Navigator.pop(context, menu),
+                        );
+                      }).toList(),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -80,14 +103,9 @@ class _StampMainScreenState extends State<StampMainScreen> {
     }
   }
 
-  // 2. 🌟 지역 더보기 팝업 모달 (5열 고정 GridView + 체크 표식 제거)
+  // 2. 🌟 지역 더보기 팝업 모달
   void _openRegionSelectModal() async {
-    final List<String> regionOptions = [
-      '전체', '서울', '경기', '인천', '강원',
-      '세종', '대전', '충북', '충남', '광주',
-      '전북', '전남', '부산', '대구', '울산',
-      '경북', '경남', '제주'
-    ];
+    final List<String> regionOptions = _dbRegionFilters;
 
     final String? selected = await showModalBottomSheet<String>(
       context: context,
@@ -98,7 +116,7 @@ class _StampMainScreenState extends State<StampMainScreen> {
       ),
       builder: (context) {
         return Container(
-          height: 340, // 5열 4행에 맞춰 컴팩트한 높이 지정
+          height: 340,
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
@@ -114,16 +132,14 @@ class _StampMainScreenState extends State<StampMainScreen> {
               ),
               const Divider(),
               const SizedBox(height: 12),
-
-              // 🌟 5열 고정 그리드 뷰 (칼각 정렬)
               Expanded(
                 child: GridView.builder(
-                  physics: const NeverScrollableScrollPhysics(), // 스크롤 없이 칼 정렬
+                  physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 5, // 🌟 딱 5개씩 배치
+                    crossAxisCount: 5,
                     crossAxisSpacing: 8,
                     mainAxisSpacing: 10,
-                    childAspectRatio: 1.8, // 칩의 가로세로 비율
+                    childAspectRatio: 1.8,
                   ),
                   itemCount: regionOptions.length,
                   itemBuilder: (context, index) {
@@ -131,7 +147,7 @@ class _StampMainScreenState extends State<StampMainScreen> {
                     final bool isSelected = region == _selectedFilter;
 
                     return ChoiceChip(
-                      showCheckmark: false, // 🌟 [핵심] 체크 아이콘 제거하여 정렬 안 찌그러짐!
+                      showCheckmark: false,
                       label: Center(
                         child: Text(
                           region,
@@ -174,13 +190,14 @@ class _StampMainScreenState extends State<StampMainScreen> {
   List<Map<String, dynamic>> _processRoads(List<Map<String, dynamic>> rawList) {
     List<Map<String, dynamic>> result = List.from(rawList);
 
-    // 필터링
+    // 필터링 처리
     if (_selectedFilter != '전체') {
       if (_selectedTab == '지역별') {
         result = result.where((r) => r['region'] == _selectedFilter).toList();
       } else if (_selectedTab == '메뉴별') {
         result = result.where((r) {
-          final List categories = r['categoryIds'] ?? [];
+          // 🌟 categoryIds -> categoryNames 로 수정! (한글 이름 매칭)
+          final List categories = r['categoryNames'] ?? [];
           return categories.contains(_selectedFilter);
         }).toList();
       }
@@ -368,31 +385,44 @@ class _StampMainScreenState extends State<StampMainScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. 대분류 (지역별 / 메뉴별) 탭
-            Row(
-              children: [
-                _buildTabButton('지역별'),
-                _buildTabButton('메뉴별'),
-              ],
+            // 🌟 1. 최상단: 대분류 탭(좌측) + 정렬 옵션(우측)을 한 Row 안에 배치!
+            Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // 🌟 CrossAlignment -> CrossAxisAlignment 로 수정!
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // 좌측: 지역별 / 메뉴별 탭
+                  Row(
+                    children: [
+                      _buildTabButton('지역별'),
+                      _buildTabButton('메뉴별'),
+                    ],
+                  ),
+
+                  // 우측: 정렬 옵션
+                  SortingBar(
+                    selectedSort: _selectedSort,
+                    onSortChanged: (sort) => setState(() => _selectedSort = sort),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 8),
 
-            // 2. 가로 서브 필터 칩
+            // 2. 가로 서브 필터 칩 (DB 지역 리스트 전달)
             SubFilterChips(
               selectedTab: _selectedTab,
               selectedFilter: _selectedFilter,
+              menuFilters: _dbMenuFilters,
+              regionFilters: _dbRegionFilters, // 🌟 DB 지역 전달
               onFilterSelected: (filter) => setState(() => _selectedFilter = filter),
               onMorePressed: _selectedTab == '지역별' ? _openRegionSelectModal : _openMenuSelectModal,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
 
-            // 3. 정렬 바
-            SortingBar(
-              selectedSort: _selectedSort,
-              onSortChanged: (sort) => setState(() => _selectedSort = sort),
-            ),
-
-            // 4. 실시간 DB 연결 리스트 렌더링
+            // 3. 실시간 DB 연결 리스트 렌더링
             Expanded(
               child: StreamBuilder<List<Map<String, dynamic>>>(
                 stream: StampRepository.getRoadWithMyStampStream(),
@@ -518,13 +548,23 @@ class _StampMainScreenState extends State<StampMainScreen> {
                   const SizedBox(height: 8),
 
                   // 🌟 [수정됨] 문제가 되던 Row를 아예 없애고 단일 Text로 묶었습니다!
-                  Text(
-                    '🍒 스탬프 $myStampCount / $totalStampCount 개',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.verified, // 또는 Icons.approval, Icons.workspace_premium
+                        size: 16,
+                        color: Colors.red.shade700,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '스탬프 $myStampCount / $totalStampCount 개',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

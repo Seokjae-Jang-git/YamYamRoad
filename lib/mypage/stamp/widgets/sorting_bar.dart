@@ -12,18 +12,16 @@ class SortingBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          _buildSortOption('최신순'),
-          _buildDivider(),
-          _buildSortOption('이름순'),
-          _buildDivider(),
-          _buildSortOption('스탬프 순'),
-        ],
-      ),
+    // 🌟 Row 상위의 Padding(horizontal: 16.0)을 제거하여 상단 Row와 여백을 맞춥니다.
+    return Row(
+      mainAxisSize: MainAxisSize.min, // 필요한 만큼만 공간 차지
+      children: [
+        _buildSortOption('최신순'),
+        _buildDivider(),
+        _buildSortOption('이름순'),
+        _buildDivider(),
+        _buildSortOption('스탬프 순'),
+      ],
     );
   }
 
@@ -34,7 +32,7 @@ class SortingBar extends StatelessWidget {
       child: Text(
         text,
         style: TextStyle(
-          fontSize: 11,
+          fontSize: 16,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           color: isSelected ? Colors.black87 : Colors.grey[500],
         ),
