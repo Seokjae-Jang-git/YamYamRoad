@@ -53,6 +53,8 @@ class AuthService {
       provider: data['provider'] as String? ?? '',
       nickname: data['nickname'] as String? ?? firebaseUser.displayName,
       profileImageUrl: data['profileImageUrl'] as String? ?? firebaseUser.photoURL,
+      isWithdrawn: data['status'] == 'withdrawn',
+      withdrawnAt: (data['withdrawnAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -141,6 +143,11 @@ class AuthService {
   }
 
   /// Firestore users/{uid} 문서가 없으면 새로 생성, 있으면 최신 프로필로 갱신
+  ///
+  /// 🌟 기존 유저가 탈퇴(status == 'withdrawn') 상태여도 여기서는 강제로
+  /// 되돌리지 않습니다. 대신 UserModel에 isWithdrawn/withdrawnAt을 실어
+  /// 반환하니, 화면(login_screen 등)에서 복구 팝업을 띄우고
+  /// handleWithdrawnRecovery()로 실제 복구 처리를 하도록 합니다.
   static Future<UserModel> _upsertUserDoc({
     required String uid,
     required String provider,
@@ -175,20 +182,27 @@ class AuthService {
         provider: provider,
         nickname: nickname,
         profileImageUrl: profileImageUrl,
+        isWithdrawn: false,
+        withdrawnAt: null,
       );
     } else {
+      final data = snapshot.data() ?? {};
+      final bool isWithdrawn = data['status'] == 'withdrawn';
+
       await docRef.update({
         'updatedAt': FieldValue.serverTimestamp(),
         if (nickname != null) 'nickname': nickname,
         if (profileImageUrl != null) 'profileImageUrl': profileImageUrl,
       });
-      final data = snapshot.data() ?? {};
+
       return UserModel(
         uid: uid,
         isNewUser: false,
         provider: provider,
         nickname: nickname ?? data['nickname'] as String?,
         profileImageUrl: profileImageUrl ?? data['profileImageUrl'] as String?,
+        isWithdrawn: isWithdrawn,
+        withdrawnAt: (data['withdrawnAt'] as Timestamp?)?.toDate(),
       );
     }
   }
@@ -206,6 +220,8 @@ class UserModel {
   final String provider;
   final String? nickname;
   final String? profileImageUrl;
+  final bool isWithdrawn;
+  final DateTime? withdrawnAt;
 
   UserModel({
     required this.uid,
@@ -213,6 +229,8 @@ class UserModel {
     required this.provider,
     this.nickname,
     this.profileImageUrl,
+    this.isWithdrawn = false,
+    this.withdrawnAt,
   });
 }
 

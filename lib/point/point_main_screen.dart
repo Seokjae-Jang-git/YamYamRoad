@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:intl/intl.dart';
 
 import 'logic/point_purchase_service.dart';
@@ -171,7 +174,9 @@ class _PointMainScreenState extends State<PointMainScreen> {
                 final gifticon = gifticons[index];
                 return _GifticonCard(
                   gifticon: gifticon,
-                  onTap: () => _openGifticonDetail(gifticon),
+                  onTap: gifticon.isSoldOut
+                      ? null
+                      : () => _purchaseGifticon(gifticon),
                 );
               },
             );
