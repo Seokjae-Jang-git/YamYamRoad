@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
 import 'top_circle_button.dart';
 import 'location_bar.dart';
 import 'ad_banner.dart';
@@ -7,17 +8,18 @@ import 'home_stamp_dashboard.dart';
 import 'home_road_swiper.dart';
 import '../../ad/ad_station_page.dart';
 import '../../common/user_data.dart';
-import '../../common/data/temp_user_session.dart'; // 강화군/문화의거리 가상 주소 세션 임포트
-import '../../road/data/road_mock_data.dart'; // 진짜 로드 데이터셋 임포트
-import '../../road/data/place_mock_data.dart'; // 진짜 마스터 가게 데이터셋 임포트
+import '../../common/data/temp_user_session.dart';
+import '../../road/data/place_mock_data.dart';
+import '../../road/models/road.dart';
 import '../../services/auth_service.dart';
+import '../../services/location_service.dart';
 
 class HomeContentView extends StatefulWidget {
   final ValueChanged<int> onTabChanged;
 
   const HomeContentView({
     super.key,
-    required this.onTabChanged, // 🌟 필수 매개변수로 지정
+    required this.onTabChanged,
   });
 
   @override
@@ -25,26 +27,45 @@ class HomeContentView extends StatefulWidget {
 }
 
 class _HomeContentViewState extends State<HomeContentView> {
-  // 세션에 저장해 둔 최초 구동 주소인 '인천광역시 강화군 강화읍'으로 초기화
   String _currentLocationText = initialUserLocation;
+  Position? _currentPosition;
+  bool _isLoadingLocation = false;
 
   @override
   void initState() {
     super.initState();
-    // 앱 처음 진입 시 최초 구동 주소를 강제로 바인딩합니다.
     _currentLocationText = initialUserLocation;
-    // 🌟 로그인 직후 홈 화면에 바로 진입했을 때도 프로필(닉네임/사진)이
-    // 반영되도록, 마이페이지를 열지 않아도 여기서 미리 불러옵니다.
     _loadProfileIfNeeded();
+    _fetchCurrentLocationAndRoads();
   }
 
-  // 🌟 UserData에 아직 현재 로그인한 사용자의 정보가 없으면 Firestore에서 불러와 채웁니다.
-  // (마이페이지 화면의 _loadUserData()와 같은 로직 - 두 곳 모두 동일하게 유지해주세요)
+  // 사용자의 현재 GPS 위치를 조회하고 주소 텍스트를 업데이트합니다.
+  Future<void> _fetchCurrentLocationAndRoads() async {
+    if (_isLoadingLocation) return;
+    setState(() => _isLoadingLocation = true);
+
+    try {
+      final position = await LocationService.getCurrentLocation();
+      if (position != null && mounted) {
+        setState(() {
+          _currentPosition = position;
+          _currentLocationText = '현재 위치 (GPS 연동됨)';
+        });
+      }
+    } catch (e) {
+      debugPrint('🔴 홈 화면 GPS 수집 실패: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingLocation = false);
+      }
+    }
+  }
+
+  // UserData 프로필 정보 로드
   Future<void> _loadProfileIfNeeded() async {
     final String? currentUid = AuthService.currentUser?.uid;
     if (currentUid == null) return;
 
-    // 이미 같은 사용자의 정보가 로드되어 있으면 다시 불러올 필요 없음
     if (UserData.uid == currentUid && UserData.nickname != null) return;
 
     try {
@@ -67,47 +88,28 @@ class _HomeContentViewState extends State<HomeContentView> {
     }
   }
 
-  // 🧠 [실시간 최단거리 정복 정렬]: 내 위치에서 가장 가까운 가게를 가진 순서대로 정렬 후 '상위 5개'만 한정 슬라이싱
-  List<Map<String, dynamic>> get _getClosestTopFiveRoads {
-    List<Map<String, dynamic>> calculatedList = [];
-    final allCourses = [...regionCourses, ...menuCourses];
-
-    for (var course in allCourses) {
-      final matchedPlaces = masterPlaces
-          .where((place) => course.placeIds.contains(place.placeId))
-          .toList();
-
-      if (matchedPlaces.isEmpty) continue;
-
-      matchedPlaces.sort((a, b) => a.distanceValue.compareTo(b.distanceValue));
-      final nearestPlace = matchedPlaces.first;
-
-      calculatedList.add({
-        'course': course,
-        'nearestPlace': nearestPlace,
-        'distanceValue': nearestPlace.distanceValue,
-      });
-    }
-
-    calculatedList.sort((a, b) => a['distanceValue'].compareTo(b['distanceValue']));
-
-    return calculatedList.take(5).toList();
-  }
-
-  // 📍 [위치 정보 실시간 재설정 시나리오 작동부]: 강화읍 ➔ 부평 문화의거리로 보정 세팅
-  void _handleResetLocation() {
-    setState(() {
-      _currentLocationText = updatedUserLocation;
-    });
+  // GPS 재설정 버튼 탭 시 실시간 위치 업데이트 수행
+  Future<void> _handleResetLocation() async {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('GPS 정보를 통해 현재 위치 정보가 데이터베이스에 반영되었습니다.'),
-        duration: Duration(seconds: 2),
+        content: Text('GPS 정보를 통해 현재 위치를 새로고침합니다...'),
+        duration: Duration(seconds: 1),
       ),
     );
+
+    await _fetchCurrentLocationAndRoads();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('GPS 정보를 통해 현재 위치가 업데이트되었습니다.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
-  // 🌟 프로필 아이콘 탭 시 "마이페이지" / "로그아웃" 팝업 메뉴 표시
+  // 프로필 아이콘 탭 시 "마이페이지" / "로그아웃" 팝업 메뉴 표시
   void _showProfileMenu(BuildContext context, TapDownDetails details) {
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final position = RelativeRect.fromRect(
@@ -174,11 +176,6 @@ class _HomeContentViewState extends State<HomeContentView> {
     );
   }
 
-  // 🌟 실제 로그아웃 처리: Firebase 세션 종료 + 로컬 유저 데이터 초기화
-  // 화면 전환(로그인 화면으로 이동)은 main.dart의 StreamBuilder(authStateChanges)가
-  // signOut() 이후 자동으로 처리합니다. 여기서 수동으로 Navigator를 건드리면
-  // StreamBuilder가 관리하는 네비게이터 스택과 충돌해서 재로그인 후 화면 전환이
-  // 안 되는 문제가 생기니, 절대 여기서 push/pop을 직접 하지 마세요.
   Future<void> _handleLogout() async {
     try {
       await AuthService.logout();
@@ -200,7 +197,10 @@ class _HomeContentViewState extends State<HomeContentView> {
   @override
   Widget build(BuildContext context) {
     final List<PlaceData> stampVerifiablePlaces = masterPlaces.take(6).toList();
-    final recommendedRoads = _getClosestTopFiveRoads;
+
+    // 에뮬레이터 기본 위치 (서울 중심부) - GPS 조회가 안 되었을 경우 fallback
+    final double userLat = _currentPosition?.latitude ?? 37.5665;
+    final double userLng = _currentPosition?.longitude ?? 126.9780;
 
     return SingleChildScrollView(
       child: Column(
@@ -247,8 +247,6 @@ class _HomeContentViewState extends State<HomeContentView> {
                       },
                     ),
                     const SizedBox(width: 8),
-
-                    // 🌟 프로필 탭 시 "마이페이지"/"로그아웃" 팝업 메뉴 표시
                     GestureDetector(
                       onTapDown: (details) => _showProfileMenu(context, details),
                       child: Container(
@@ -345,7 +343,46 @@ class _HomeContentViewState extends State<HomeContentView> {
 
           const SizedBox(height: 16),
 
-          HomeRoadSwiper(recommendedRoads: recommendedRoads),
+          // Firestore 실시간 스트림 연동: 거리 기반 오름차순 정렬 상위 5개 추출
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('road').snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(
+                  height: 220,
+                  child: Center(child: CircularProgressIndicator(color: Colors.orange)),
+                );
+              }
+
+              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const SizedBox(
+                  height: 220,
+                  child: Center(child: Text('추천 코스 데이터를 불러올 수 없습니다.')),
+                );
+              }
+
+              // Firestore 문서들을 Road 객체로 변환
+              final List<Road> roads = snapshot.data!.docs
+                  .map((doc) => Road.fromFirestore(doc))
+                  .toList();
+
+              // 내 위치(userLat, userLng)로부터 최단 거리 순 정렬
+              roads.sort((a, b) {
+                final distA = a.getMinDistanceKm(userLat, userLng);
+                final distB = b.getMinDistanceKm(userLat, userLng);
+                return distA.compareTo(distB);
+              });
+
+              // 상위 5개 추출
+              final topFiveRoads = roads.take(5).toList();
+
+              return HomeRoadSwiper(
+                recommendedRoads: topFiveRoads,
+                userLat: userLat,
+                userLng: userLng,
+              );
+            },
+          ),
 
           const SizedBox(height: 16),
 

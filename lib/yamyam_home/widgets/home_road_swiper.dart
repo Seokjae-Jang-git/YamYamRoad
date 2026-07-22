@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../road/models/road.dart';
-import '../../road/models/place_model.dart';
 import '../../road/course_detail_screen.dart';
 
 class HomeRoadSwiper extends StatefulWidget {
-  final List<Map<String, dynamic>> recommendedRoads;
+  final List<Road> recommendedRoads;
+  final double userLat;
+  final double userLng;
 
   const HomeRoadSwiper({
     super.key,
     required this.recommendedRoads,
+    this.userLat = 37.5665,
+    this.userLng = 126.9780,
   });
 
   @override
@@ -36,37 +39,31 @@ class _HomeRoadSwiperState extends State<HomeRoadSwiper> {
     super.dispose();
   }
 
-  /// dynamic 객체 또는 Map을 안전하게 하위 호환 적용된 Road 객체로 파싱하는 헬퍼 함수
-  Road _parseToRoad(dynamic rawItem) {
-    if (rawItem is Road) {
-      return rawItem;
+  /// 거리(km) 수치를 보기 좋은 텍스트(m / km)로 포맷팅하는 헬퍼
+  String _formatDistance(double distanceKm) {
+    if (distanceKm == double.infinity) {
+      return '거리 정보 없음';
     }
-
-    if (rawItem is Map<String, dynamic>) {
-      return Road.fromMap(rawItem, rawItem['id']?.toString() ?? '');
+    if (distanceKm < 1.0) {
+      return '약 ${(distanceKm * 1000).round()}m';
     }
-
-    final dynamic d = rawItem;
-    final Map<String, dynamic> mapData = {
-      'title': d?.title,
-      'description': d?.description,
-      'regionId': d?.regionId ?? d?.region,
-      'categoryIds': d?.categoryIds,
-      'roadPlace': d?.roadPlace ?? d?.placeIds,
-      'thumbnailUrl': d?.thumbnailUrl ?? d?.imageUrl,
-      'badgeName': d?.badgeName,
-      'stampRewardPoint': d?.stampRewardPoint ?? d?.rewardPoints,
-      'estimatedTimeMinutes': d?.estimatedTimeMinutes,
-      'searchKeywords': d?.searchKeywords,
-      'isActive': d?.isActive,
-      'createdAt': d?.createdAt,
-    };
-
-    return Road.fromMap(mapData, d?.id?.toString() ?? '');
+    return '약 ${distanceKm.toStringAsFixed(1)}km';
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.recommendedRoads.isEmpty) {
+      return const SizedBox(
+        height: 350,
+        child: Center(
+          child: Text(
+            '추천할 로드가 없습니다.',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
     return SizedBox(
       height: 350,
       child: PageView.builder(
@@ -82,10 +79,10 @@ class _HomeRoadSwiperState extends State<HomeRoadSwiper> {
             cardScale = index == 0 ? 1.0 : 0.94;
           }
 
-          final item = widget.recommendedRoads[index];
-          final rawRoadItem = item['road'] ?? item['course'];
-          final Road road = _parseToRoad(rawRoadItem);
-          final PlaceModel? nearestPlace = item['nearestPlace'];
+          final Road road = widget.recommendedRoads[index];
+          final double minDistanceKm = road.getMinDistanceKm(widget.userLat, widget.userLng);
+          final String distanceText = _formatDistance(minDistanceKm);
+          final int placeCount = road.roadPlace.isNotEmpty ? road.roadPlace.length : road.placeCoordinates.length;
 
           final labels = [
             '🔥 대세 추천 로드',
@@ -124,7 +121,19 @@ class _HomeRoadSwiperState extends State<HomeRoadSwiper> {
                       child: Stack(
                         children: [
                           Positioned.fill(
-                            child: Image.asset(
+                            child: road.thumbnailUrl.isNotEmpty
+                                ? Image.network(
+                              road.thumbnailUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.pink[50],
+                                  alignment: Alignment.center,
+                                  child: const Text('🍑', style: TextStyle(fontSize: 40)),
+                                );
+                              },
+                            )
+                                : Image.asset(
                               'assets/temp_images/peach_salad.jpg',
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
@@ -182,6 +191,8 @@ class _HomeRoadSwiperState extends State<HomeRoadSwiper> {
                                 const SizedBox(height: 4),
                                 Text(
                                   '${road.regionId} | ${road.categoryIds.join(', ')}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: Colors.grey[600],
@@ -190,60 +201,58 @@ class _HomeRoadSwiperState extends State<HomeRoadSwiper> {
                                 ),
                               ],
                             ),
-
-                            if (nearestPlace != null)
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange[50]!.withOpacity(0.5),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.orange[100]!, width: 0.8),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.location_on, color: Colors.orange, size: 14),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            '관문: ${nearestPlace.name}',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.black87,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          '🏃 ${nearestPlace.distance}',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.grey[700],
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        Text(
-                                          '🍒 ${nearestPlace.stampCount}개',
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.redAccent,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.orange[50]!.withOpacity(0.5),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.orange[100]!, width: 0.8),
                               ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.location_on, color: Colors.orange, size: 14),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          road.title,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        '🏃 $distanceText',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey[700],
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      Text(
+                                        '🍽️ ${placeCount}곳',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.deepOrangeAccent,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
