@@ -19,8 +19,6 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-
-
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
@@ -66,18 +64,34 @@
             android:value="얌얌로드" />
     </application>
 
+    <!-- 외부 앱 및 브라우저 실행 허용 설정 -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
 
+        <!-- 네이버 지도 패키지 및 딥링크 스키마 -->
         <package android:name="com.nhn.android.nmap" />
-        <package android:name="net.daum.android.map" />
-
         <intent>
             <action android:name="android.intent.action.VIEW" />
-            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="nmap" />
+        </intent>
+
+        <!-- 카카오맵 패키지 및 딥링크 스키마 -->
+        <package android:name="net.daum.android.map" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="kakaomap" />
+        </intent>
+
+        <!-- 웹 브라우저(Fallback) 연결용 HTTP/HTTPS -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
     </queries>
