@@ -1,4 +1,30 @@
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+/// 코스 내 가게의 위도/경도 좌표를 표현하는 클래스
+class PlaceCoordinate {
+  final double lat;
+  final double lng;
+
+  PlaceCoordinate({
+    required this.lat,
+    required this.lng,
+  });
+
+  factory PlaceCoordinate.fromMap(Map<String, dynamic> map) {
+    return PlaceCoordinate(
+      lat: (map['lat'] as num?)?.toDouble() ?? 0.0,
+      lng: (map['lng'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'lat': lat,
+      'lng': lng,
+    };
+  }
+}
 
 class Road {
   final String id;
@@ -7,6 +33,7 @@ class Road {
   final String regionId;
   final List<String> categoryIds;
   final List<String> roadPlace;
+  final List<PlaceCoordinate> placeCoordinates; // 📍 추가: 반정규화된 가게 좌표 리스트
   final String thumbnailUrl;
   final String badgeName;
   final int stampRewardPoint;
@@ -21,6 +48,7 @@ class Road {
     required this.regionId,
     required this.categoryIds,
     required this.roadPlace,
+    required this.placeCoordinates,
     required this.thumbnailUrl,
     required this.badgeName,
     required this.stampRewardPoint,
@@ -62,6 +90,19 @@ class Road {
       return true; // 기본값
     }
 
+    // placeCoordinates 파싱 헬퍼 (Map, GeoPoint 등 다양한 형태 대응)
+    final rawCoordinates = map['placeCoordinates'] as List<dynamic>? ?? [];
+    final parsedCoordinates = rawCoordinates.map((e) {
+      if (e is Map<String, dynamic>) {
+        return PlaceCoordinate.fromMap(e);
+      } else if (e is Map) {
+        return PlaceCoordinate.fromMap(Map<String, dynamic>.from(e));
+      } else if (e is GeoPoint) {
+        return PlaceCoordinate(lat: e.latitude, lng: e.longitude);
+      }
+      return PlaceCoordinate(lat: 0.0, lng: 0.0);
+    }).toList();
+
     return Road(
       id: docId,
       title: map['title']?.toString() ?? '제목 없음',
@@ -80,6 +121,9 @@ class Road {
           : (map['placeIds'] is List)
           ? List<String>.from((map['placeIds'] as List).map((e) => e.toString()))
           : <String>[],
+
+      // 반정규화된 가게 좌표 파싱 결과 할당
+      placeCoordinates: parsedCoordinates,
 
       // thumbnailUrl이 없으면 기존 imageUrl 필드 탐색
       thumbnailUrl: map['thumbnailUrl']?.toString() ?? map['imageUrl']?.toString() ?? '',
@@ -107,6 +151,7 @@ class Road {
       'regionId': regionId,
       'categoryIds': categoryIds,
       'roadPlace': roadPlace,
+      'placeCoordinates': placeCoordinates.map((e) => e.toMap()).toList(),
       'thumbnailUrl': thumbnailUrl,
       'badgeName': badgeName,
       'stampRewardPoint': stampRewardPoint,
@@ -114,5 +159,56 @@ class Road {
       'isActive': isActive,
       'createdAt': Timestamp.fromDate(createdAt),
     };
+  }
+
+  /// 📍 추가: 사용자의 현재 위치(위도/경도) 기반으로 코스 내 가게 중 '최단 거리(km)' 연산
+  /// 좌표 리스트가 비어있을 경우 double.infinity 반환
+  double getMinDistanceKm(double userLat, double userLng) {
+    if (placeCoordinates.isEmpty) {
+      return double.infinity;
+    }
+
+    double minDistance = double.infinity;
+
+    for (final coord in placeCoordinates) {
+      final distance = _calculateHaversineDistance(
+        userLat,
+        userLng,
+        coord.lat,
+        coord.lng,
+      );
+      if (distance < minDistance) {
+        minDistance = distance;
+      }
+    }
+
+    return minDistance;
+  }
+
+  /// 하버사인(Haversine) 공식을 이용한 두 위경도 좌표 간 거리 계산 (단위: km)
+  double _calculateHaversineDistance(
+      double lat1,
+      double lon1,
+      double lat2,
+      double lon2,
+      ) {
+    const double earthRadiusKm = 6371.0;
+
+    final double dLat = _toRadians(lat2 - lat1);
+    final double dLon = _toRadians(lon2 - lon1);
+
+    final double a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_toRadians(lat1)) *
+            cos(_toRadians(lat2)) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
+
+    final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+    return earthRadiusKm * c;
+  }
+
+  double _toRadians(double degree) {
+    return degree * pi / 180.0;
   }
 }
