@@ -82,10 +82,8 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
         imagePath: _imagePath,
       );
       setState(() => _submitting = false);
-      Navigator.of(context).pop(true); // true = 변경됨을 알림
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('문의가 수정되었습니다.')),
-      );
+      // 🌟 여기서는 pop(true)만 합니다. 스낵바는 최종적으로 목록 화면에서 띄웁니다.
+      Navigator.of(context).pop(true);
     } else {
       final created = repo.add(
         type: _selectedType,

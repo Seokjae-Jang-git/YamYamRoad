@@ -28,7 +28,6 @@ void main() async {
     nativeAppKey: '069a7990957fdbe501532762273b49dc', // 카카오 개발자센터에서 발급받은 값
   );
 
-
   runApp(const MyApp());
 }
 
@@ -44,10 +43,11 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.white,
         useMaterial3: true,
       ),
-      // main_home.dart의 StreamBuilder 내부 body 영역 수정
       home: StreamBuilder<User?>(
         stream: AuthService.authStateChanges,
         builder: (context, snapshot) {
+          debugPrint('🟣 [StreamBuilder] state=${snapshot.connectionState}, hasData=${snapshot.hasData}, uid=${snapshot.data?.uid}');
+
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
               body: Center(child: CircularProgressIndicator(color: Colors.black)),
@@ -56,7 +56,7 @@ class MyApp extends StatelessWidget {
 
           // 🌟 [핵심 보완] 로그인 데이터가 존재한다면!
           if (snapshot.hasData && snapshot.data != null) {
-            // ➔ 하위 화면들(다이어리, 얌얌북)이 내 데이터를 정상 조회할 수 있도록 전역 UID를 먼저 심어줍니다!
+            // ➔ 하위 화면들이 내 데이터를 정상 조회할 수 있도록 전역 UID를 먼저 심어줍니다!
             UserData.uid = snapshot.data!.uid;
 
             return const MainHomeScreen();
