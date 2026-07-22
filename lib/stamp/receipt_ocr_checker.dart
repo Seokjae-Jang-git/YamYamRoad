@@ -111,7 +111,7 @@ class ReceiptOcrValidator {
   final double storeNameThreshold;
 
   const ReceiptOcrValidator({
-    this.maxReceiptAge = const Duration(hours: 24),
+    this.maxReceiptAge = const Duration(hours: 6),
     this.futureTolerance = const Duration(minutes: 5),
     this.storeNameThreshold = 0.72,
   });

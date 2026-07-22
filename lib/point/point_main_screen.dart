@@ -971,14 +971,54 @@ class _ProductImage extends StatelessWidget {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(6),
-      child: Image.network(
-        url,
-        width: double.infinity,
-        height: double.infinity,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _placeholder(),
-      ),
+      child: _buildImage(url),
     );
+  }
+
+  Widget _buildImage(String url) {
+    if (_isNetworkUrl(url)) {
+      return _isSvgUrl(url)
+          ? SvgPicture.network(
+              url,
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.cover,
+              placeholderBuilder: (_) => _placeholder(),
+            )
+          : Image.network(
+              url,
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => _placeholder(),
+            );
+    }
+
+    return _isSvgUrl(url)
+        ? SvgPicture.asset(
+            url,
+            width: double.infinity,
+            height: double.infinity,
+            fit: BoxFit.cover,
+            placeholderBuilder: (_) => _placeholder(),
+          )
+        : Image.asset(
+            url,
+            width: double.infinity,
+            height: double.infinity,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => _placeholder(),
+          );
+  }
+
+  bool _isNetworkUrl(String url) {
+    final scheme = Uri.tryParse(url)?.scheme.toLowerCase();
+    return scheme == 'http' || scheme == 'https';
+  }
+
+  bool _isSvgUrl(String url) {
+    final path = Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
+    return path.endsWith('.svg');
   }
 
   Widget _placeholder() {

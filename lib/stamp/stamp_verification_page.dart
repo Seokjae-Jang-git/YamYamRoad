@@ -10,6 +10,7 @@ class StampVerificationPage extends StatefulWidget {
   final String placeName;
   final StampEntryChecker runEntryCheck;
   final StampVerificationSubmitter submitVerification;
+  final bool allowGallerySelection;
 
   const StampVerificationPage({
     super.key,
@@ -17,6 +18,7 @@ class StampVerificationPage extends StatefulWidget {
     required this.placeName,
     required this.runEntryCheck,
     required this.submitVerification,
+    this.allowGallerySelection = false,
   });
 
   @override
@@ -88,8 +90,16 @@ class _StampVerificationPageState extends State<StampVerificationPage> {
   }
 
   Future<void> _takeReceiptPhoto() async {
+    await _pickReceipt(ImageSource.camera);
+  }
+
+  Future<void> _pickReceiptFromGallery() async {
+    await _pickReceipt(ImageSource.gallery);
+  }
+
+  Future<void> _pickReceipt(ImageSource source) async {
     final image = await _imagePicker.pickImage(
-      source: ImageSource.camera,
+      source: source,
       preferredCameraDevice: CameraDevice.rear,
       imageQuality: 90,
     );
@@ -260,6 +270,14 @@ class _StampVerificationPageState extends State<StampVerificationPage> {
           imagePath: _receiptImage?.path,
           onTap: _takeReceiptPhoto,
         ),
+        if (widget.allowGallerySelection) ...[
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: _pickReceiptFromGallery,
+            icon: const Icon(Icons.photo_library_outlined),
+            label: const Text('개발용: 갤러리에서 영수증 선택'),
+          ),
+        ],
         const SizedBox(height: 20),
         TextField(
           controller: _noteController,
