@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'inquiry.dart';
 import 'inquiry_repository.dart';
 import 'app_colors.dart';
-import 'inquiry_repository.dart';
 import 'inquiry_write_screen.dart';
 
 /// 문의 상세 화면. 수정하기 / 삭제하기 버튼 제공.
@@ -31,21 +30,23 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
     super.dispose();
   }
 
+  // 🌟 삭제/화면이탈은 _onDelete / _onEdit에서 직접 pop으로 처리하므로,
+  //    여기서는 단순히 내용 갱신(재빌드)만 담당합니다. 자동 pop 로직은 넣지 않습니다.
   void _onChanged() {
-    // 삭제되면 findById가 null을 반환하므로 화면을 닫는다.
-    if (mounted && _repo.findById(widget.inquiryId) == null) {
-      Navigator.of(context).pop();
-    } else if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
   }
 
   Future<void> _onEdit(Inquiry inquiry) async {
-    await Navigator.of(context).push(
+    final edited = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => InquiryWriteScreen(editTarget: inquiry),
       ),
     );
+
+    // 🌟 수정 완료된 경우, 상세 화면도 닫고 목록까지 한 번에 돌아갑니다.
+    if (edited == true && mounted) {
+      Navigator.of(context).pop('edited');
+    }
   }
 
   Future<void> _onDelete() async {
@@ -69,15 +70,14 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
       ),
     );
 
-    if (confirmed == true) {
-      _repo.delete(widget.inquiryId);
-      if (mounted) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('문의가 삭제되었습니다.')),
-        );
-      }
-    }
+    if (confirmed != true) return;
+
+    _repo.delete(widget.inquiryId);
+
+    if (!mounted) return;
+
+    // 🌟 딱 한 번, 목록 화면에 "삭제됨" 신호를 전달하며 pop합니다.
+    Navigator.of(context).pop('deleted');
   }
 
   @override

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:yamyam_road/mypage/badge/badge_main_screen.dart';
 import '../common/user_data.dart';
 import '../../services/auth_service.dart';
 import 'diary/diary.dart';
@@ -60,9 +61,11 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
 
   void _openDiary() => Navigator.push(context, MaterialPageRoute(builder: (context) => const DiaryScreen()));
   void _openCommunity() => Navigator.push(context, MaterialPageRoute(builder: (context) => const CommunityMyScreen()));
+  void _openStamp() => Navigator.push(context, MaterialPageRoute(builder: (context) => const StampMainScreen()));
+  void _openBadge() => Navigator.push(context, MaterialPageRoute(builder: (context) => const BadgeMainScreen()));
   void _openInquiry() => Navigator.push(context, MaterialPageRoute(builder: (context) => const InquiryListScreen()));
   void _openSetting() => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingScreen()));
-  void _openStamp() => Navigator.push(context, MaterialPageRoute(builder: (context) => const StampMainScreen()));
+
 
   @override
   Widget build(BuildContext context) {
@@ -100,6 +103,7 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
                   openDiary: _openDiary,
                   openCommunity: _openCommunity,
                   openStamp: _openStamp,
+                  openBadge: _openBadge,
                   openInquiry: _openInquiry,
                   openSetting: _openSetting,
               ),

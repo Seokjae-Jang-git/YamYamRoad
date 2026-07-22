@@ -96,12 +96,27 @@ class _InquiryCard extends StatelessWidget {
     final answered = inquiry.status == InquiryStatus.answered;
 
     return GestureDetector(
-      onTap: () {
-        Navigator.of(context).push(
+      onTap: () async {
+        // 🌟 상세 화면이 'deleted' / 'edited' 문자열을 신호로 pop해서 넘겨줍니다.
+        final result = await Navigator.of(context).push<String>(
           MaterialPageRoute(
             builder: (_) => InquiryDetailScreen(inquiryId: inquiry.id),
           ),
         );
+
+        if (!context.mounted || result == null) return;
+
+        final message = switch (result) {
+          'deleted' => '문의가 삭제되었습니다.',
+          'edited' => '문의가 수정되었습니다.',
+          _ => null,
+        };
+
+        if (message != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message)),
+          );
+        }
       },
       child: Container(
         padding: const EdgeInsets.all(16),

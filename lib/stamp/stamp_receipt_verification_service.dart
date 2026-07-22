@@ -7,6 +7,15 @@ typedef ApprovedReceiptHandler =
       required ReceiptOcrValidationResult ocrResult,
     });
 
+class StampApprovalException implements Exception {
+  final String message;
+
+  const StampApprovalException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 /// OCR 결과를 화면에서 사용하는 인증 결과로 변환하고, 승인된 경우에만
 /// 서버 저장 콜백을 실행한다. 콜백 반환값은 지급 포인트다.
 class StampReceiptVerificationService {
@@ -32,11 +41,17 @@ class StampReceiptVerificationService {
       case ReceiptOcrDecision.rejected:
         return StampVerificationResult.rejected(message: ocrResult.message);
       case ReceiptOcrDecision.approved:
-        final awardedPoints = await onApproved(
-          request: request,
-          ocrResult: ocrResult,
-        );
-        return StampVerificationResult.approved(awardedPoints: awardedPoints);
+        try {
+          final awardedPoints = await onApproved(
+            request: request,
+            ocrResult: ocrResult,
+          );
+          return StampVerificationResult.approved(
+            awardedPoints: awardedPoints,
+          );
+        } on StampApprovalException catch (error) {
+          return StampVerificationResult.rejected(message: error.message);
+        }
     }
   }
 }
