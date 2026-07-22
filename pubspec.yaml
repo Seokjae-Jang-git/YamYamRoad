@@ -57,6 +57,7 @@ dependencies:
 
   # 구글 지도 SDK 패키지 추가
   google_maps_flutter: ^2.10.0
+  geolocator: ^14.0.3
 
 
 dev_dependencies:

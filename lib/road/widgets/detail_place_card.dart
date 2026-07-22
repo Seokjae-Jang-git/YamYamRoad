@@ -125,21 +125,20 @@ class DetailPlaceCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
+                child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: Colors.grey[300]!),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                   ),
                   onPressed: () {
-                    MapLauncher.showMapSelectionBottomSheet(
-                      context: context,
+                    MapLauncher.launchNaverMap(
                       latitude: place.lat,
                       longitude: place.lng,
                       name: place.name,
+                      address: place.address,
                     );
                   },
-                  icon: const Icon(Icons.map, size: 14, color: Colors.blue),
-                  label: const Text('🗺️ 길찾기', style: TextStyle(fontSize: 11, color: Colors.black87)),
+                  child: const Text('🗺️ 길찾기', style: TextStyle(fontSize: 11, color: Colors.black87)),
                 ),
               ),
               const SizedBox(width: 8),
