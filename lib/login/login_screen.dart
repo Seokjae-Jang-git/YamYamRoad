@@ -5,6 +5,9 @@ import 'package:flutter_naver_login/flutter_naver_login.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../services/auth_service.dart';
 
+// 🌟 휴대폰 로그인 화면 임포트
+import 'phone_login_screen.dart';
+
 // [네이티브 설정 필요]
 //   - Android: AndroidManifest.xml에 카카오/네이버 키 해시, 스킴 등록
 
@@ -24,7 +27,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLoading = false;
 
-  // ▼ 추가: 싱글톤 인스턴스 + 초기화 여부 플래그
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
   bool _googleSignInReady = false;
 
@@ -34,7 +36,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _initGoogleSignIn();
   }
 
-  // ▼ 추가: 앱 시작 시 한 번만 initialize
   Future<void> _initGoogleSignIn() async {
     try {
       await _googleSignIn.initialize(
@@ -65,10 +66,9 @@ class _LoginScreenState extends State<LoginScreen> {
       final userModel = await AuthService.loginWithKakao(token.accessToken);
       debugPrint('🟢 AuthService 카카오 로그인 완료: uid=${userModel.uid}');
 
-      // 🌟 여기서 직접 화면을 넘기지 않습니다.
-      // AuthService.loginWithKakao 내부의 signInWithCustomToken이 성공하면
-      // main.dart의 StreamBuilder(authStateChanges)가 이를 감지해서
-      // 자동으로 홈 화면으로 전환해줍니다. 화면 전환은 그쪽에서 100% 책임집니다.
+      // 🌟 탈퇴 체크는 MainHomeScreen.initState()에서 처리하므로
+      //    여기서는 아무것도 하지 않습니다.
+      // 🌟 화면 전환은 main.dart의 StreamBuilder(authStateChanges)가 자동으로 처리합니다.
     } catch (e, stackTrace) {
       debugPrint('🔴 카카오 로그인 에러: $e');
       debugPrint('🔴 스택트레이스: $stackTrace');
@@ -90,12 +90,12 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // 네이버는 로그인 성공 후 액세스 토큰을 별도로 조회해야 합니다.
       final tokenResult = await FlutterNaverLogin.getCurrentAccessToken();
       final userModel = await AuthService.loginWithNaver(tokenResult.accessToken);
       debugPrint('🟢 AuthService 네이버 로그인 완료: uid=${userModel.uid}');
 
-      // 🌟 카카오와 동일하게, 화면 전환은 StreamBuilder가 자동으로 처리합니다.
+      // 🌟 탈퇴 체크는 MainHomeScreen.initState()에서 처리합니다.
+      // 🌟 화면 전환은 StreamBuilder가 자동으로 처리합니다.
     } catch (e, stackTrace) {
       debugPrint('🔴 네이버 로그인 에러: $e');
       debugPrint('🔴 스택트레이스: $stackTrace');
@@ -119,7 +119,8 @@ class _LoginScreenState extends State<LoginScreen> {
       final userModel = await AuthService.loginWithGoogle(idToken: idToken);
       debugPrint('🟢 AuthService 구글 로그인 완료: uid=${userModel.uid}');
 
-      // 🌟 카카오/네이버와 동일하게, 화면 전환은 StreamBuilder가 자동으로 처리합니다.
+      // 🌟 탈퇴 체크는 MainHomeScreen.initState()에서 처리합니다.
+      // 🌟 화면 전환은 StreamBuilder가 자동으로 처리합니다.
     } on GoogleSignInException catch (e) {
       debugPrint('🔴 GoogleSignInException: code=${e.code}');
       if (e.code == GoogleSignInExceptionCode.canceled) {
@@ -138,10 +139,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // ---------------- 휴대폰 번호 로그인 ----------------
   Future<void> _handlePhoneLogin() async {
-    // 휴대폰 인증 화면 자체가 Firebase Phone Auth로 signInWithCredential을 호출하면
-    // 마찬가지로 StreamBuilder가 자동으로 홈 화면으로 전환해줍니다.
-    // 여기서는 화면만 열어주면 됩니다.
-    await Navigator.pushNamed<bool>(context, '/login/phone');
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (context) => const PhoneLoginScreen()),
+    );
   }
 
   void _showError(String message) {

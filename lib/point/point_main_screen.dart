@@ -1,6 +1,6 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:intl/intl.dart';
 
@@ -1008,14 +1008,34 @@ class _ProductImage extends StatelessWidget {
     final url = imageUrl;
     if (url == null || url.isEmpty) return _placeholder();
 
+    final isSvg = url.toLowerCase().endsWith('.svg');
+    final isAsset = url.startsWith('assets/');
+
+    Widget image;
+    if (isSvg) {
+      image = isAsset
+          ? SvgPicture.asset(url, fit: BoxFit.cover)
+          : SvgPicture.network(
+        url,
+        fit: BoxFit.cover,
+        placeholderBuilder: (_) => _placeholder(),
+      );
+    } else {
+      image = isAsset
+          ? Image.asset(url, fit: BoxFit.cover)
+          : Image.network(
+        url,
+        fit: BoxFit.cover,
+        errorBuilder: (_, error, stackTrace) => _placeholder(),
+      );
+    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(6),
-      child: Image.network(
-        url,
+      child: SizedBox(
         width: double.infinity,
         height: double.infinity,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _placeholder(),
+        child: image,
       ),
     );
   }

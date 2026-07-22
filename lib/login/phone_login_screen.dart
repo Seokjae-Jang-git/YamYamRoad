@@ -1,15 +1,6 @@
 import 'package:flutter/material.dart';
-// TODO: firebase_auth 패키지 추가 후 아래 주석 해제
 import 'package:firebase_auth/firebase_auth.dart';
-
-// ============================================
-// 얌얌(YumYum) 휴대폰 번호 로그인 화면
-// 1단계: 전화번호 입력 → 인증번호 발송
-// 2단계: 인증번호(OTP) 입력 → 확인 → 로그인/자동가입
-//
-// Firebase Phone Auth 기준으로 작성했습니다.
-// (SMS 발송/인증 자체 서버로 구현할 경우 로직만 교체하면 화면 구조는 동일)
-// ============================================
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PhoneLoginScreen extends StatefulWidget {
   const PhoneLoginScreen({super.key});
@@ -27,8 +18,9 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
 
   bool _codeSent = false;
   bool _isLoading = false;
-  String? _verificationId; // Firebase 인증 세션 ID
+  String? _verificationId;
   int _resendSeconds = 0;
+  int? _resendToken;
 
   @override
   void dispose() {
@@ -38,7 +30,6 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   }
 
   String get _formattedPhone {
-    // 010-1234-5678 → +82 10-1234-5678 형식으로 변환 (Firebase는 E.164 형식 필요)
     final digits = _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
     if (digits.startsWith('0')) {
       return '+82${digits.substring(1)}';
@@ -56,44 +47,41 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // TODO: Firebase Phone Auth 연동
-      // await FirebaseAuth.instance.verifyPhoneNumber(
-      //   phoneNumber: _formattedPhone,
-      //   verificationCompleted: (PhoneAuthCredential credential) async {
-      //     // 안드로이드 자동 인증 완료 시
-      //     await FirebaseAuth.instance.signInWithCredential(credential);
-      //     _goToHome();
-      //   },
-      //   verificationFailed: (FirebaseAuthException e) {
-      //     _showError('인증번호 발송에 실패했습니다: ${e.message}');
-      //   },
-      //   codeSent: (String verificationId, int? resendToken) {
-      //     setState(() {
-      //       _verificationId = verificationId;
-      //       _codeSent = true;
-      //     });
-      //     _startResendTimer();
-      //   },
-      //   codeAutoRetrievalTimeout: (String verificationId) {
-      //     _verificationId = verificationId;
-      //   },
-      // );
-
-      await Future.delayed(const Duration(seconds: 1)); // 임시 딜레이
-      setState(() {
-        _codeSent = true;
-        _verificationId = 'mock_verification_id';
-      });
-      _startResendTimer();
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: _formattedPhone,
+        forceResendingToken: _resendToken,
+        timeout: const Duration(seconds: 60),
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          await _signInWithCredential(credential);
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          if (!mounted) return;
+          setState(() => _isLoading = false);
+          _showError('인증번호 발송에 실패했습니다: ${e.message ?? e.code}');
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          if (!mounted) return;
+          setState(() {
+            _verificationId = verificationId;
+            _resendToken = resendToken;
+            _codeSent = true;
+            _isLoading = false;
+          });
+          _startResendTimer();
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          _verificationId = verificationId;
+        },
+      );
     } catch (e) {
-      _showError('인증번호 발송 중 오류가 발생했습니다.');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showError('인증번호 발송 중 오류가 발생했습니다: $e');
     }
   }
 
   void _startResendTimer() {
-    setState(() => _resendSeconds = 180); // 3분
+    setState(() => _resendSeconds = 180);
     Future.doWhile(() async {
       await Future.delayed(const Duration(seconds: 1));
       if (!mounted) return false;
@@ -109,36 +97,79 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
       _showError('인증번호 6자리를 입력해주세요.');
       return;
     }
+    if (_verificationId == null) {
+      _showError('인증 세션이 만료되었습니다. 인증번호를 다시 받아주세요.');
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
-      // TODO: Firebase Phone Auth 인증 확인
-      // final credential = PhoneAuthProvider.credential(
-      //   verificationId: _verificationId!,
-      //   smsCode: _codeController.text.trim(),
-      // );
-      // final userCredential =
-      //     await FirebaseAuth.instance.signInWithCredential(credential);
-      //
-      // → 서버에 phoneNumber 기반 로그인/자동가입 요청
-      // final result = await AuthService.socialLogin(
-      //   loginType: 'PHONE',
-      //   phoneNumber: _formattedPhone,
-      // );
-
-      await Future.delayed(const Duration(seconds: 1)); // 임시 딜레이
-      _goToHome();
+      final credential = PhoneAuthProvider.credential(
+        verificationId: _verificationId!,
+        smsCode: _codeController.text.trim(),
+      );
+      await _signInWithCredential(credential);
+    } on FirebaseAuthException catch (e) {
+      _showError('인증번호가 올바르지 않습니다: ${e.message ?? e.code}');
     } catch (e) {
-      _showError('인증번호가 올바르지 않습니다.');
+      _showError('인증 중 오류가 발생했습니다: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _goToHome() {
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/home');
+  // ---------------- 공통: 자격 증명으로 Firebase 로그인 ----------------
+  //
+  // 🌟 탈퇴 체크는 이제 여기서 하지 않습니다.
+  //    로그인 성공 → authStateChanges 발동 → main.dart가 MainHomeScreen으로 전환
+  //    → MainHomeScreen.initState()에서 탈퇴 여부를 확인하고 복구 팝업을 띄웁니다.
+  //    여기서 context를 써서 다이얼로그를 띄우면, 화면 전환 타이밍과 겹쳐
+  //    context가 이미 unmount된 상태일 수 있어 실패했었습니다.
+  Future<void> _signInWithCredential(PhoneAuthCredential credential) async {
+    try {
+      final userCredential =
+      await FirebaseAuth.instance.signInWithCredential(credential);
+      final firebaseUser = userCredential.user;
+      if (firebaseUser == null) {
+        _showError('로그인에 실패했습니다.');
+        return;
+      }
+
+      final docRef =
+      FirebaseFirestore.instance.collection('users').doc(firebaseUser.uid);
+      final snapshot = await docRef.get();
+
+      if (!snapshot.exists) {
+        await docRef.set({
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+          'freePointBalance': 0,
+          'paidPointBalance': 0,
+          'lastLocation': null,
+          'name': null,
+          'nickname': '휴대폰 회원',
+          'phone': firebaseUser.phoneNumber,
+          'profileImageUrl': null,
+          'provider': 'phone',
+          'selectedBadgeIds': null,
+          'status': 'active',
+          'withdrawnAt': null,
+        });
+      } else {
+        await docRef.update({
+          'updatedAt': FieldValue.serverTimestamp(),
+          'phone': firebaseUser.phoneNumber,
+        });
+      }
+
+      debugPrint('🟢 휴대폰 로그인 완료: uid=${firebaseUser.uid}');
+
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      _showError('로그인 처리 중 오류가 발생했습니다: $e');
+    }
   }
 
   void _showError(String message) {
@@ -165,7 +196,6 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
             children: [
               const SizedBox(height: 20),
 
-              // 전화번호 입력
               Text('휴대폰 번호', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textDark.withOpacity(0.7))),
               const SizedBox(height: 8),
               Row(
@@ -217,7 +247,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 TextButton(
-                  onPressed: _resendSeconds == 0 ? _sendCode : null,
+                  onPressed: _resendSeconds == 0 && !_isLoading ? _sendCode : null,
                   child: const Text('인증번호 재전송'),
                 ),
               ],

@@ -45,6 +45,7 @@ dependencies:
   firebase_app_check: ^0.4.5+2
   cloud_functions: ^6.3.5
   in_app_purchase: ^3.3.0
+  flutter_svg: ^2.0.10
 
 
   image_picker: ^1.2.3
@@ -83,6 +84,9 @@ flutter:
   assets:
     - .env
     - assets/temp_images/
+    - assets/emoticons/character/
+    - assets/emoticons/emoji/
+    - assets/emoticons/meme/
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
