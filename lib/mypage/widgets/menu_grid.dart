@@ -6,14 +6,16 @@ class MenuGrid extends StatelessWidget {
   final VoidCallback openDiary;
   final VoidCallback openCommunity;
   final VoidCallback openStamp;
+  final VoidCallback openBadge;
   final VoidCallback openInquiry;
   final VoidCallback openSetting;
 
   const MenuGrid({
     Key? key,
     required this.openDiary,
-    required this.openStamp,
     required this.openCommunity,
+    required this.openStamp,
+    required this.openBadge,
     required this.openInquiry,
     required this.openSetting,
   }) : super(key: key);
@@ -45,6 +47,8 @@ class MenuGrid extends StatelessWidget {
               openCommunity();
             } else if (label == '스탬프') {
               openStamp();
+            } else if (label == '뱃지') {
+              openBadge();
             } else if (label == '문의') {
               openInquiry();
             } else if (label == '설정') {
