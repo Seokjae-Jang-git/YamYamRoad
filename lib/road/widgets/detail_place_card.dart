@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/place_model.dart';
-import '../../common/data/temp_user_session.dart';
 import '../../common/utils/map_launcher.dart';
 
 class DetailPlaceCard extends StatelessWidget {
@@ -15,9 +14,6 @@ class DetailPlaceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // [개인화 비즈니스 로직]: 공용 세션의 완료 Set 데이터에 해당 가게 ID가 매칭되는가?
-    final bool isCompleted = completedPlaceIdsOfCurrentUser.contains(place.id);
-
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: const BoxDecoration(
@@ -73,14 +69,18 @@ class DetailPlaceCard extends StatelessWidget {
               ),
               const SizedBox(width: 14),
 
-              // 2. 가정보 표시 텍스트 라인
+              // 2. 장소 정보 표시 텍스트 라인
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       '$index. ${place.name}',
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Row(
@@ -94,7 +94,11 @@ class DetailPlaceCard extends StatelessWidget {
                         const SizedBox(width: 8),
                         Text(
                           '🍒 ${place.stampCount}',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.redAccent),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.redAccent,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         Text(
@@ -106,20 +110,47 @@ class DetailPlaceCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       place.description,
-                      style: TextStyle(fontSize: 11, color: Colors.grey[700], fontStyle: FontStyle.italic),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[700],
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                   ],
                 ),
               ),
-
-              // [완료 여부 조건부 이모지 렌더링]
-              Text(
-                isCompleted ? '🍒' : '😋',
-                style: const TextStyle(fontSize: 22),
-              ),
             ],
           ),
           const SizedBox(height: 12),
+
+          // 2-1. [안내 배너]: 스탬프 300개 이상(showWaitingNotice가 true)일 때만 조건부 노출
+          if (place.showWaitingNotice) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8E1), // 은은하고 따뜻한 노란빛 배경
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFFFFE082), width: 0.8),
+              ),
+              child: const Row(
+                children: [
+                  Text('💡', style: TextStyle(fontSize: 13)),
+                  SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '많은 사람이 방문한 장소예요. 대기 시간이 발생할 수 있습니다!',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF5D4037), // 가독성 높은 브라운 톤 텍스트
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
 
           // 3. 길찾기 및 스탬프 인증하기 연계 버튼 열
           Row(
@@ -138,7 +169,10 @@ class DetailPlaceCard extends StatelessWidget {
                       address: place.address,
                     );
                   },
-                  child: const Text('🗺️ 길찾기', style: TextStyle(fontSize: 11, color: Colors.black87)),
+                  child: const Text(
+                    '🗺️ 길찾기',
+                    style: TextStyle(fontSize: 11, color: Colors.black87),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -175,7 +209,10 @@ class DetailPlaceCard extends StatelessWidget {
                     );
                   },
                   icon: const Icon(Icons.qr_code_scanner, size: 14),
-                  label: const Text('스탬프 인증', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  label: const Text(
+                    '스탬프 인증',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ],
