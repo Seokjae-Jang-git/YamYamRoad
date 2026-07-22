@@ -47,6 +47,8 @@ dependencies:
   portone_flutter: ^1.0.3
   # PortOne의 안정 버전 WebView가 AGP 9와 충돌하여 공식 AGP 9 수정 버전을 고정합니다.
   flutter_inappwebview: 6.2.0-beta.3
+  in_app_purchase: ^3.3.0
+  flutter_svg: ^2.0.10
 
 
   image_picker: ^1.2.3
@@ -89,6 +91,9 @@ flutter:
   assets:
     - .env
     - assets/temp_images/
+    - assets/emoticons/character/
+    - assets/emoticons/emoji/
+    - assets/emoticons/meme/
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
@@ -96,7 +101,8 @@ flutter:
   # https://flutter.dev/to/asset-from-package
 
   # To add custom fonts to your application, add a fonts section here,
-  # in this "family" key with the font family name, and a "fonts" key with a
+  # in this "flutter" section. Each entry in this list should have a
+  # "family" key with the font family name, and a "fonts" key with a
   # list giving the asset and other descriptors for the font. For
   # example:
   # fonts:

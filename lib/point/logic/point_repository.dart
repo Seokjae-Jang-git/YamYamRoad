@@ -12,7 +12,7 @@ abstract interface class PointShopRepository {
 
 class FirestorePointShopRepository implements PointShopRepository {
   FirestorePointShopRepository({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
 
@@ -23,13 +23,13 @@ class FirestorePointShopRepository implements PointShopRepository {
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
-              .where((document) => document.data()['isActive'] != false)
-              .map(
-                (document) =>
-                    EmoticonProduct.fromMap(document.id, document.data()),
-              )
-              .toList(growable: false),
-        );
+          .where((document) => document.data()['isActive'] != false)
+          .map(
+            (document) =>
+            EmoticonProduct.fromMap(document.id, document.data()),
+      )
+          .toList(growable: false),
+    );
   }
 
   @override
@@ -39,13 +39,13 @@ class FirestorePointShopRepository implements PointShopRepository {
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
-              .where((document) => document.data()['isActive'] != false)
-              .map(
-                (document) =>
-                    GifticonProduct.fromMap(document.id, document.data()),
-              )
-              .toList(growable: false),
-        );
+          .where((document) => document.data()['isActive'] != false)
+          .map(
+            (document) =>
+            GifticonProduct.fromMap(document.id, document.data()),
+      )
+          .toList(growable: false),
+    );
   }
 
   @override
@@ -67,7 +67,29 @@ class MockPointShopRepository implements PointShopRepository {
 
   @override
   Stream<List<EmoticonProduct>> watchEmoticons() {
-    return Stream.value(const [
+    const characterFiles = [
+      '01_smile.svg', '02_bigsmile.svg', '03_sad.svg', '04_crying.svg',
+      '05_angry.svg', '06_surprised.svg', '07_love.svg', '08_wink.svg',
+      '09_shy.svg', '10_sleepy.svg', '11_dizzy.svg', '12_cool.svg',
+      '13_worried.svg', '14_blank.svg', '15_clap.svg', '16_victory.svg',
+      '17_thanks.svg', '18_fighting.svg', '19_hurt.svg', '20_curious.svg',
+    ];
+
+    return Stream.value([
+      EmoticonProduct(
+        id: 'emo_test_character',
+        name: '이모티콘 테스트팩 (캐릭터형)',
+        imageUrl: 'assets/emoticons/character/01_smile.svg',
+        pricePoint: 500,
+        items: characterFiles
+            .map(
+              (f) => EmoticonItem(
+            itemId: f,
+            imageUrl: 'assets/emoticons/character/$f',
+          ),
+        )
+            .toList(),
+      ),
       EmoticonProduct(
         id: 'emo_01',
         name: '냠냠 행복',

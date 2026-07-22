@@ -48,88 +48,90 @@ class ProfileSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Row(
-          children: [
-            // 1. 프로필 이미지
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: const Color(0xFFF5F5F5),
-              child: UserData.isDefaultProfileImage || UserData.profileImagePath == null
-                  ? const Icon(Icons.person_outline, size: 35, color: Colors.grey)
-                  : ClipOval(
-                child: Image.network(
-                  UserData.profileImagePath!,
-                  width: 60,
-                  height: 60,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons.person_outline, size: 35, color: Colors.grey);
-                  },
-                ),
-              ),
+        // 1. 프로필 이미지
+        CircleAvatar(
+          radius: 30,
+          backgroundColor: const Color(0xFFF5F5F5),
+          child: UserData.isDefaultProfileImage || UserData.profileImagePath == null
+              ? const Icon(Icons.person_outline, size: 35, color: Colors.grey)
+              : ClipOval(
+            child: Image.network(
+              UserData.profileImagePath!,
+              width: 60,
+              height: 60,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(Icons.person_outline, size: 35, color: Colors.grey);
+              },
             ),
-            const SizedBox(width: 16),
+          ),
+        ),
+        const SizedBox(width: 16),
 
-            // 2. 닉네임
-            Expanded(
-              child: Text(
+        // 2. 닉네임 + 좋아요/스크랩 영역 (세로 배치)
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
                 UserData.nickname ?? '로딩중...',
                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
+              const SizedBox(height: 6), // 닉네임과 좋아요 사이 간격
+              const Text(
+                '좋아요 0   스크랩 0',
+                style: TextStyle(color: Colors.black87, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+
+        // 3. 🌟 수정 & 로그아웃 버튼 (Column으로 세로 배치)
+        Column(
+          mainAxisSize: MainAxisSize.min, // 최소한의 세로 공간만 차지
+          children: [
+            // 수정 버튼
+            SizedBox(
+              height: 32,
+              width: 68, // 두 버튼의 너비 통일
+              child: OutlinedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const MyInfoScreen()),
+                  ).then((_) => onRefresh());
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.black,
+                  padding: EdgeInsets.zero, // 텍스트 짤림 방지
+                  side: const BorderSide(color: Colors.grey),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                ),
+                child: const Text('수정', style: TextStyle(fontSize: 12)),
+              ),
             ),
+            const SizedBox(height: 6), // 간격
 
-            // 3. 🌟 수정 & 로그아웃 버튼 (Column으로 세로 배치)
-            Column(
-              mainAxisSize: MainAxisSize.min, // 최소한의 세로 공간만 차지
-              children: [
-                // 수정 버튼
-                SizedBox(
-                  height: 32,
-                  width: 68, // 두 버튼의 너비 통일
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const MyInfoScreen()),
-                      ).then((_) => onRefresh());
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black,
-                      padding: EdgeInsets.zero, // 텍스트 짤림 방지
-                      side: const BorderSide(color: Colors.grey),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                    ),
-                    child: const Text('수정', style: TextStyle(fontSize: 12)),
-                  ),
+            // 로그아웃 버튼
+            SizedBox(
+              height: 32,
+              width: 68,
+              child: OutlinedButton(
+                onPressed: () => _showLogoutDialog(context),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.grey.shade700,
+                  padding: EdgeInsets.zero,
+                  side: BorderSide(color: Colors.grey.shade400),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                 ),
-                const SizedBox(height: 6), // 간격
-
-                // 로그아웃 버튼
-                SizedBox(
-                  height: 32,
-                  width: 68,
-                  child: OutlinedButton(
-                    onPressed: () => _showLogoutDialog(context),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.grey.shade700,
-                      padding: EdgeInsets.zero,
-                      side: BorderSide(color: Colors.grey.shade400),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                    ),
-                    child: const Text('로그아웃', style: TextStyle(fontSize: 11)),
-                  ),
-                ),
-              ],
+                child: const Text('로그아웃', style: TextStyle(fontSize: 11)),
+              ),
             ),
           ],
-        ),
-        const SizedBox(height: 8),
-        const Padding(
-          padding: EdgeInsets.only(left: 76.0),
-          child: Text('좋아요 0   스크랩 0', style: TextStyle(color: Colors.black87)),
         ),
       ],
     );
