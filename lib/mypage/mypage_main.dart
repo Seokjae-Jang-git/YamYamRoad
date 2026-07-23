@@ -3,16 +3,21 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:yamyam_road/mypage/badge/badge_main_screen.dart';
 import '../common/user_data.dart';
 import '../../services/auth_service.dart';
+import '../services/after_stamp_service.dart';
 import 'diary/diary.dart';
 import 'community_my/community_my.dart';
 import '../inquiry/inquiry_list_screen.dart';
 import 'stamp/stamp_main_screen.dart';
+import 'badge/badge_main_screen.dart';
 
 // 분리한 컴포넌트들 임포트
 import 'setting/setting.dart';
 import 'widgets/profile_section.dart';
 import 'widgets/menu_grid.dart';
 import 'widgets/mypage_content_widgets.dart';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../services/badge_service.dart'; // 뱃지 서비스 경로에 맞게 임포트 해주세요!
 
 class MyPageMainScreen extends StatefulWidget {
   const MyPageMainScreen({Key? key}) : super(key: key);
@@ -98,6 +103,35 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
               }),
               const SizedBox(height: 16),
 
+              // 스탬프 발행 후 다이어리에 기록 안된 것 동기화 임시 버튼
+              // ElevatedButton.icon(
+              //   onPressed: () async {
+              //     // 동기화 실행 중 로딩 표시
+              //     ScaffoldMessenger.of(context).showSnackBar(
+              //       const SnackBar(
+              //         content: Text('스탬프 ➔ 다이어리 동기화를 진행 중입니다...'),
+              //         duration: Duration(seconds: 2),
+              //       ),
+              //     );
+              //
+              //     // 🌟 방금 만든 AfterStampService의 동기화 함수 호출!
+              //     await AfterStampService.syncMissingDiaries(context);
+              //   },
+              //   icon: const Icon(Icons.sync, size: 16, color: Colors.white),
+              //   label: const Text(
+              //     '다이어리 동기화',
+              //     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+              //   ),
+              //   style: ElevatedButton.styleFrom(
+              //     backgroundColor: Colors.orange.shade700,
+              //     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              //     shape: RoundedRectangleBorder(
+              //       borderRadius: BorderRadius.circular(20),
+              //     ),
+              //   ),
+              // ),
+              const SizedBox(height: 16),
+
               // 🌟 분리된 아이콘 격자 메뉴
               MenuGrid(
                   openDiary: _openDiary,
@@ -116,7 +150,7 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
               const SizedBox(height: 16),
               _buildCardSection('스탬프', buildStampContent(), onDetailTap: _openStamp),
               const SizedBox(height: 16),
-              _buildCardSection('뱃지', buildBadgeContent()),
+              _buildCardSection('뱃지', buildBadgeContent(), onDetailTap: _openBadge),
               const SizedBox(height: 16),
               _buildPointSection('포인트', buildPointContent()),
               const SizedBox(height: 16),
@@ -171,3 +205,112 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
     );
   }
 }
+
+// class TestBadgeButton extends StatefulWidget {
+//   const TestBadgeButton({Key? key}) : super(key: key);
+//
+//   @override
+//   State<TestBadgeButton> createState() => _TestBadgeButtonState();
+// }
+//
+// class _TestBadgeButtonState extends State<TestBadgeButton> {
+//   int _clickCount = 0;
+//
+//   final List<String> _realPlaceIds = [
+//     'place_MA010120220800224498',
+//     'place_MA010120220800226143',
+//     'place_MA010120220800227349',
+//   ];
+//
+//   final String _fixedUserId = "4TtOtuHtn4QPXEplNBKy5dAqueb2";
+//   final String _fixedRoadId = '5jCYISR6BiXudM2FLGDo';
+//
+//   void _runTest() async {
+//     // 3번 클릭(스탬프 3개)이 끝나면 종료
+//     if (_clickCount >= 3) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(content: Text('3개의 실제 업체 스탬프 테스트가 모두 완료되었습니다!')),
+//       );
+//       return;
+//     }
+//
+//     final firestore = FirebaseFirestore.instance;
+//
+//     final currentPlaceId = _realPlaceIds[_clickCount];
+//
+//     // 타임스탬프를 활용해 중복 없는 문서 ID 생성
+//     final String verificationDocId = 'test_veri_${DateTime.now().millisecondsSinceEpoch}';
+//     final String stampDocId = 'test_stamp_${DateTime.now().millisecondsSinceEpoch}';
+//
+//     final int nextCount = _clickCount + 1;
+//
+//     try {
+//       // 1. 인증 데이터 생성
+//       await firestore.collection('verification').doc(verificationDocId).set({
+//         'userId': _fixedUserId,
+//         'placeId': currentPlaceId,
+//         'roadId': _fixedRoadId,
+//         'receiptImageUrl': null,
+//         'status': 'approved',
+//         'createdAt': FieldValue.serverTimestamp(),
+//       });
+//       debugPrint('1️⃣ 인증 데이터 생성 완료! (업체: $currentPlaceId)');
+//
+//       // 2. 스탬프 데이터 생성
+//       await firestore.collection('stamp').doc(stampDocId).set({
+//         'userId': _fixedUserId,
+//         'placeId': currentPlaceId,
+//         'verificationId': verificationDocId,
+//         'roadId': _fixedRoadId,
+//         'issuedAt': FieldValue.serverTimestamp(),
+//         'oneLineNote': '기간 뱃지 테스트용 한줄기록',
+//       });
+//       debugPrint('2️⃣ 스탬프 데이터 생성 완료!');
+//
+//       setState(() {
+//         _clickCount = nextCount;
+//       });
+//
+//       // 3. 뱃지 발급 검사 로직 호출
+//       if (context.mounted) {
+//         debugPrint('3️⃣ 기간 뱃지 발급 조건 검사 시작...');
+//         await BadgeService.checkAndGrantBadges(context, _fixedUserId);
+//         debugPrint('4️⃣ 뱃지 발급 검사 완료!');
+//       }
+//
+//     } catch (e) {
+//       debugPrint('🔴 수동 테스트 실행 중 에러 발생: $e');
+//     }
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       padding: const EdgeInsets.all(16),
+//       margin: const EdgeInsets.symmetric(vertical: 16),
+//       decoration: BoxDecoration(
+//         color: Colors.grey.shade100,
+//         borderRadius: BorderRadius.circular(8),
+//         border: Border.all(color: Colors.grey.shade300),
+//       ),
+//       child: Column(
+//         mainAxisSize: MainAxisSize.min,
+//         children: [
+//           Text(
+//             '🧪 뱃지 발급 테스트 (현재 $_clickCount/3 완료)',
+//             style: const TextStyle(fontWeight: FontWeight.bold),
+//           ),
+//           const SizedBox(height: 12),
+//           ElevatedButton(
+//             onPressed: _runTest,
+//             style: ElevatedButton.styleFrom(
+//               backgroundColor: _clickCount >= 5 ? Colors.grey : Colors.blue,
+//               foregroundColor: Colors.white,
+//             ),
+//             child: const Text('스탬프 1개 추가 + 뱃지 검사'),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }

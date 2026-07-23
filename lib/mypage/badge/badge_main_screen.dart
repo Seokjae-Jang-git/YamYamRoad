@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-// 🌟 UI에 뿌려주기 위해 '전체 뱃지'와 '유저가 획득한 뱃지'를 합친 모델
+// UI 모델: displayOrder 필드 포함
 class BadgeUIModel {
   final String id;
   final String name;
@@ -10,6 +10,10 @@ class BadgeUIModel {
   final bool isEarned;
   final DateTime? earnedAt;
   final bool isSelected;
+  final int? displayOrder; // 대표 뱃지 표시 순서 (1, 2, 3)
+
+  final String conditionType;
+  final num? requiredPercent;
 
   BadgeUIModel({
     required this.id,
@@ -18,7 +22,27 @@ class BadgeUIModel {
     required this.isEarned,
     this.earnedAt,
     this.isSelected = false,
+    this.displayOrder,
+    required this.conditionType,
+    this.requiredPercent,
   });
+
+  BadgeUIModel copyWith({
+    bool? isSelected,
+    int? displayOrder,
+  }) {
+    return BadgeUIModel(
+      id: id,
+      name: name,
+      imageUrl: imageUrl,
+      isEarned: isEarned,
+      earnedAt: earnedAt,
+      isSelected: isSelected ?? this.isSelected,
+      displayOrder: displayOrder ?? this.displayOrder,
+      conditionType: conditionType,
+      requiredPercent: requiredPercent,
+    );
+  }
 }
 
 class BadgeMainScreen extends StatefulWidget {
@@ -30,8 +54,17 @@ class BadgeMainScreen extends StatefulWidget {
 
 class _BadgeMainScreenState extends State<BadgeMainScreen> {
   bool _isLoading = true;
-  bool _showOnlyEarned = false; // 마스터만 보기 체크박스 상태
+  bool _isSaving = false;
   List<BadgeUIModel> _allBadges = [];
+
+  // 상태 관리 변수
+  String _selectedFilter = '전체';
+  String _selectedSort = '최신순';
+  bool _showOnlyMaster = false;
+
+  // 대표 뱃지 편집 모드 상태 변수
+  bool _isEditMode = false;
+  List<String> _selectedBadgeIds = []; // 순서대로 관리되는 대표 뱃지 ID 리스트
 
   @override
   void initState() {
@@ -39,39 +72,32 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
     _fetchBadges();
   }
 
-  // 🧠 [핵심 로직] 마스터 뱃지와 유저 뱃지를 가져와서 매핑합니다.
   Future<void> _fetchBadges() async {
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
-      // 테스트를 위해 강제로 uid를 지정하려면 아래 주석을 풀고 사용하세요.
-      // final uid = "4TtOtuHtn4QPXePlNBKy5dAqu...";
+      // final uid = "4TtOtuHtn4QPXEplNBKy5dAqueb2"; // 테스트 시 주석 해제
 
       if (uid == null) {
-        debugPrint('로그인된 사용자가 없습니다.');
         setState(() => _isLoading = false);
         return;
       }
 
-      // 1. 전체 마스터 뱃지 가져오기 (사용 여부가 true인 것만)
       final badgeSnapshot = await FirebaseFirestore.instance
           .collection('badge')
           .where('isActive', isEqualTo: true)
           .get();
 
-      // 2. 현재 유저가 획득한 뱃지 가져오기
       final userBadgeSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
           .collection('users_badge')
           .get();
 
-      // 유저 뱃지 데이터를 Map 형태로 변환 (검색 속도 최적화: O(1))
       final userBadgeMap = {
         for (var doc in userBadgeSnapshot.docs)
           doc.data()['badgeId']: doc.data()
       };
 
-      // 3. 마스터 뱃지를 돌면서 유저 획득 여부를 결합 (Join)
       final List<BadgeUIModel> loadedBadges = badgeSnapshot.docs.map((doc) {
         final data = doc.data();
         final badgeId = doc.id;
@@ -87,25 +113,150 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
               ? (userBadgeData['earnedAt'] as Timestamp).toDate()
               : null,
           isSelected: isEarned && userBadgeData!['isSelected'] == true,
+          displayOrder: isEarned ? userBadgeData!['displayOrder'] as int? : null,
+          conditionType: data['conditionType'] ?? '',
+          requiredPercent: data['requiredPercent'] as num?,
         );
-      }).toList();
+      }).where((badge) => badge.isEarned).toList();
+
+      // 기존 DB에 저장되어 있던 대표 뱃지들의 순서를 복원합니다.
+      final selectedBadges = loadedBadges
+          .where((b) => b.isSelected && b.displayOrder != null)
+          .toList();
+      selectedBadges.sort((a, b) => (a.displayOrder ?? 0).compareTo(b.displayOrder ?? 0));
 
       setState(() {
         _allBadges = loadedBadges;
+        _selectedBadgeIds = selectedBadges.map((b) => b.id).toList();
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('🔴 뱃지 데이터를 불러오는 중 에러 발생: $e');
+      debugPrint('🔴 에러 발생: $e');
       setState(() => _isLoading = false);
+    }
+  }
+
+  // 뱃지 클릭 시 대표 뱃지 선택/해제 처리
+  void _toggleBadgeSelection(String badgeId) {
+    setState(() {
+      if (_selectedBadgeIds.contains(badgeId)) {
+        _selectedBadgeIds.remove(badgeId);
+      } else {
+        if (_selectedBadgeIds.length >= 3) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('대표 뱃지는 최대 3개까지만 선택할 수 있습니다.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          return;
+        }
+        _selectedBadgeIds.add(badgeId);
+      }
+    });
+  }
+
+  // 편집 취소 처리
+  void _cancelEditMode() {
+    setState(() {
+      _isEditMode = false;
+      // 기존 설정 상태로 복원
+      final selectedBadges = _allBadges
+          .where((b) => b.isSelected && b.displayOrder != null)
+          .toList();
+      selectedBadges.sort((a, b) => (a.displayOrder ?? 0).compareTo(b.displayOrder ?? 0));
+      _selectedBadgeIds = selectedBadges.map((b) => b.id).toList();
+    });
+  }
+
+  // Firestore에 대표 뱃지 일괄 저장 (WriteBatch)
+  Future<void> _saveRepresentativeBadges() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      final batch = FirebaseFirestore.instance.batch();
+      final userBadgesRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('users_badge');
+
+      final querySnapshot = await userBadgesRef.get();
+
+      for (var doc in querySnapshot.docs) {
+        final badgeId = doc.data()['badgeId'] as String?;
+        if (badgeId != null) {
+          final int index = _selectedBadgeIds.indexOf(badgeId);
+          if (index != -1) {
+            batch.update(doc.reference, {
+              'isSelected': true,
+              'displayOrder': index + 1,
+            });
+          } else {
+            batch.update(doc.reference, {
+              'isSelected': false,
+              'displayOrder': null,
+            });
+          }
+        }
+      }
+
+      await batch.commit();
+
+      setState(() {
+        _allBadges = _allBadges.map((badge) {
+          final index = _selectedBadgeIds.indexOf(badge.id);
+          if (index != -1) {
+            return badge.copyWith(isSelected: true, displayOrder: index + 1);
+          } else {
+            return badge.copyWith(isSelected: false, displayOrder: null);
+          }
+        }).toList();
+        _isEditMode = false;
+        _isSaving = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('대표 뱃지가 성공적으로 저장되었습니다!')),
+        );
+      }
+    } catch (e) {
+      debugPrint('🔴 대표 뱃지 저장 실패: $e');
+      setState(() => _isSaving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // '마스터만 보기' 필터 적용
-    final displayedBadges = _showOnlyEarned
-        ? _allBadges.where((b) => b.isEarned).toList()
-        : _allBadges;
+    List<BadgeUIModel> displayedBadges = List.from(_allBadges);
+
+    // [필터 1] 종류 필터
+    if (_selectedFilter == '로드') {
+      displayedBadges = displayedBadges.where((b) => b.conditionType == 'road_progress').toList();
+    } else if (_selectedFilter == '스탬프') {
+      displayedBadges = displayedBadges.where((b) =>
+      b.conditionType == 'stamp_count' && b.id != 'badge_01' && !b.name.contains('얌얌스타터')
+      ).toList();
+    }
+
+    // [필터 2] 마스터만 보기
+    if (_showOnlyMaster) {
+      displayedBadges = displayedBadges.where((b) => b.requiredPercent == 100).toList();
+    }
+
+    // [정렬] 최신순 / 이름순
+    if (_selectedSort == '최신순') {
+      displayedBadges.sort((a, b) {
+        final aTime = a.earnedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bTime = b.earnedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bTime.compareTo(aTime);
+      });
+    } else if (_selectedSort == '이름순') {
+      displayedBadges.sort((a, b) => a.name.compareTo(b.name));
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -134,37 +285,35 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
               children: [
                 Row(
                   children: [
-                    _buildFilterButton('전체'),
-                    const SizedBox(width: 8),
-                    _buildFilterButton('지역'),
-                    const SizedBox(width: 8),
-                    _buildFilterButton('메뉴'),
-                    const SizedBox(width: 8),
-                    _buildFilterButton('기간'),
+                    _buildFilterButton('전체', _selectedFilter == '전체', () => setState(() => _selectedFilter = '전체')),
+                    const SizedBox(width: 6),
+                    _buildFilterButton('로드', _selectedFilter == '로드', () => setState(() => _selectedFilter = '로드')),
+                    const SizedBox(width: 6),
+                    _buildFilterButton('스탬프', _selectedFilter == '스탬프', () => setState(() => _selectedFilter = '스탬프')),
                   ],
                 ),
                 Row(
                   children: [
-                    _buildFilterButton('최신순'),
-                    const SizedBox(width: 8),
-                    _buildFilterButton('이름순'),
+                    _buildFilterButton('최신순', _selectedSort == '최신순', () => setState(() => _selectedSort = '최신순')),
+                    const SizedBox(width: 6),
+                    _buildFilterButton('이름순', _selectedSort == '이름순', () => setState(() => _selectedSort = '이름순')),
                   ],
                 ),
               ],
             ),
           ),
 
-          // 2. 마스터만 보기 체크박스 & 총 개수
+          // 2. 마스터만 보기 체크박스 (온전히 영역 유지)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4.0),
             child: Row(
               children: [
                 Checkbox(
-                  value: _showOnlyEarned,
+                  value: _showOnlyMaster,
                   activeColor: Colors.black,
                   onChanged: (value) {
                     setState(() {
-                      _showOnlyEarned = value ?? false;
+                      _showOnlyMaster = value ?? false;
                     });
                   },
                 ),
@@ -172,6 +321,7 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
               ],
             ),
           ),
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Text(
@@ -182,13 +332,17 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
 
           // 3. 뱃지 그리드 뷰
           Expanded(
-            child: GridView.builder(
+            child: displayedBadges.isEmpty
+                ? const Center(
+              child: Text('해당하는 뱃지가 없습니다.', style: TextStyle(color: Colors.grey, fontSize: 16)),
+            )
+                : GridView.builder(
               padding: const EdgeInsets.all(16.0),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 24,
-                childAspectRatio: 0.8, // 세로로 살짝 길게
+                childAspectRatio: 0.8,
               ),
               itemCount: displayedBadges.length,
               itemBuilder: (context, index) {
@@ -197,69 +351,227 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
               },
             ),
           ),
+
+          // 🌟 4. 하단 고정 대표 뱃지 설정 컨트롤 바
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  offset: const Offset(0, -4),
+                  blurRadius: 10,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // [편집 모드 전용] 상단 선택된 뱃지 수 안내
+                if (_isEditMode) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          '대표 뱃지 선택 ',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                        ),
+                        Text(
+                          '(${_selectedBadgeIds.length}/3)',
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // [버튼 영역] 일반 모드: 넓은 버튼 1개 / 편집 모드: 취소 & 저장 버튼 2개
+                _isEditMode
+                    ? Row(
+                  children: [
+                    // 취소 버튼
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: OutlinedButton(
+                          onPressed: _cancelEditMode,
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.grey),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            '취소',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // 저장 버튼
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: _isSaving ? null : _saveRepresentativeBadges,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: _isSaving
+                              ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                              : const Text(
+                            '저장하기',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+                    : SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _isEditMode = true;
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      '대표 뱃지 설정',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // 상단 필터 버튼 위젯 렌더링
-  Widget _buildFilterButton(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade400),
-        borderRadius: BorderRadius.circular(4),
+  Widget _buildFilterButton(String text, bool isSelected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.black : Colors.white,
+          border: Border.all(color: isSelected ? Colors.black : Colors.grey.shade400),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              color: isSelected ? Colors.white : Colors.black,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            )
+        ),
       ),
-      child: Text(text, style: const TextStyle(fontSize: 12)),
     );
   }
 
-  // 개별 뱃지 아이템 렌더링 (PNG 이미지 원본 그대로 표현)
+  // 개별 뱃지 아이템 (편집 모드 시 ①, ②, ③ 배지 표시)
   Widget _buildBadgeItem(BadgeUIModel badge) {
-    return Column(
-      children: [
-        Expanded(
-          child: AspectRatio(
-            aspectRatio: 1, // 1:1 정사각형 비율 유지
-            child: ColorFiltered(
-              // 🌟 획득하지 않은 뱃지는 자동 흑백(Grayscale) 처리
-              colorFilter: badge.isEarned
-                  ? const ColorFilter.mode(Colors.transparent, BlendMode.multiply)
-                  : const ColorFilter.matrix(<double>[
-                0.2126, 0.7152, 0.0722, 0, 0,
-                0.2126, 0.7152, 0.0722, 0, 0,
-                0.2126, 0.7152, 0.0722, 0, 0,
-                0,      0,      0,      1, 0,
-              ]),
-              child: Image.network(
-                badge.imageUrl,
-                fit: BoxFit.contain, // 🌟 PNG 뱃지 비율을 왜곡 없이 쏙 담아냅니다.
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) =>
-                const Icon(Icons.broken_image, color: Colors.grey, size: 40),
+    final int selectedIndex = _selectedBadgeIds.indexOf(badge.id);
+    final bool isSelectedInEdit = selectedIndex != -1;
+
+    return GestureDetector(
+      onTap: () {
+        if (_isEditMode) {
+          _toggleBadgeSelection(badge.id);
+        }
+      },
+      child: Column(
+        children: [
+          Expanded(
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Image.network(
+                      badge.imageUrl,
+                      fit: BoxFit.contain,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                      },
+                      errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.broken_image, color: Colors.grey, size: 40),
+                    ),
+                  ),
+
+                  // 편집 모드에서 선택 순서 동그라미 배지 표시 (①, ②, ③)
+                  if (_isEditMode)
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isSelectedInEdit ? Colors.black : Colors.white,
+                          border: Border.all(
+                            color: isSelectedInEdit ? Colors.black : Colors.grey.shade400,
+                            width: 2,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            isSelectedInEdit ? '${selectedIndex + 1}' : '',
+                            style: TextStyle(
+                              color: isSelectedInEdit ? Colors.white : Colors.transparent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        // 뱃지 이름
-        Text(
-          badge.name,
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: badge.isEarned ? FontWeight.bold : FontWeight.normal,
-            color: badge.isEarned ? Colors.black : Colors.grey.shade600,
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 36,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Text(
+                badge.name,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black),
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

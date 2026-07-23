@@ -244,8 +244,14 @@ class _DiaryScreenState extends State<DiaryScreen> {
     );
   }
 
+  // 🌟 [수정된 다이어리 아이템 렌더링 위젯]
   Widget _buildDiaryItem(Map<String, dynamic> entry) {
     bool hasStamp = entry['stampId'] != null && entry['stampId'].toString().isNotEmpty;
+
+    // 날짜 및 가게 이름 정리
+    String dateStr = entry['date']?.split(' ')[0] ?? '';
+    String storeName = entry['storeName'] ?? '';
+
     return GestureDetector(
       onTap: () => _showEditDialog(entry),
       child: Padding(
@@ -257,23 +263,50 @@ class _DiaryScreenState extends State<DiaryScreen> {
               children: [
                 const Text('•', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(width: 8),
-                Text('${entry['date'].split(' ')[0]} ${entry['storeName']}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                Text('$dateStr $storeName', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                 const SizedBox(width: 8),
-                if (hasStamp)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade400)),
-                    child: const Text('스탬프', style: TextStyle(fontSize: 8, color: Colors.grey)),
-                  ),
+
+                // 🌟 [핵심 변경] 회색 더미 텍스트 대신 붉은색 미니 도장 아이콘 뱃지 출력!
+                if (hasStamp) _buildRedStampBadge(),
               ],
             ),
             const SizedBox(height: 4),
             Padding(
               padding: const EdgeInsets.only(left: 16.0),
-              child: Text(entry['note'], style: const TextStyle(fontSize: 14, color: Colors.black87)),
+              child: Text(
+                entry['note'] ?? '',
+                style: const TextStyle(fontSize: 14, color: Colors.black87),
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildRedStampBadge() {
+    return Container(
+      margin: const EdgeInsets.only(left: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.red.shade200),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.verified, size: 12, color: Colors.red.shade700), // 또는 Icons.check_circle
+          const SizedBox(width: 3),
+          Text(
+            '스탬프',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: Colors.red.shade700,
+            ),
+          ),
+        ],
       ),
     );
   }
