@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'models/road.dart';
 import 'models/place_model.dart';
 import 'repositories/place_repository.dart';
+import '../services/location_service.dart';
 import 'widgets/course_detail_map.dart';
 import 'widgets/course_detail_sheet.dart';
 
@@ -31,7 +32,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     _fetchPlaces();
   }
 
-  /// 코스의 roadPlace(장소 ID 목록)를 기반으로 Firestore에서 실제 장소 목록을 조회합니다.
+  /// 코스의 roadPlace(장소 ID 목록)를 기반으로 장소 목록을 즉시 보여주고, GPS 위치는 백그라운드에서 받아와 거리를 업데이트합니다.
   Future<void> _fetchPlaces() async {
     setState(() {
       _isLoading = true;
@@ -39,12 +40,35 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     });
 
     try {
+      // 1. 캐시/Firestore에서 장소 목록 조회 (캐시 적용되어 0.001초 만에 즉시 가져옴)
       final fetchedPlaces = await _placeRepository.fetchPlacesByIds(widget.road.roadPlace);
+
+      if (!mounted) return;
+
+      // 2. 장소 데이터가 확보되었으므로 화면 로딩을 즉시 해제하여 화면을 먼저 띄웁니다!
       setState(() {
         _places = fetchedPlaces;
         _isLoading = false;
       });
+
+      // 3. 화면이 떠 있는 상태에서 백그라운드로 GPS 현재 위치를 구합니다.
+      final position = await LocationService.getCurrentLocation();
+
+      // 4. GPS 수신 성공 시 실측 거리를 계산하여 화면 데이터만 매끄럽게 업데이트
+      if (position != null && mounted) {
+        final updatedPlaces = fetchedPlaces.map((place) {
+          return place.copyWithCalculatedDistance(
+            position.latitude,
+            position.longitude,
+          );
+        }).toList();
+
+        setState(() {
+          _places = updatedPlaces;
+        });
+      }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = '장소 정보를 불러오지 못했습니다: $e';
         _isLoading = false;

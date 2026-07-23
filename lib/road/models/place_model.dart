@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
 
 class PlaceModel {
   final String id;
@@ -19,6 +20,10 @@ class PlaceModel {
   final bool stampEnabled; // 스탬프 인증 허용 여부
   final bool waitingNoticeEnabled; // 웨이팅 안내 여부 (DB 저장용)
 
+  // 실시간 거리 연산/표시용 필드
+  final double distanceValue; // m 단위 거리 (숫자, 정렬용)
+  final String distance; // UI 표시용 문자열 (예: '350m', '1.2km')
+
   PlaceModel({
     required this.id,
     required this.name,
@@ -35,16 +40,55 @@ class PlaceModel {
     this.stampCount = 0,
     this.stampEnabled = true,
     this.waitingNoticeEnabled = false,
+    this.distanceValue = 0.0,
+    this.distance = '0m',
   });
 
   // UI 호환성 및 연산용 게터
-  double get distanceValue => 0.0;
-  String get distance => '0m';
   double get rating => ratingAverage; // 기존 UI 연동 호환용 게터
   String get description => address;
 
   // 단순화된 규칙: 누적 스탬프 수 300개 이상일 경우 웨이팅 안내 노출
   bool get showWaitingNotice => stampCount >= 300;
+
+  /// 사용자의 현재 GPS 좌표(위도, 경도)를 전달받아 실측 거리가 연산된 새로운 PlaceModel 객체를 반환합니다.
+  PlaceModel copyWithCalculatedDistance(double userLat, double userLng) {
+    // 가게의 위도/경도가 없거나 기본값(0.0)인 경우 계산 없이 반환
+    if (lat == 0.0 && lng == 0.0) return this;
+
+    // Geolocator 패키지를 이용한 직선 거리(m 단위) 연산
+    final double distanceInMeters = Geolocator.distanceBetween(
+      userLat,
+      userLng,
+      lat,
+      lng,
+    );
+
+    // 거리 단위 포맷팅 (1000m 미만 -> m, 1000m 이상 -> km)
+    final String formattedDistance = distanceInMeters < 1000
+        ? '${distanceInMeters.round()}m'
+        : '${(distanceInMeters / 1000).toStringAsFixed(1)}km';
+
+    return PlaceModel(
+      id: id,
+      name: name,
+      address: address,
+      lat: lat,
+      lng: lng,
+      regionId: regionId,
+      categoryIds: categoryIds,
+      searchKeywords: searchKeywords,
+      isActive: isActive,
+      thumbnailUrl: thumbnailUrl,
+      imageUrls: imageUrls,
+      ratingAverage: ratingAverage,
+      stampCount: stampCount,
+      stampEnabled: stampEnabled,
+      waitingNoticeEnabled: waitingNoticeEnabled,
+      distanceValue: distanceInMeters,
+      distance: formattedDistance,
+    );
+  }
 
   // Firestore 문서 데이터를 PlaceModel 객체로 변환
   factory PlaceModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
