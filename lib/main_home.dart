@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:provider/provider.dart';
 import 'yamyam_home/main_home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
 import 'common/user_data.dart';
 import 'firebase_options.dart';
 
-// 🌟 로그인 판별을 위해 필요한 두 파일 임포트 추가
+// 🌟 로그인 판별을 위해 필요한 파일 임포트
 import 'login/login_screen.dart';
 import 'services/auth_service.dart';
+
+// 🌟 위치 상태 관리를 위한 Provider 임포트
+import 'providers/user_location_provider.dart';
 
 void main() async {
   // 1. 플러터 프레임워크가 완전히 준비될 때까지 기다립니다.
@@ -28,7 +32,16 @@ void main() async {
     nativeAppKey: '069a7990957fdbe501532762273b49dc', // 카카오 개발자센터에서 발급받은 값
   );
 
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => UserLocationProvider()..initializeLocation(),
+        ),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

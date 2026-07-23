@@ -20,7 +20,7 @@ class SubFilterChips extends StatelessWidget {
   // 2. 🆕 메뉴별 필터 목록 (요구하신 카테고리 6대 구성 완료)
   static const List<String> _menuFilters = [
     '전체',
-    '커피/차(카페)',
+    '커피/차',
     '떡/한과',
     '빵/도넛',
     '아이스크림/빙수',

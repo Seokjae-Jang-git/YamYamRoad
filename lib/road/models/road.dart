@@ -28,12 +28,13 @@ class PlaceCoordinate {
 
 class Road {
   final String id;
+  final String type; // 💡 'region' (지역별) 또는 'category' (메뉴별)
   final String title;
   final String description;
   final String regionId;
   final List<String> categoryIds;
   final List<String> roadPlace;
-  final List<PlaceCoordinate> placeCoordinates; // 📍 추가: 반정규화된 가게 좌표 리스트
+  final List<PlaceCoordinate> placeCoordinates; // 📍 반정규화된 가게 좌표 리스트
   final String thumbnailUrl;
   final String badgeName;
   final int stampRewardPoint;
@@ -43,6 +44,7 @@ class Road {
 
   Road({
     required this.id,
+    this.type = 'region',
     required this.title,
     required this.description,
     required this.regionId,
@@ -105,6 +107,8 @@ class Road {
 
     return Road(
       id: docId,
+      // type 필드가 없는 기존 Firestore 문서 대응 (기본값: 'region')
+      type: map['type']?.toString() ?? 'region',
       title: map['title']?.toString() ?? '제목 없음',
       description: map['description']?.toString() ?? '',
 
@@ -146,6 +150,7 @@ class Road {
   /// Road 객체 ➔ 파이어스토어 저장용 Map 변환 (최신 DB 규격 기준)
   Map<String, dynamic> toMap() {
     return {
+      'type': type,
       'title': title,
       'description': description,
       'regionId': regionId,
@@ -161,7 +166,7 @@ class Road {
     };
   }
 
-  /// 📍 추가: 사용자의 현재 위치(위도/경도) 기반으로 코스 내 가게 중 '최단 거리(km)' 연산
+  /// 📍 사용자의 현재 위치(위도/경도) 기반으로 코스 내 가게 중 '최단 거리(km)' 연산
   /// 좌표 리스트가 비어있을 경우 double.infinity 반환
   double getMinDistanceKm(double userLat, double userLng) {
     if (placeCoordinates.isEmpty) {
