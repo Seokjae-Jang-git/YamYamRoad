@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">
+  <ellipse cx="90" cy="145" rx="50" ry="55" fill="#E1F0FF" stroke="#8CAFD2" stroke-width="5"/>
+  <ellipse cx="180" cy="130" rx="60" ry="70" fill="#E1F0FF" stroke="#8CAFD2" stroke-width="5"/>
+  <ellipse cx="220" cy="155" rx="50" ry="55" fill="#E1F0FF" stroke="#8CAFD2" stroke-width="5"/>
+  <ellipse cx="155" cy="190" rx="95" ry="70" fill="#E1F0FF" stroke="#8CAFD2" stroke-width="6"/>
+  <line x1="92" y1="145" x2="124" y2="145" stroke="#8CAFD2" stroke-width="6" stroke-linecap="round"/>
+  <line x1="176" y1="145" x2="208" y2="145" stroke="#8CAFD2" stroke-width="6" stroke-linecap="round"/>
+  <ellipse cx="150" cy="208" rx="8" ry="8" fill="#963232" stroke="#8CAFD2" stroke-width="3"/>
+  <text x="235" y="55" font-size="26" font-weight="bold" fill="#8CAFD2">Z</text>
+  <text x="252" y="72" font-size="18" font-weight="bold" fill="#8CAFD2">z</text>
+</svg>
