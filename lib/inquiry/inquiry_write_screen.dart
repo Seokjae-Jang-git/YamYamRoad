@@ -38,8 +38,8 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
       _selectedType = target.type;
       _titleController.text = target.title;
       _contentController.text = target.content;
-      _emailController.text = target.email;
-      _imagePath = target.imagePath;
+      _emailController.text = target.contactEmail ?? '';
+      _imagePath = target.imageUrl;
     }
   }
 
@@ -66,37 +66,46 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
     }
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _submitting = true);
     final repo = InquiryRepository.instance;
 
-    if (widget.isEditMode) {
-      repo.update(
-        id: widget.editTarget!.id,
-        type: _selectedType,
-        title: _titleController.text.trim(),
-        content: _contentController.text.trim(),
-        email: _emailController.text.trim(),
-        imagePath: _imagePath,
-      );
+    try {
+      if (widget.isEditMode) {
+        await repo.update(
+          id: widget.editTarget!.id,
+          type: _selectedType,
+          title: _titleController.text.trim(),
+          content: _contentController.text.trim(),
+          contactEmail: _emailController.text.trim(),
+          imagePath: _imagePath,
+        );
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        Navigator.of(context).pop(true); // true = 변경됨을 알림
+      } else {
+        final created = await repo.add(
+          type: _selectedType,
+          title: _titleController.text.trim(),
+          content: _contentController.text.trim(),
+          contactEmail: _emailController.text.trim(),
+          imagePath: _imagePath,
+        );
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => InquirySuccessScreen(inquiry: created),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
       setState(() => _submitting = false);
-      // 🌟 여기서는 pop(true)만 합니다. 스낵바는 최종적으로 목록 화면에서 띄웁니다.
-      Navigator.of(context).pop(true);
-    } else {
-      final created = repo.add(
-        type: _selectedType,
-        title: _titleController.text.trim(),
-        content: _contentController.text.trim(),
-        email: _emailController.text.trim(),
-        imagePath: _imagePath,
-      );
-      setState(() => _submitting = false);
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => InquirySuccessScreen(inquiry: created),
-        ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('문의 처리에 실패했습니다: $e')),
       );
     }
   }
@@ -189,7 +198,7 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
       children: [
         Expanded(child: _typeChip(InquiryType.general)),
         const SizedBox(width: 10),
-        Expanded(child: _typeChip(InquiryType.adPartnership)),
+        Expanded(child: _typeChip(InquiryType.partnership)),
       ],
     );
   }
@@ -259,6 +268,9 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
   }
 
   Widget _buildImagePicker() {
+    // 🌟 수정 모드에서 기존 이미지가 URL(http)일 수도, 새로 고른 로컬 파일일 수도 있습니다.
+    final isNetworkImage = _imagePath != null && _imagePath!.startsWith('http');
+
     return GestureDetector(
       onTap: _pickImage,
       child: Container(
@@ -276,7 +288,9 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.file(File(_imagePath!), fit: BoxFit.cover),
+              isNetworkImage
+                  ? Image.network(_imagePath!, fit: BoxFit.cover)
+                  : Image.file(File(_imagePath!), fit: BoxFit.cover),
               Positioned(
                 top: 2,
                 right: 2,

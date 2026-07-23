@@ -95,6 +95,8 @@ flutter:
     - assets/emoticons/character/
     - assets/emoticons/emoji/
     - assets/emoticons/meme/
+    - assets/emoticons/penguin/
+    - assets/emoticons/cloud/
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

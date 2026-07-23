@@ -2,16 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'community_post.dart';
 import '../../common/user_data.dart';
+import '../../services/auth_service.dart';
 import 'community_write.dart';
 import 'community_detail.dart';
+import 'community_search.dart';
 
-// 🌟 필터 모드: 지역별 / 메뉴별
-enum FilterMode { region, category }
-
-// 🌟 피드 탭: 전체 / 내 피드 / 스크랩
 enum FeedTab { all, mine, scrap }
-
-// 🌟 정렬 옵션
 enum SortOption { latest, likes, comments, scrap }
 
 class CommunityMainScreen extends StatefulWidget {
@@ -22,25 +18,10 @@ class CommunityMainScreen extends StatefulWidget {
 }
 
 class _CommunityMainScreenState extends State<CommunityMainScreen> {
-  FilterMode _filterMode = FilterMode.region;
   FeedTab _feedTab = FeedTab.all;
   SortOption _sortOption = SortOption.latest;
 
-  String _selectedChip = '전체';
-
-  final List<String> _regionChips = ['전체', '성수동', '가로수길', '이태원'];
-  final List<String> _categoryChips = ['전체', '빵', '떡', '음료', '유행상품'];
-
-  List<String> get _currentChips =>
-      _filterMode == FilterMode.region ? _regionChips : _categoryChips;
-
-  // 🌟 필터 모드가 바뀌면 선택된 칩도 '전체'로 초기화
-  void _switchFilterMode(FilterMode mode) {
-    setState(() {
-      _filterMode = mode;
-      _selectedChip = '전체';
-    });
-  }
+  String? get _myUid => AuthService.currentUser?.uid ?? UserData.uid;
 
   String get _sortLabel {
     switch (_sortOption) {
@@ -68,24 +49,17 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
     }
   }
 
-  // 🌟 Firestore 쿼리를 현재 필터/탭/정렬 조건에 맞춰 조립
+  /// 🌟 얌얌북과 동일하게, 피드탭(전체/내 피드/스크랩)만 서버 쿼리에 반영합니다.
   Query<Map<String, dynamic>> _buildQuery() {
     Query<Map<String, dynamic>> query =
     FirebaseFirestore.instance.collection('community_posts');
 
-    if (_selectedChip != '전체') {
-      if (_filterMode == FilterMode.region) {
-        query = query.where('region', isEqualTo: _selectedChip);
-      } else {
-        query = query.where('category', isEqualTo: _selectedChip);
-      }
-    }
-
     if (_feedTab == FeedTab.mine) {
-      query = query.where('authorId', isEqualTo: 'test_user_01');
+      final uid = _myUid;
+      query = query.where('userId', isEqualTo: uid ?? '__none__'); // 🌟 authorId → userId
     } else if (_feedTab == FeedTab.scrap) {
-      query = query.where('scrappedBy',
-          arrayContains: 'test_user_01');
+      final uid = _myUid;
+      query = query.where('scrappedBy', arrayContains: uid ?? '__none__');
     }
 
     query = query.orderBy(_sortField, descending: true);
@@ -108,6 +82,13 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
     );
   }
 
+  void _openSearch() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const CommunitySearchScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -121,17 +102,12 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.search, color: Colors.black),
-            onPressed: () {
-              // TODO: 검색 기능은 추후 구현
-            },
+            onPressed: _openSearch,
           ),
         ],
       ),
       body: Column(
         children: [
-          _buildFilterModeToggle(),
-          _buildChipRow(),
-          const Divider(height: 1),
           _buildFeedTabRow(),
           _buildSortRow(),
           Expanded(child: _buildPostList()),
@@ -145,64 +121,6 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
     );
   }
 
-  // 지역별 / 메뉴별 토글
-  Widget _buildFilterModeToggle() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          _buildToggleText('지역별', FilterMode.region),
-          const SizedBox(width: 16),
-          _buildToggleText('메뉴별', FilterMode.category),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToggleText(String label, FilterMode mode) {
-    final bool selected = _filterMode == mode;
-    return GestureDetector(
-      onTap: () => _switchFilterMode(mode),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-          color: selected ? const Color(0xFFFF8A3D) : Colors.grey,
-        ),
-      ),
-    );
-  }
-
-  // 지역/카테고리 칩 목록
-  Widget _buildChipRow() {
-    return SizedBox(
-      height: 44,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _currentChips.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final chip = _currentChips[index];
-          final bool selected = chip == _selectedChip;
-          return ChoiceChip(
-            label: Text(chip),
-            selected: selected,
-            selectedColor: const Color(0xFFFF8A3D),
-            labelStyle: TextStyle(
-              color: selected ? Colors.white : Colors.black87,
-              fontSize: 13,
-            ),
-            backgroundColor: const Color(0xFFF5F5F5),
-            onSelected: (_) => setState(() => _selectedChip = chip),
-          );
-        },
-      ),
-    );
-  }
-
-  // 전체 / 내 피드 / 스크랩
   Widget _buildFeedTabRow() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -224,8 +142,8 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
       onPressed: () => setState(() => _feedTab = tab),
       style: OutlinedButton.styleFrom(
         foregroundColor: selected ? Colors.white : Colors.black87,
-        backgroundColor: selected ? const Color(0xFFFF8A3D) : Colors.white,
-        side: BorderSide(color: selected ? const Color(0xFFFF8A3D) : Colors.grey.shade300),
+        backgroundColor: selected ? Colors.black : Colors.white,
+        side: BorderSide(color: selected ? Colors.black : Colors.grey.shade300),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       ),
@@ -233,30 +151,34 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
     );
   }
 
-  // 정렬 옵션 + 총 개수 표시는 리스트 StreamBuilder 안에서 함께 처리
   Widget _buildSortRow() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          PopupMenuButton<SortOption>(
-            initialValue: _sortOption,
-            onSelected: (value) => setState(() => _sortOption = value),
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: SortOption.latest, child: Text('최신순')),
-              PopupMenuItem(value: SortOption.likes, child: Text('좋아요순')),
-              PopupMenuItem(value: SortOption.comments, child: Text('댓글순')),
-              PopupMenuItem(value: SortOption.scrap, child: Text('스크랩순')),
-            ],
-            child: Row(
-              children: [
-                Text(_sortLabel, style: const TextStyle(fontSize: 12, color: Colors.black54)),
-                const Icon(Icons.arrow_drop_down, size: 18, color: Colors.black54),
-              ],
-            ),
-          ),
+          _sortTabButton('최신순', SortOption.latest),
+          const SizedBox(width: 8),
+          _sortTabButton('좋아요순', SortOption.likes),
+          const SizedBox(width: 8),
+          _sortTabButton('댓글순', SortOption.comments),
+          const SizedBox(width: 8),
+          _sortTabButton('스크랩순', SortOption.scrap),
         ],
+      ),
+    );
+  }
+
+  Widget _sortTabButton(String label, SortOption option) {
+    final bool selected = _sortOption == option;
+    return GestureDetector(
+      onTap: () => setState(() => _sortOption = option),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+          color: selected ? Colors.black : Colors.grey,
+        ),
       ),
     );
   }
@@ -266,11 +188,22 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
       stream: _buildQuery().snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return const Center(child: Text('글을 불러오는 중 오류가 발생했습니다.'));
+          debugPrint('🔴 [Community] 쿼리 실패: ${snapshot.error}');
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                '글을 불러오는 중 오류가 발생했습니다.\n(색인이 아직 준비 중일 수 있어요)',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+            ),
+          );
         }
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator(color: Colors.black));
         }
+
         final docs = snapshot.data!.docs;
         final posts = docs.map((d) => CommunityPost.fromFirestore(d)).toList();
 
@@ -288,7 +221,7 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
                   : ListView.separated(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 itemCount: posts.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                separatorBuilder: (_, __) => const SizedBox(height: 16),
                 itemBuilder: (context, index) => _buildPostCard(posts[index]),
               ),
             ),
@@ -298,16 +231,12 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
     );
   }
 
+  // 🌟 얌얌북 스타일 카드: 헤더(아바타+닉네임+위치 아이콘+시간) + 본문 + 큰 이미지 캐러셀 + 텍스트형 통계
   Widget _buildPostCard(CommunityPost post) {
-    final bool isMine = post.authorId == ('test_user_01');
     return GestureDetector(
       onTap: () => _openDetail(post),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(8),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -324,39 +253,103 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
                       : null,
                 ),
                 const SizedBox(width: 8),
-                Text(post.authorNickname ?? '알 수 없는 유저',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                const SizedBox(width: 6),
-                if (isMine)
-                  const Text('(내 글)', style: TextStyle(fontSize: 11, color: Colors.orange)),
+                Text(post.authorNickname ?? '익명',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(width: 4),
+                const Icon(Icons.location_on, size: 15, color: Color(0xFFFF8A3D)),
+                const Spacer(),
+                Text(_formatTime(post.createdAt),
+                    style: const TextStyle(fontSize: 11, color: Colors.grey)),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
               post.content,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13),
+              style: const TextStyle(fontSize: 13, height: 1.4),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.favorite_border, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text('${post.likeCount}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                const SizedBox(width: 12),
-                const Icon(Icons.chat_bubble_outline, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text('${post.commentCount}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                const SizedBox(width: 12),
-                const Icon(Icons.bookmark_border, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text('${post.scrapCount}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              ],
+            if (post.imageUrls.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              _PostImageCarousel(imageUrls: post.imageUrls),
+            ],
+            const SizedBox(height: 10),
+            Text(
+              '좋아요 ${post.likeCount}   댓글 ${post.commentCount}   스크랩 ${post.scrapCount}',
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  String _formatTime(DateTime time) {
+    final diff = DateTime.now().difference(time);
+    if (diff.inMinutes < 1) return '방금 전';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}분 전';
+    if (diff.inHours < 24) return '${diff.inHours}시간 전';
+    if (diff.inDays < 7) return '${diff.inDays}일 전';
+    return '${time.month}/${time.day}';
+  }
+}
+
+// 🌟 이미지 여러 장을 스와이프로 넘겨보는 캐러셀 (얌얌북 화면의 점 인디케이터 재현)
+class _PostImageCarousel extends StatefulWidget {
+  final List<String> imageUrls;
+  const _PostImageCarousel({required this.imageUrls});
+
+  @override
+  State<_PostImageCarousel> createState() => _PostImageCarouselState();
+}
+
+class _PostImageCarouselState extends State<_PostImageCarousel> {
+  final _controller = PageController();
+  int _index = 0;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            height: 220,
+            child: PageView.builder(
+              controller: _controller,
+              itemCount: widget.imageUrls.length,
+              onPageChanged: (i) => setState(() => _index = i),
+              itemBuilder: (context, i) => Image.network(
+                widget.imageUrls[i],
+                fit: BoxFit.cover,
+                width: double.infinity,
+              ),
+            ),
+          ),
+        ),
+        if (widget.imageUrls.length > 1) ...[
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(widget.imageUrls.length, (i) {
+              final active = i == _index;
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                width: active ? 6 : 5,
+                height: active ? 6 : 5,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: active ? const Color(0xFFFF8A3D) : Colors.grey.shade300,
+                ),
+              );
+            }),
+          ),
+        ],
+      ],
     );
   }
 }
