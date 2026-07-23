@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
-import 'top_circle_button.dart';
+import 'home_header.dart';
 import 'location_bar.dart';
-import 'ad_banner.dart';
 import 'home_stamp_dashboard.dart';
-import 'home_road_swiper.dart';
+import 'home_recommended_roads_section.dart';
+import 'ad_banner.dart';
 import '../../ad/ad_station_page.dart';
-import '../../common/user_data.dart';
 import '../../common/data/temp_user_session.dart';
 import '../../road/data/place_mock_data.dart';
-import '../../road/models/road.dart';
-import '../../services/auth_service.dart';
 import '../../services/location_service.dart';
 
 class HomeContentView extends StatefulWidget {
@@ -35,7 +31,6 @@ class _HomeContentViewState extends State<HomeContentView> {
   void initState() {
     super.initState();
     _currentLocationText = initialUserLocation;
-    _loadProfileIfNeeded();
     _fetchCurrentLocationAndRoads();
   }
 
@@ -61,33 +56,6 @@ class _HomeContentViewState extends State<HomeContentView> {
     }
   }
 
-  // UserData 프로필 정보 로드
-  Future<void> _loadProfileIfNeeded() async {
-    final String? currentUid = AuthService.currentUser?.uid;
-    if (currentUid == null) return;
-
-    if (UserData.uid == currentUid && UserData.nickname != null) return;
-
-    try {
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUid).get();
-      if (!mounted) return;
-      if (userDoc.exists) {
-        final data = userDoc.data() as Map<String, dynamic>;
-        setState(() {
-          UserData.uid = currentUid;
-          UserData.nickname = data['nickname'] ?? '이름없음';
-          UserData.name = data['name'] ?? '';
-          UserData.phone = data['phone'] ?? '';
-          UserData.profileImagePath = data['profileImageUrl'];
-          UserData.isDefaultProfileImage =
-          (data['profileImageUrl'] == null || data['profileImageUrl'].toString().isEmpty);
-        });
-      }
-    } catch (e) {
-      debugPrint('🔴 홈 화면 프로필 로드 실패: $e');
-    }
-  }
-
   // GPS 재설정 버튼 탭 시 실시간 위치 업데이트 수행
   Future<void> _handleResetLocation() async {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -109,91 +77,6 @@ class _HomeContentViewState extends State<HomeContentView> {
     }
   }
 
-  // 프로필 아이콘 탭 시 "마이페이지" / "로그아웃" 팝업 메뉴 표시
-  void _showProfileMenu(BuildContext context, TapDownDetails details) {
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-    final position = RelativeRect.fromRect(
-      Rect.fromPoints(details.globalPosition, details.globalPosition),
-      Offset.zero & overlay.size,
-    );
-
-    showMenu<String>(
-      context: context,
-      position: position,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      items: [
-        const PopupMenuItem<String>(
-          value: 'mypage',
-          child: Row(
-            children: [
-              Icon(Icons.person_outline, size: 18, color: Colors.black87),
-              SizedBox(width: 10),
-              Text('마이페이지'),
-            ],
-          ),
-        ),
-        const PopupMenuDivider(height: 1),
-        const PopupMenuItem<String>(
-          value: 'logout',
-          child: Row(
-            children: [
-              Icon(Icons.logout, size: 18, color: Colors.redAccent),
-              SizedBox(width: 10),
-              Text('로그아웃', style: TextStyle(color: Colors.redAccent)),
-            ],
-          ),
-        ),
-      ],
-    ).then((selected) {
-      if (selected == 'mypage') {
-        widget.onTabChanged(4);
-      } else if (selected == 'logout') {
-        _confirmLogout(context);
-      }
-    });
-  }
-
-  void _confirmLogout(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('로그아웃'),
-        content: const Text('정말 로그아웃하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              _handleLogout();
-            },
-            child: const Text('로그아웃', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _handleLogout() async {
-    try {
-      await AuthService.logout();
-
-      UserData.uid = null;
-      UserData.nickname = null;
-      UserData.name = null;
-      UserData.phone = null;
-      UserData.profileImagePath = null;
-      UserData.isDefaultProfileImage = true;
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('로그아웃 중 오류가 발생했습니다: $e')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final List<PlaceData> stampVerifiablePlaces = masterPlaces.take(6).toList();
@@ -206,81 +89,12 @@ class _HomeContentViewState extends State<HomeContentView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Image.asset(
-                      'assets/temp_images/yamyam_logo.png',
-                      height: 36,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Text(
-                          '🍒',
-                          style: TextStyle(fontSize: 22),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'YamYam Road',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF504D46),
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    TopCircleButton(
-                      text: '알림',
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('새로운 알림이 없습니다.')),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTapDown: (details) => _showProfileMenu(context, details),
-                      child: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.grey.shade300, width: 1),
-                        ),
-                        child: CircleAvatar(
-                          radius: 18,
-                          backgroundColor: const Color(0xFFF5F5F5),
-                          child: UserData.isDefaultProfileImage || UserData.profileImagePath == null
-                              ? const Icon(Icons.person_outline, size: 24, color: Colors.grey)
-                              : ClipOval(
-                            child: Image.network(
-                              UserData.profileImagePath!,
-                              width: 38,
-                              height: 38,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Icon(Icons.person_outline, size: 24, color: Colors.grey);
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+          // 1. 상단 헤더 (로고, 알림 버튼, 프로필 메뉴)
+          HomeHeader(
+            onTabChanged: widget.onTabChanged,
           ),
 
+          // 2. 위치 안내 및 위치 재설정 바
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: LocationBar(
@@ -291,6 +105,7 @@ class _HomeContentViewState extends State<HomeContentView> {
 
           const SizedBox(height: 20),
 
+          // 3. 스탬프 인증 현황 대시보드
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: HomeStampDashboard(
@@ -315,77 +130,15 @@ class _HomeContentViewState extends State<HomeContentView> {
 
           const SizedBox(height: 28),
 
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              children: [
-                Container(
-                  width: 4,
-                  height: 18,
-                  decoration: BoxDecoration(
-                    color: Colors.orange[400],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  '내 위치 기반 추천 로드',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-              ],
-            ),
+          // 4. 내 위치 기반 추천 로드 섹션 (DB 연동 + 거리 정렬)
+          HomeRecommendedRoadsSection(
+            userLat: userLat,
+            userLng: userLng,
           ),
 
           const SizedBox(height: 16),
 
-          // Firestore 실시간 스트림 연동: 거리 기반 오름차순 정렬 상위 5개 추출
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('road').snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SizedBox(
-                  height: 220,
-                  child: Center(child: CircularProgressIndicator(color: Colors.orange)),
-                );
-              }
-
-              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return const SizedBox(
-                  height: 220,
-                  child: Center(child: Text('추천 코스 데이터를 불러올 수 없습니다.')),
-                );
-              }
-
-              // Firestore 문서들을 Road 객체로 변환
-              final List<Road> roads = snapshot.data!.docs
-                  .map((doc) => Road.fromFirestore(doc))
-                  .toList();
-
-              // 내 위치(userLat, userLng)로부터 최단 거리 순 정렬
-              roads.sort((a, b) {
-                final distA = a.getMinDistanceKm(userLat, userLng);
-                final distB = b.getMinDistanceKm(userLat, userLng);
-                return distA.compareTo(distB);
-              });
-
-              // 상위 5개 추출
-              final topFiveRoads = roads.take(5).toList();
-
-              return HomeRoadSwiper(
-                recommendedRoads: topFiveRoads,
-                userLat: userLat,
-                userLng: userLng,
-              );
-            },
-          ),
-
-          const SizedBox(height: 16),
-
+          // 5. 하단 광고 배너
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: AdBanner(
