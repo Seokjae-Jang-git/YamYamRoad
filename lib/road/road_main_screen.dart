@@ -33,7 +33,7 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
     _fetchRoadsFromFirestore();
   }
 
-  /// Firestore에서 비동기로 실데이터 가져오는 로직 (RegionMapper 연동)
+  /// Firestore에서 비동기로 실데이터 가져오는 로직 (type 분기 및 RegionMapper 연동)
   Future<void> _fetchRoadsFromFirestore() async {
     setState(() {
       _isLoading = true;
@@ -42,17 +42,19 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
 
     try {
       final isRegionTab = _selectedTab == '지역별';
+      final targetType = isRegionTab ? 'region' : 'category';
 
-      // 💡 지역별 탭일 경우 DB의 엄격한 String 쿼리 대신 전체를 조회한 뒤 RegionMapper로 유연하게 필터링합니다.
+      // 💡 탭 종류('region' / 'category')에 따른 Firestore 데이터 분기 조회
       final fetchedRoads = await _roadRepository.fetchRoads(
-        selectedRegion: null,
+        type: targetType,
+        selectedRegion: null, // 지역별은 아래의 RegionMapper로 유연하게 처리
         selectedCategory: !isRegionTab ? _selectedFilter : null,
         sortBy: _selectedSort,
       );
 
       List<Road> filteredRoads = fetchedRoads;
 
-      // '지역별' 탭이고 선택된 필터가 '전체'가 아닌 경우 (예: '충북')
+      // '지역별' 탭이고 선택된 필터가 '전체'가 아닌 경우 (예: '충북') RegionMapper 매핑 검사
       if (isRegionTab && _selectedFilter != '전체') {
         filteredRoads = fetchedRoads.where((road) {
           // 1. regionId 매핑 검사 ('충북' <-> '충청북도')
@@ -188,7 +190,7 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
                 if (_selectedTab != tab) {
                   setState(() {
                     _selectedTab = tab;
-                    _selectedFilter = '전체';
+                    _selectedFilter = '전체'; // 탭 전환 시 서브 필터 초기화
                   });
                   _fetchRoadsFromFirestore();
                 }
