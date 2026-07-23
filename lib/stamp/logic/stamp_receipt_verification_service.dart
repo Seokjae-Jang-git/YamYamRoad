@@ -1,5 +1,5 @@
 import 'receipt_ocr_checker.dart';
-import 'stamp_verification_models.dart';
+import '../models/stamp_verification_models.dart';
 
 typedef ApprovedReceiptHandler =
     Future<int> Function({
@@ -46,9 +46,7 @@ class StampReceiptVerificationService {
             request: request,
             ocrResult: ocrResult,
           );
-          return StampVerificationResult.approved(
-            awardedPoints: awardedPoints,
-          );
+          return StampVerificationResult.approved(awardedPoints: awardedPoints);
         } on StampApprovalException catch (error) {
           return StampVerificationResult.rejected(message: error.message);
         }
