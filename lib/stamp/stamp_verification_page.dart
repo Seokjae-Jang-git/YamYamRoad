@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'stamp_verification_models.dart';
+import 'models/stamp_verification_models.dart';
 
 class StampVerificationPage extends StatefulWidget {
   final String placeId;
