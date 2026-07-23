@@ -22,8 +22,10 @@ class HomeContentView extends StatelessWidget {
   Widget build(BuildContext context) {
     // 전역 위치 상태 구독 (추천 로드 섹션 연동용)
     final locationProvider = context.watch<UserLocationProvider>();
-    final double userLat = locationProvider.currentPosition.latitude;
-    final double userLng = locationProvider.currentPosition.longitude;
+
+    // 🌟 [수정] currentPosition 직접 접근 대신 안전한 Getter(userLat, userLng) 사용
+    final double userLat = locationProvider.userLat;
+    final double userLng = locationProvider.userLng;
 
     final List<PlaceData> stampVerifiablePlaces = masterPlaces.take(6).toList();
 

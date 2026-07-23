@@ -8,62 +8,62 @@ class LocationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final locationProvider = context.watch<UserLocationProvider>();
-    final position = locationProvider.currentPosition;
-    final isLoading = locationProvider.isLoading;
-
-    // 위치 표시 텍스트 (로딩 상태 및 좌표 표출)
-    final String locationText = isLoading
-        ? '위치 정보 불러오는 중...'
-        : '위도 ${position.latitude.toStringAsFixed(4)}, 경도 ${position.longitude.toStringAsFixed(4)}';
 
     return Container(
-      padding: const EdgeInsets.all(12.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey),
-        borderRadius: BorderRadius.circular(4),
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12.0),
+        border: Border.all(
+          color: Colors.grey[300]!,
+          width: 1.0,
+        ),
       ),
       child: Row(
         children: [
-          const Icon(Icons.location_on, color: Colors.black),
+          const Icon(
+            Icons.location_on,
+            color: Colors.redAccent,
+            size: 20,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '내 위치: $locationText',
+              locationProvider.isLoading
+                  ? '위치 정보를 가져오는 중...'
+                  : locationProvider.currentAddress,
               style: TextStyle(
-                fontSize: 13,
-                color: Colors.black.withOpacity(0.8),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[800],
               ),
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 8),
-          TextButton.icon(
-            onPressed: isLoading
+          InkWell(
+            onTap: locationProvider.isLoading
                 ? null
-                : () async {
-              await context.read<UserLocationProvider>().refreshLocation();
+                : () {
+              context.read<UserLocationProvider>().refreshLocation();
             },
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            icon: isLoading
-                ? const SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.blue,
-              ),
-            )
-                : const Icon(Icons.refresh, size: 14, color: Colors.blue),
-            label: const Text(
-              '재설정',
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.blue,
-                fontWeight: FontWeight.bold,
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.all(4.0),
+              child: locationProvider.isLoading
+                  ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.0,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+                ),
+              )
+                  : Icon(
+                Icons.refresh,
+                size: 20,
+                color: Colors.grey[600],
               ),
             ),
           ),
