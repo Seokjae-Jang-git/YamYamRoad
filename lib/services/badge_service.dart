@@ -93,10 +93,10 @@ class BadgeService {
       FirebaseFirestore firestore, String userId, Map<String, dynamic> badgeData) async {
     final requiredCount = badgeData['requiredStampCount'] ?? 9999;
 
+    // [수정됨] 최상위 stamp 컬렉션에서 내 userId 필드로 검색
     final stampSnap = await firestore
-        .collection('users')
-        .doc(userId)
         .collection('stamp')
+        .where('userId', isEqualTo: userId)
         .count()
         .get();
 
@@ -112,7 +112,6 @@ class BadgeService {
     if (targetRoadId == null) return false;
 
     try {
-      // 1) 해당 로드(Road)의 총 스탬프 매장 수 조회
       final roadDoc = await firestore.collection('road').doc(targetRoadId).get();
       if (!roadDoc.exists) return false;
 
@@ -123,18 +122,16 @@ class BadgeService {
 
       if (totalStampCount == 0) return false;
 
-      // 2) 유저가 해당 로드에서 모은 스탬프 개수 조회
+      // [수정됨] 최상위 stamp 컬렉션에서 userId와 roadId 두 조건으로 검색
       final myStampSnap = await firestore
-          .collection('users')
-          .doc(userId)
           .collection('stamp')
+          .where('userId', isEqualTo: userId)
           .where('roadId', isEqualTo: targetRoadId)
           .count()
           .get();
 
       final int myStampCount = myStampSnap.count ?? 0;
 
-      // 3) 달성 비율(%) 계산 후 비교
       final double currentPercent = (myStampCount / totalStampCount) * 100;
       return currentPercent >= requiredPercent;
     } catch (e) {
@@ -170,9 +167,8 @@ class BadgeService {
     }
 
     final stampSnap = await firestore
-        .collection('users')
-        .doc(userId)
         .collection('stamp')
+        .where('userId', isEqualTo: userId)
         .where('issuedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startTime))
         .count()
         .get();

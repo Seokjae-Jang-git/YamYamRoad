@@ -43,35 +43,42 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
   Future<void> _fetchBadges() async {
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
-      // 테스트를 위해 강제로 uid를 지정하려면 아래 주석을 풀고 사용하세요.
-      // final uid = "4TtOtuHtn4QPXePlNBKy5dAqu...";
+
+      debugPrint('====================================');
+      debugPrint('🔍 1. 현재 앱 로그인 UID: $uid');
+      debugPrint('🔍 2. 테스트용 고정 UID: 4TtOtuHtn4QPXEplNBKy5dAqueb2');
+
+      // 혹시라도 uid가 다르게 들어오는지(공백 포함 여부 등) 눈으로 직접 비교해 볼 수 있습니다.
 
       if (uid == null) {
-        debugPrint('로그인된 사용자가 없습니다.');
+        debugPrint('🔴 에러: 로그인 UID가 null입니다. (파이어베이스 Auth 연결 지연)');
         setState(() => _isLoading = false);
         return;
       }
 
-      // 1. 전체 마스터 뱃지 가져오기 (사용 여부가 true인 것만)
+      // 1. 마스터 뱃지 로드
       final badgeSnapshot = await FirebaseFirestore.instance
           .collection('badge')
           .where('isActive', isEqualTo: true)
           .get();
+      debugPrint('🔍 3. DB에서 읽어온 활성화된 전체 뱃지 개수: ${badgeSnapshot.docs.length}');
 
-      // 2. 현재 유저가 획득한 뱃지 가져오기
+      // 2. 유저 뱃지 로드
       final userBadgeSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
           .collection('users_badge')
           .get();
+      debugPrint('🔍 4. 유저 DB(users_badge)에서 읽어온 획득 뱃지 개수: ${userBadgeSnapshot.docs.length}');
 
-      // 유저 뱃지 데이터를 Map 형태로 변환 (검색 속도 최적화: O(1))
+      // 3. 맵핑
       final userBadgeMap = {
         for (var doc in userBadgeSnapshot.docs)
           doc.data()['badgeId']: doc.data()
       };
+      debugPrint('🔍 5. 맵핑 성공한 유저 뱃지 ID 목록: ${userBadgeMap.keys.toList()}');
 
-      // 3. 마스터 뱃지를 돌면서 유저 획득 여부를 결합 (Join)
+      // 4. 결합 및 필터링
       final List<BadgeUIModel> loadedBadges = badgeSnapshot.docs.map((doc) {
         final data = doc.data();
         final badgeId = doc.id;
@@ -88,7 +95,10 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
               : null,
           isSelected: isEarned && userBadgeData!['isSelected'] == true,
         );
-      }).toList();
+      }).where((badge) => badge.isEarned).toList();
+
+      debugPrint('🔍 6. 화면에 렌더링될 최종 뱃지 개수: ${loadedBadges.length}');
+      debugPrint('====================================');
 
       setState(() {
         _allBadges = loadedBadges;
@@ -102,10 +112,8 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // '마스터만 보기' 필터 적용
-    final displayedBadges = _showOnlyEarned
-        ? _allBadges.where((b) => b.isEarned).toList()
-        : _allBadges;
+    // 이제 _allBadges에는 획득한 뱃지만 존재하므로, 그대로 화면에 보여주면 됩니다.
+    final displayedBadges = _allBadges;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -155,6 +163,7 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
           ),
 
           // 2. 마스터만 보기 체크박스 & 총 개수
+          // (참고: 미획득 뱃지를 숨겼기 때문에, 이 체크박스는 추후 기획에 맞게 삭제하거나 '최고 등급만 보기' 등으로 활용할 수 있습니다.)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4.0),
             child: Row(
@@ -182,7 +191,11 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
 
           // 3. 뱃지 그리드 뷰
           Expanded(
-            child: GridView.builder(
+            child: displayedBadges.isEmpty
+                ? const Center(
+              child: Text('아직 획득한 뱃지가 없습니다.', style: TextStyle(color: Colors.grey, fontSize: 16)),
+            )
+                : GridView.builder(
               padding: const EdgeInsets.all(16.0),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
@@ -221,28 +234,17 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
         Expanded(
           child: AspectRatio(
             aspectRatio: 1, // 1:1 정사각형 비율 유지
-            child: ColorFiltered(
-              // 🌟 획득하지 않은 뱃지는 자동 흑백(Grayscale) 처리
-              colorFilter: badge.isEarned
-                  ? const ColorFilter.mode(Colors.transparent, BlendMode.multiply)
-                  : const ColorFilter.matrix(<double>[
-                0.2126, 0.7152, 0.0722, 0, 0,
-                0.2126, 0.7152, 0.0722, 0, 0,
-                0.2126, 0.7152, 0.0722, 0, 0,
-                0,      0,      0,      1, 0,
-              ]),
-              child: Image.network(
-                badge.imageUrl,
-                fit: BoxFit.contain, // 🌟 PNG 뱃지 비율을 왜곡 없이 쏙 담아냅니다.
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) =>
-                const Icon(Icons.broken_image, color: Colors.grey, size: 40),
-              ),
+            child: Image.network(
+              badge.imageUrl,
+              fit: BoxFit.contain, // 🌟 PNG 뱃지 비율을 왜곡 없이 쏙 담아냅니다.
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) =>
+              const Icon(Icons.broken_image, color: Colors.grey, size: 40),
             ),
           ),
         ),
@@ -253,10 +255,10 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
           textAlign: TextAlign.center,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 13,
-            fontWeight: badge.isEarned ? FontWeight.bold : FontWeight.normal,
-            color: badge.isEarned ? Colors.black : Colors.grey.shade600,
+            fontWeight: FontWeight.bold, // 이제 모두 획득한 뱃지이므로 진하게 고정
+            color: Colors.black,
           ),
         ),
       ],
