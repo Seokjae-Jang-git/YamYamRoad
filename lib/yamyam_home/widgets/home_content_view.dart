@@ -130,7 +130,7 @@ class _HomeContentViewState extends State<HomeContentView> {
 
           const SizedBox(height: 28),
 
-          // 4. 내 위치 기반 추천 로드 섹션 (DB 연동 + 거리 정렬)
+          // 4. 내 위치 기반 추천 로드 섹션 (DB 연동 + 거리 정렬 + 지역 매핑 필터)
           HomeRecommendedRoadsSection(
             userLat: userLat,
             userLng: userLng,

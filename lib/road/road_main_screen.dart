@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../common/utils/region_mapper.dart';
 import 'widgets/category_tabs.dart';
 import 'widgets/sub_filter_chips.dart';
 import 'widgets/sorting_bar.dart';
@@ -32,7 +33,7 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
     _fetchRoadsFromFirestore();
   }
 
-  /// Firestore에서 비동기로 실데이터 가져오는 로직
+  /// Firestore에서 비동기로 실데이터 가져오는 로직 (RegionMapper 연동)
   Future<void> _fetchRoadsFromFirestore() async {
     setState(() {
       _isLoading = true;
@@ -42,14 +43,47 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
     try {
       final isRegionTab = _selectedTab == '지역별';
 
+      // 💡 지역별 탭일 경우 DB의 엄격한 String 쿼리 대신 전체를 조회한 뒤 RegionMapper로 유연하게 필터링합니다.
       final fetchedRoads = await _roadRepository.fetchRoads(
-        selectedRegion: isRegionTab ? _selectedFilter : null,
+        selectedRegion: null,
         selectedCategory: !isRegionTab ? _selectedFilter : null,
         sortBy: _selectedSort,
       );
 
+      List<Road> filteredRoads = fetchedRoads;
+
+      // '지역별' 탭이고 선택된 필터가 '전체'가 아닌 경우 (예: '충북')
+      if (isRegionTab && _selectedFilter != '전체') {
+        filteredRoads = fetchedRoads.where((road) {
+          // 1. regionId 매핑 검사 ('충북' <-> '충청북도')
+          final regionIdMatch = RegionMapper.isMatch(
+            selectedRegion: _selectedFilter,
+            targetText: road.regionId,
+          );
+          // 2. title 매핑 검사
+          final titleMatch = RegionMapper.isMatch(
+            selectedRegion: _selectedFilter,
+            targetText: road.title,
+          );
+          // 3. description 매핑 검사
+          final descriptionMatch = RegionMapper.isMatch(
+            selectedRegion: _selectedFilter,
+            targetText: road.description,
+          );
+          // 4. searchKeywords 매핑 검사
+          final keywordsMatch = road.searchKeywords.any(
+                (kw) => RegionMapper.isMatch(
+              selectedRegion: _selectedFilter,
+              targetText: kw,
+            ),
+          );
+
+          return regionIdMatch || titleMatch || descriptionMatch || keywordsMatch;
+        }).toList();
+      }
+
       setState(() {
-        _roads = fetchedRoads;
+        _roads = filteredRoads;
         _isLoading = false;
       });
     } catch (e) {
@@ -147,7 +181,7 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. 최상단 대분류 및 검색 버튼 (기존 위젯)
+            // 1. 최상단 대분류 및 검색 버튼
             CategoryTabs(
               selectedTab: _selectedTab,
               onTabChanged: (tab) {
@@ -168,7 +202,7 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
 
             const SizedBox(height: 4),
 
-            // 2. 가로 스크롤형 동적 필터 칩 영역 (기존 위젯)
+            // 2. 가로 스크롤형 동적 필터 칩 영역
             SubFilterChips(
               selectedTab: _selectedTab,
               selectedFilter: _selectedFilter,
@@ -185,7 +219,7 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
 
             const SizedBox(height: 4),
 
-            // 3. 정렬 상태 제어 바 (기존 위젯)
+            // 3. 정렬 상태 제어 바
             SortingBar(
               selectedSort: _selectedSort,
               onSortChanged: (sort) {
