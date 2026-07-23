@@ -2,17 +2,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CommunityComment {
   final String id;
-  final String authorId;
+  final String userId; // 🌟 authorId → userId
   final String authorNickname;
   final String? authorProfileImage;
   final String content;
-  final String? parentId;       // null이면 원댓글, 값이 있으면 대댓글
-  final String? replyToNickname; // 대댓글일 때 "누구에게" 답글인지 표시용
+  final String? parentId;
+  final String? replyToNickname;
   final DateTime? createdAt;
 
   CommunityComment({
     required this.id,
-    required this.authorId,
+    required this.userId,
     required this.authorNickname,
     this.authorProfileImage,
     required this.content,
@@ -25,19 +25,23 @@ class CommunityComment {
     final data = doc.data() as Map<String, dynamic>;
     return CommunityComment(
       id: doc.id,
-      authorId: data['authorId'] ?? '',
-      authorNickname: data['authorNickname'] ?? '익명',
-      authorProfileImage: data['authorProfileImage'],
-      content: data['content'] ?? '',
-      parentId: data['parentId'],
-      replyToNickname: data['replyToNickname'],
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
+      userId: (data['userId'] ?? '').toString(),
+      authorNickname: (data['authorNickname'] ?? '익명').toString(),
+      authorProfileImage: (data['authorProfileImage'] as String?)?.isNotEmpty == true
+          ? data['authorProfileImage'] as String
+          : null,
+      content: (data['content'] ?? '').toString(),
+      parentId: data['parentId'] as String?,
+      replyToNickname: data['replyToNickname'] as String?,
+      createdAt: (data['createdAt'] is Timestamp)
+          ? (data['createdAt'] as Timestamp).toDate()
+          : null,
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'authorId': authorId,
+      'userId': userId,
       'authorNickname': authorNickname,
       'authorProfileImage': authorProfileImage,
       'content': content,

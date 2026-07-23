@@ -1,75 +1,124 @@
-/// 문의 유형
-enum InquiryType {
-  general, // 일반문의
-  adPartnership, // 광고·제휴
-}
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-extension InquiryTypeX on InquiryType {
-  String get label {
-    switch (this) {
-      case InquiryType.general:
-        return '일반문의';
-      case InquiryType.adPartnership:
-        return '광고·제휴';
-    }
+enum InquiryType {
+  general('일반문의'),
+  partnership('광고·제휴');
+
+  final String label;
+  const InquiryType(this.label);
+
+  static InquiryType fromName(String name) {
+    return InquiryType.values.firstWhere(
+          (e) => e.name == name,
+      orElse: () => InquiryType.general,
+    );
   }
 }
 
-/// 문의 답변 상태
 enum InquiryStatus {
-  pending, // 답변대기
-  answered, // 답변완료
-}
+  pending,
+  answered,
+  closed;
 
-extension InquiryStatusX on InquiryStatus {
-  String get label => this == InquiryStatus.pending ? '답변대기' : '답변완료';
+  static InquiryStatus fromName(String name) {
+    return InquiryStatus.values.firstWhere(
+          (e) => e.name == name,
+      orElse: () => InquiryStatus.pending,
+    );
+  }
 }
 
 class Inquiry {
   final String id;
-  InquiryType type;
-  String title;
-  String content;
-  String email;
-  String? imagePath;
-  final String receiptNumber;
+  final String? userId; // 🌟 비회원 문의 허용 시 null 가능
+  final InquiryType type;
+  final String title;
+  final String content;
+  final String? contactEmail;
+  final String? imageUrl;
   final DateTime createdAt;
-  InquiryStatus status;
-  String? answer;
+  final InquiryStatus status;
+  final String? adminMemo; // 🌟 관리자 답변/메모
+  final DateTime? answeredAt;
 
-  Inquiry({
+  const Inquiry({
     required this.id,
+    this.userId,
     required this.type,
     required this.title,
     required this.content,
-    required this.email,
-    this.imagePath,
-    required this.receiptNumber,
+    this.contactEmail,
+    this.imageUrl,
     required this.createdAt,
     this.status = InquiryStatus.pending,
-    this.answer,
+    this.adminMemo,
+    this.answeredAt,
   });
+
+  /// 스키마에 별도 접수번호 필드가 없어서, 문서 ID/생성일 기준으로 표시용 접수번호를 만듭니다.
+  String get receiptNumber {
+    final datePart =
+        '${createdAt.year}${createdAt.month.toString().padLeft(2, '0')}${createdAt.day.toString().padLeft(2, '0')}';
+    final shortId = id.length >= 6 ? id.substring(0, 6).toUpperCase() : id.toUpperCase();
+    return '#$datePart-$shortId';
+  }
+
+  bool get isAnswered => status == InquiryStatus.answered;
 
   Inquiry copyWith({
     InquiryType? type,
     String? title,
     String? content,
-    String? email,
-    String? imagePath,
+    String? contactEmail,
+    String? imageUrl,
     InquiryStatus? status,
-    String? answer,
+    String? adminMemo,
+    DateTime? answeredAt,
   }) {
     return Inquiry(
       id: id,
+      userId: userId,
       type: type ?? this.type,
       title: title ?? this.title,
       content: content ?? this.content,
-      email: email ?? this.email,
-      imagePath: imagePath ?? this.imagePath,
-      receiptNumber: receiptNumber,
+      contactEmail: contactEmail ?? this.contactEmail,
+      imageUrl: imageUrl ?? this.imageUrl,
       createdAt: createdAt,
       status: status ?? this.status,
-      answer: answer ?? this.answer,
+      adminMemo: adminMemo ?? this.adminMemo,
+      answeredAt: answeredAt ?? this.answeredAt,
     );
+  }
+
+  factory Inquiry.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data()!;
+    return Inquiry(
+      id: doc.id,
+      userId: data['userId'] as String?,
+      type: InquiryType.fromName(data['type'] as String? ?? 'general'),
+      title: data['title'] as String? ?? '',
+      content: data['content'] as String? ?? '',
+      contactEmail: data['contactEmail'] as String?,
+      imageUrl: data['imageUrl'] as String?,
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      status: InquiryStatus.fromName(data['status'] as String? ?? 'pending'),
+      adminMemo: data['adminMemo'] as String?,
+      answeredAt: (data['answeredAt'] as Timestamp?)?.toDate(),
+    );
+  }
+
+  Map<String, dynamic> toCreateMap() {
+    return {
+      'userId': userId,
+      'type': type.name,
+      'title': title,
+      'content': content,
+      'contactEmail': contactEmail,
+      'imageUrl': imageUrl,
+      'status': InquiryStatus.pending.name,
+      'adminMemo': null,
+      'createdAt': FieldValue.serverTimestamp(),
+      'answeredAt': null,
+    };
   }
 }
