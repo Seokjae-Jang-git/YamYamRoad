@@ -20,8 +20,6 @@ class SortingBar extends StatelessWidget {
           _buildSortOption('최신순'),
           _buildDivider(),
           _buildSortOption('이름순'),
-          _buildDivider(),
-          _buildSortOption('스탬프 순'),
         ],
       ),
     );
