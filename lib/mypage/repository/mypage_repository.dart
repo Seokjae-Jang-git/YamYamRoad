@@ -82,4 +82,37 @@ class MypageRepository {
       return items.take(2).toList();
     });
   }
+
+  // 최신 발행 뱃지 스트림
+
+  static Stream<List<String>> getMyLatest5BadgeIdsStream() {
+    final String? uid = UserData.uid;
+    if (uid == null || uid.isEmpty) {
+      return Stream.value([]);
+    }
+
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('users_badge')
+        .snapshots()
+        .map((snapshot) {
+      List<QueryDocumentSnapshot> docs = List.from(snapshot.docs);
+
+      // earnedAt 기준 내림차순 정렬 (최신 획득순)
+      docs.sort((a, b) {
+        Timestamp? timeA = (a.data() as Map<String, dynamic>)['earnedAt'] as Timestamp?;
+        Timestamp? timeB = (b.data() as Map<String, dynamic>)['earnedAt'] as Timestamp?;
+        DateTime dtA = timeA?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
+        DateTime dtB = timeB?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return dtB.compareTo(dtA);
+      });
+
+      // 🌟 최신 획득 상위 5개 추출
+      return docs
+          .take(5)
+          .map((d) => (d.data() as Map<String, dynamic>)['badgeId'] as String)
+          .toList();
+    });
+  }
 }

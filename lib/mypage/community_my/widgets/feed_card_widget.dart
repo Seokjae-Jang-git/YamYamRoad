@@ -65,8 +65,7 @@ class FeedCardWidget extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
 
-                  // 2. 닉네임 + 작성 시간 (Column)
-                  // 🌟 [수정 포인트 1] Expanded 대신 Flexible을 사용하여 남는 공간을 다 차지하지 않고, 자기 내용물만큼만 자리 차지! (오버플로우 방지 기능은 유지)
+                  // 2. 닉네임 + 작성 시간
                   Flexible(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -86,9 +85,9 @@ class FeedCardWidget extends StatelessWidget {
                     ),
                   ),
 
-                  const SizedBox(width: 8), // 닉네임과 뱃지 사이의 적당한 간격
+                  const SizedBox(width: 8),
 
-                  // 3. 뱃지 아이콘 영역 (이제 닉네임 바로 옆에 붙습니다!)
+                  // 🌟 3. 획득한 뱃지 아이콘 영역 (최대 3개 및 +N 지원)
                   _buildBadgeList(authorUid),
                 ],
               ),
@@ -96,7 +95,7 @@ class FeedCardWidget extends StatelessWidget {
               Text('• ${feed['content'] ?? ''}', style: const TextStyle(fontSize: 14, height: 1.4)),
               const SizedBox(height: 16),
 
-              // 이미지 스와이프 렌더링 영역
+              // 이미지 스와이프 영역
               if (imageUrls.isNotEmpty) ...[
                 LayoutBuilder(
                   builder: (context, constraints) {
@@ -181,43 +180,82 @@ class FeedCardWidget extends StatelessWidget {
     );
   }
 
-  // 대표 뱃지 목록 렌더링 영역
+  // 🌟 뱃지 목록 렌더링 (뱃지 아이콘 3개 노출 + 초과분 +N 표시)
   Widget _buildBadgeList(String userId) {
     if (userId.isEmpty) return const SizedBox.shrink();
 
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _fetchSelectedBadges(userId),
+      future: _fetchAllUserBadges(userId),
       builder: (context, badgeSnapshot) {
         if (!badgeSnapshot.hasData || badgeSnapshot.data!.isEmpty) {
           return const SizedBox.shrink();
         }
 
-        final List<Map<String, dynamic>> badgeList = badgeSnapshot.data!;
+        final List<Map<String, dynamic>> allBadges = badgeSnapshot.data!;
+        final int totalCount = allBadges.length;
+
+        // 💡 하드코딩 대신 최대 노출 개수를 변수로 관리!
+        const int maxDisplayCount = 3;
+
+        // 아이콘은 무조건 설정한 개수(3개)만큼 화면에 잘라서 보여줍니다.
+        final List<Map<String, dynamic>> displayBadges = allBadges.take(maxDisplayCount).toList();
+
+        // 전체 개수가 maxDisplayCount(3개)보다 많을 때만 +N 태그 생성
+        final bool hasMore = totalCount > maxDisplayCount;
+        final int extraCount = totalCount - maxDisplayCount; // 5 - 3 = 2 (+2)
 
         return Row(
-          mainAxisSize: MainAxisSize.min, // 영역을 최소한으로 사용
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
-          children: badgeList
-              .map((badgeData) => _buildBadgeItemWithBottomSheet(context, badgeData))
-              .toList(),
+          children: [
+            // 1. 뱃지 아이콘 3개 렌더링
+            ...displayBadges.asMap().entries.map((entry) {
+              final int index = entry.key;
+              final badgeData = entry.value;
+              return _buildBadgeIconItem(context, badgeData, allBadges, initialIndex: index);
+            }),
+
+            // 2. 3개 초과 시 뒤에 +2 버튼 추가
+            if (hasMore) ...[
+              const SizedBox(width: 2),
+              _buildPlusMoreButton(context, allBadges, extraCount: extraCount, startIndex: maxDisplayCount),
+            ],
+          ],
         );
       },
     );
   }
 
-  // Firestore에서 대표 뱃지의 상세 정보를 싹 가져오는 비동기 함수
-  Future<List<Map<String, dynamic>>> _fetchSelectedBadges(String userId) async {
+  // 🌟 대표 뱃지(isSelected: true)를 displayOrder 순(1->2->3)으로 우선 배치하고,
+  // 나머지 획득한 뱃지들을 뒤에 이어서 붙여 전체 뱃지 목록을 생성합니다.
+  Future<List<Map<String, dynamic>>> _fetchAllUserBadges(String userId) async {
     final userBadgeSnap = await FirebaseFirestore.instance
         .collection('users')
         .doc(userId)
         .collection('users_badge')
-        .where('isSelected', isEqualTo: true)
-        .limit(3)
         .get();
 
     if (userBadgeSnap.docs.isEmpty) return [];
 
-    final badgeIds = userBadgeSnap.docs.map((d) => d.data()['badgeId'] as String).toList();
+    // 1. isSelected == true 인 대표 뱃지들을 추출 및 displayOrder 순 정렬
+    var selectedDocs = userBadgeSnap.docs
+        .where((d) => d.data()['isSelected'] == true)
+        .toList();
+
+    selectedDocs.sort((a, b) {
+      int orderA = a.data()['displayOrder'] ?? 99;
+      int orderB = b.data()['displayOrder'] ?? 99;
+      return orderA.compareTo(orderB);
+    });
+
+    // 2. 대표 뱃지로 선택되지 않은 나머지 획득 뱃지들 추출
+    var unselectedDocs = userBadgeSnap.docs
+        .where((d) => d.data()['isSelected'] != true)
+        .toList();
+
+    // 3. 대표 뱃지 + 나머지 뱃지를 순서대로 합침 (총 N개)
+    final allDocs = [...selectedDocs, ...unselectedDocs];
+    final badgeIds = allDocs.map((d) => d.data()['badgeId'] as String).toList();
 
     final List<Map<String, dynamic>> badgeDetails = [];
     for (String bId in badgeIds) {
@@ -229,7 +267,7 @@ class FeedCardWidget extends StatelessWidget {
           'name': data['name'] ?? '뱃지',
           'description': data['description'] ?? '',
           'imageUrl': data['imageUrl'] ?? '',
-          'iconUrl': data['iconUrl'] ?? '',
+          'iconUrl': data['iconUrl'] ?? data['imageUrl'] ?? '',
         });
       }
     }
@@ -237,26 +275,27 @@ class FeedCardWidget extends StatelessWidget {
     return badgeDetails;
   }
 
-  // 아이콘 탭 시 인터랙티브 바텀 시트를 띄워주는 위젯
-  Widget _buildBadgeItemWithBottomSheet(BuildContext context, Map<String, dynamic> badgeData) {
+  // 개별 뱃지 아이콘 위젯 (터치 시 해당 위치부터 시작하는 슬라이더 바텀시트 호출)
+  Widget _buildBadgeIconItem(
+      BuildContext context,
+      Map<String, dynamic> badgeData,
+      List<Map<String, dynamic>> allBadges, {
+        required int initialIndex,
+      }) {
     final String iconUrl = badgeData['iconUrl'];
-    final String imageUrl = badgeData['imageUrl'];
-    final String name = badgeData['name'];
-    final String description = badgeData['description'];
 
     return GestureDetector(
       onTap: () {
-        _showBadgeDetailBottomSheet(context, name, description, imageUrl);
+        _showBadgeSliderBottomSheet(context, allBadges, initialIndex: initialIndex);
       },
       child: Padding(
-        padding: const EdgeInsets.only(right: 6.0),
-        // 🌟 [수정 포인트 2] 크기를 36x36으로 고정시키는 SizedBox 적용!
+        padding: const EdgeInsets.only(right: 4.0),
         child: SizedBox(
-          width: 36,
-          height: 36,
+          width: 32,
+          height: 32,
           child: Image.network(
             iconUrl,
-            fit: BoxFit.contain, // 영역 안에서 비율 깨지지 않게 꽉 채움
+            fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
           ),
         ),
@@ -264,85 +303,176 @@ class FeedCardWidget extends StatelessWidget {
     );
   }
 
-  // 스르륵 올라오는 화려한 뱃지 상세 바텀 시트
-  void _showBadgeDetailBottomSheet(
+  // 🌟 +N (예: +3) 더보기 버튼 위젯
+  Widget _buildPlusMoreButton(
       BuildContext context,
-      String name,
-      String description,
-      String imageUrl,
-      ) {
+      List<Map<String, dynamic>> allBadges, {
+        required int extraCount,
+        required int startIndex,
+      }) {
+    return GestureDetector(
+      onTap: () {
+        _showBadgeSliderBottomSheet(context, allBadges, initialIndex: startIndex);
+      },
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.grey.shade400, width: 1),
+        ),
+        child: Center(
+          child: Text(
+            '+$extraCount',
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 🌟 좌우 스와이프 가능한 슬라이드형 뱃지 전체보기 바텀 시트
+  void _showBadgeSliderBottomSheet(
+      BuildContext context,
+      List<Map<String, dynamic>> allBadges, {
+        int initialIndex = 0,
+      }) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (BuildContext context) {
-        return Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: 120,
-                height: 120,
-                child: Image.network(
-                  imageUrl,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.workspace_premium, size: 80, color: Colors.orange),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                name,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                description,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade700,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+        int currentPage = initialIndex;
+        final PageController pageController = PageController(initialPage: initialIndex);
+
+        return StatefulBuilder(
+          builder: (context, setBottomSheetState) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 상단 드래그 손잡이
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  child: const Text(
-                    '확인',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  const SizedBox(height: 16),
+
+                  // 뱃지 개수 표시
+                  Text(
+                    '보유한 뱃지 (${currentPage + 1}/${allBadges.length})',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
                   ),
-                ),
+
+                  // 🌟 좌우 슬라이드 PageView 영역
+                  SizedBox(
+                    height: 190,
+                    child: PageView.builder(
+                      controller: pageController,
+                      itemCount: allBadges.length,
+                      onPageChanged: (index) {
+                        setBottomSheetState(() {
+                          currentPage = index;
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        final badge = allBadges[index];
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 100,
+                              height: 100,
+                              child: Image.network(
+                                badge['imageUrl'],
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) =>
+                                const Icon(Icons.workspace_premium, size: 70, color: Colors.orange),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              badge['name'],
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              badge['description'],
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade700,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+
+                  // 🌟 하단 인디케이터 Dot (뱃지가 2개 이상일 때)
+                  if (allBadges.length > 1) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(allBadges.length, (dotIndex) {
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: currentPage == dotIndex ? 16 : 6, // 현재 페이지 강조
+                          height: 6,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(3),
+                            color: currentPage == dotIndex ? Colors.black : Colors.grey.shade300,
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // 닫기 버튼
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        '확인',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
               ),
-              const SizedBox(height: 12),
-            ],
-          ),
+            );
+          },
         );
       },
     );

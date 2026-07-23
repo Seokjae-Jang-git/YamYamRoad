@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../common/user_data.dart';
 import '../repository/mypage_repository.dart';
 import '../stamp/repository/stamp_repository.dart';
 
@@ -178,28 +179,88 @@ Widget buildStampContent() {
   );
 }
 
-// 4. 뱃지 콘텐츠
+// 4. 뱃지 콘텐츠 (최근 발급받은 뱃지 5개 가로 정렬)
 Widget buildBadgeContent() {
-  return Row(
-    mainAxisAlignment: MainAxisAlignment.start,
-    children: List.generate(3, (index) {
-      return Container(
-        margin: const EdgeInsets.only(right: 16),
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade400)),
-        alignment: Alignment.center,
-        child: Transform.rotate(
-          angle: 0.785398,
-          child: Container(
-            width: 35,
-            height: 35,
-            decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade400)),
-          ),
-        ),
+  return StreamBuilder<List<String>>(
+    stream: MypageRepository.getMyLatest5BadgeIdsStream(),
+    builder: (context, badgeIdsSnapshot) {
+      if (badgeIdsSnapshot.connectionState == ConnectionState.waiting) {
+        return const SizedBox(
+          height: 52,
+          child: Center(child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2)),
+        );
+      }
+
+      final badgeIds = badgeIdsSnapshot.data ?? [];
+
+      if (badgeIds.isEmpty) {
+        return const Text('획득한 뱃지가 없습니다.', style: TextStyle(color: Colors.grey, fontSize: 13));
+      }
+
+      return FutureBuilder<List<Map<String, dynamic>>>(
+        future: _fetchBadgeDetails(badgeIds),
+        builder: (context, badgeSnapshot) {
+          if (badgeSnapshot.connectionState == ConnectionState.waiting) {
+            return const SizedBox(
+              height: 52,
+              child: Center(child: CircularProgressIndicator(color: Colors.black, strokeWidth: 1.5)),
+            );
+          }
+
+          final badges = badgeSnapshot.data ?? [];
+
+          // 🌟 5개 항목을 공간에 맞춰 균등 배치 (스탬프와 동일한 스타일)
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(5, (index) {
+              if (index < badges.length) {
+                final badge = badges[index];
+                return SizedBox(
+                  width: 52,
+                  height: 52,
+                  child: Image.network(
+                    badge['imageUrl'],
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.broken_image, color: Colors.grey, size: 30),
+                  ),
+                );
+              } else {
+                // 획득한 뱃지가 5개 미만일 때의 빈 슬롯
+                return Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300, width: 1.2),
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.grey.shade50,
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(Icons.workspace_premium, size: 20, color: Colors.grey.shade300),
+                );
+              }
+            }),
+          );
+        },
       );
-    }),
+    },
   );
+}
+
+// 뱃지 상세 정보 조회 헬퍼 함수
+Future<List<Map<String, dynamic>>> _fetchBadgeDetails(List<String> badgeIds) async {
+  List<Map<String, dynamic>> details = [];
+  for (String bId in badgeIds) {
+    final doc = await FirebaseFirestore.instance.collection('badge').doc(bId).get();
+    if (doc.exists && doc.data()?['isActive'] == true) {
+      details.add({
+        'id': bId,
+        'imageUrl': doc.data()?['imageUrl'] ?? '',
+        'name': doc.data()?['name'] ?? '',
+      });
+    }
+  }
+  return details;
 }
 
 // 5. 포인트 콘텐츠
