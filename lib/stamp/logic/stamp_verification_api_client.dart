@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import 'receipt_ocr_checker.dart';
 import 'stamp_receipt_verification_service.dart';
-import 'stamp_verification_models.dart';
+import '../models/stamp_verification_models.dart';
 
 class StampVerificationApiClient {
   StampVerificationApiClient({
@@ -24,6 +24,69 @@ class StampVerificationApiClient {
 
   final FirebaseAuth _firebaseAuth;
   final String _baseUrl;
+
+  Future<String> issueDevStamp({
+    required String placeId,
+    int rating = 5,
+    String? oneLineNote,
+  }) async {
+    final currentUser = _firebaseAuth.currentUser;
+    if (currentUser == null) {
+      throw const StampApprovalException('로그인 후 스탬프를 발행해 주세요.');
+    }
+
+    final idToken = await currentUser.getIdToken();
+    if (idToken == null || idToken.isEmpty) {
+      throw const StampApprovalException('로그인 정보를 확인하지 못했습니다.');
+    }
+
+    final queryParameters = <String, String>{
+      'placeId': placeId,
+      'rating': rating.toString(),
+      if (oneLineNote?.trim().isNotEmpty == true)
+        'oneLineNote': oneLineNote!.trim(),
+    };
+    final uri = Uri.parse(
+      '$_baseUrl/dev/stamps/issue',
+    ).replace(queryParameters: queryParameters);
+    final httpClient = HttpClient();
+
+    try {
+      final request = await httpClient.postUrl(uri).timeout(_requestTimeout);
+      request.headers.set(
+        HttpHeaders.authorizationHeader,
+        'Bearer $idToken',
+      );
+
+      final response = await request.close().timeout(_requestTimeout);
+      final responseBody = await utf8.decoder.bind(response).join();
+      final responseData = _decodeJson(responseBody);
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw StampApprovalException(_readErrorMessage(responseData));
+      }
+
+      final stampId = responseData['stampId']?.toString().trim() ?? '';
+      if (stampId.isEmpty) {
+        throw const StampApprovalException('발행된 스탬프 ID를 확인하지 못했습니다.');
+      }
+      return stampId;
+    } on StampApprovalException {
+      rethrow;
+    } on SocketException {
+      throw const StampApprovalException(
+        '스탬프 인증 서버에 연결할 수 없습니다. FastAPI 서버를 확인해 주세요.',
+      );
+    } on TimeoutException {
+      throw const StampApprovalException('스탬프 발행 요청 시간이 초과되었습니다.');
+    } on HandshakeException {
+      throw const StampApprovalException('스탬프 인증 서버 보안 연결에 실패했습니다.');
+    } catch (_) {
+      throw const StampApprovalException('개발용 스탬프를 발행하지 못했습니다.');
+    } finally {
+      httpClient.close(force: true);
+    }
+  }
 
   Future<int> issueStamp({
     required StampVerificationRequest verificationRequest,
@@ -145,11 +208,7 @@ class StampVerificationApiClient {
         value: isMockLocation.toString(),
       );
 
-      await _writeFile(
-        httpRequest,
-        boundary: boundary,
-        file: receiptFile,
-      );
+      await _writeFile(httpRequest, boundary: boundary, file: receiptFile);
       httpRequest.add(utf8.encode('\r\n--$boundary--\r\n'));
 
       final response = await httpRequest.close().timeout(_requestTimeout);

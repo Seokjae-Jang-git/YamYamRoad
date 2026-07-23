@@ -1,4 +1,4 @@
-import 'stamp_verification_models.dart';
+import '../models/stamp_verification_models.dart';
 
 abstract interface class StampIntegrityProbe {
   Future<bool> isDeviceRooted();

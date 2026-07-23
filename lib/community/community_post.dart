@@ -1,14 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// 🌟 커뮤니티 글 데이터를 담는 모델 클래스
 class CommunityPost {
   final String id;
-  final String authorId;
+  final String userId; // 🌟 authorId → userId
   final String? authorNickname;
   final String? authorProfileImage;
-  final List<String> authorBadges; // 뱃지 이름 리스트 (예: ['그로플러버','성수한주'])
-  final String region;   // 지역별 카테고리 (예: 성수동, 가로수길)
-  final String category; // 메뉴별 카테고리 (예: 빵, 떡, 음료, 유행상품)
+  final List<String> authorBadges;
+  final String region;
+  final String category;
   final String content;
   final List<String> imageUrls;
   final int likeCount;
@@ -21,7 +20,7 @@ class CommunityPost {
 
   CommunityPost({
     required this.id,
-    required this.authorId,
+    required this.userId,
     required this.authorNickname,
     this.authorProfileImage,
     this.authorBadges = const [],
@@ -38,38 +37,53 @@ class CommunityPost {
     required this.createdAt,
   });
 
-  // 🌟 Firestore 문서 -> 객체 변환
+  // 🌟 Firestore 필드가 List가 아니라 빈 문자열("")이나 null로 저장돼 있어도
+  //    안전하게 List<String>으로 변환합니다.
+  //    (List<String>.from("") 을 호출하면 "type 'String' is not a subtype of
+  //     type 'Iterable<dynamic>'" 에러가 발생하기 때문에 방어 코드가 필요합니다.)
+  static List<String> _toStringList(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value.map((e) => e.toString()).toList();
+    }
+    if (value is String) {
+      return value.isEmpty ? [] : [value];
+    }
+    return [];
+  }
+
   factory CommunityPost.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return CommunityPost(
       id: doc.id,
-      authorId: data['authorId'] ?? '',
-      authorNickname: data['authorNickname'] ?? '익명',
-      authorProfileImage: data['authorProfileImage'],
-      authorBadges: List<String>.from(data['authorBadges'] ?? []),
-      region: data['region'] ?? '전체',
-      category: data['category'] ?? '전체',
-      content: data['content'] ?? '',
-      imageUrls: List<String>.from(data['imageUrls'] ?? []),
-      likeCount: data['likeCount'] ?? 0,
-      commentCount: data['commentCount'] ?? 0,
-      scrapCount: data['scrapCount'] ?? 0,
-      reportCount: data['reportCount'] ?? 0,
-      likedBy: List<String>.from(data['likedBy'] ?? []),
-      scrappedBy: List<String>.from(data['scrappedBy'] ?? []),
+      userId: (data['userId'] ?? '').toString(),
+      authorNickname: (data['nickname'] ?? '익명').toString(),
+      authorProfileImage: (data['profileImageUrl'] as String?)?.isNotEmpty == true
+          ? data['profileImageUrl'] as String
+          : null,
+      authorBadges: _toStringList(data['badge']),
+      region: (data['region'] as String?)?.isNotEmpty == true ? data['region'] : '전체',
+      category: (data['category'] as String?)?.isNotEmpty == true ? data['category'] : '전체',
+      content: (data['content'] ?? '').toString(),
+      imageUrls: _toStringList(data['imageUrls']),
+      likeCount: (data['likeCount'] is int) ? data['likeCount'] : 0,
+      commentCount: (data['commentCount'] is int) ? data['commentCount'] : 0,
+      scrapCount: (data['scrapCount'] is int) ? data['scrapCount'] : 0,
+      reportCount: (data['reportCount'] is int) ? data['reportCount'] : 0,
+      likedBy: _toStringList(data['likedBy']),
+      scrappedBy: _toStringList(data['scrappedBy']),
       createdAt: (data['createdAt'] is Timestamp)
           ? (data['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
     );
   }
 
-  // 🌟 객체 -> Firestore 저장용 Map 변환
   Map<String, dynamic> toMap() {
     return {
-      'authorId': authorId,
-      'authorNickname': authorNickname,
-      'authorProfileImage': authorProfileImage,
-      'authorBadges': authorBadges,
+      'userId': userId,
+      'nickname': authorNickname,
+      'profileImageUrl': authorProfileImage,
+      'badge': authorBadges,
       'region': region,
       'category': category,
       'content': content,

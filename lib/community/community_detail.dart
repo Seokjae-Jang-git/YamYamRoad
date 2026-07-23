@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../common/user_data.dart';
+import '../services/auth_service.dart';
 import 'community_post.dart';
 import 'community_comment.dart';
 import 'community_write.dart';
@@ -15,8 +17,8 @@ class CommunityDetailScreen extends StatefulWidget {
 }
 
 class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
-  String get _currentUserId => 'test_user_01';
-  String get _currentUserNickname => '테스트유저'; // TODO: 실제 유저 닉네임으로 교체
+  String get _currentUserId => AuthService.currentUser?.uid ?? UserData.uid ?? 'unknown_uid';
+  String get _currentUserNickname => UserData.nickname ?? '이름없음';
 
   final TextEditingController _commentController = TextEditingController();
   final FocusNode _commentFocusNode = FocusNode();
@@ -56,7 +58,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
             .delete();
         if (mounted) Navigator.pop(context);
       } catch (e) {
-        print('글 삭제 중 오류 발생: $e');
+        debugPrint('글 삭제 중 오류 발생: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('삭제에 실패했어요.')),
@@ -116,7 +118,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
         );
       }
     } catch (e) {
-      print('신고 처리 중 오류 발생: $e');
+      debugPrint('신고 처리 중 오류 발생: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('신고 접수에 실패했어요.')),
@@ -148,6 +150,10 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   }
 
   // 🌟 댓글/대댓글 등록
+  // - _replyTarget이 null이면 원댓글로 등록됩니다.
+  // - _replyTarget이 원댓글이면 그 댓글의 id가 parentId가 되고,
+  //   _replyTarget이 이미 대댓글이면 같은 원댓글 아래로 묶이도록 parentId를 그대로 이어받습니다.
+  //   (대댓글에 또 답글을 달아도 트리가 2단계로만 유지됨)
   Future<void> _submitComment() async {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
@@ -157,10 +163,11 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
 
     final comment = CommunityComment(
       id: '',
-      authorId: _currentUserId,
+      userId: _currentUserId, // 🌟 authorId → userId
       authorNickname: _currentUserNickname,
+      authorProfileImage: UserData.profileImagePath,
       content: text,
-      parentId: _replyTarget?.parentId ?? _replyTarget?.id, // 대댓글의 대댓글도 1depth로 묶음
+      parentId: _replyTarget?.parentId ?? _replyTarget?.id,
       replyToNickname: _replyTarget?.authorNickname,
     );
 
@@ -171,7 +178,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
       setState(() => _replyTarget = null);
       FocusScope.of(context).unfocus();
     } catch (e) {
-      print('댓글 등록 중 오류 발생: $e');
+      debugPrint('댓글 등록 중 오류 발생: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('댓글 등록에 실패했어요.')),
@@ -204,7 +211,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
       await postRef.collection('comments').doc(comment.id).delete();
       await postRef.update({'commentCount': FieldValue.increment(-1)});
     } catch (e) {
-      print('댓글 삭제 중 오류 발생: $e');
+      debugPrint('댓글 삭제 중 오류 발생: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('댓글 삭제에 실패했어요.')),
@@ -247,7 +254,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
           }
 
           final post = CommunityPost.fromFirestore(snapshot.data!);
-          final bool isMine = post.authorId == _currentUserId;
+          final bool isMine = post.userId == _currentUserId; // 🌟 authorId → userId
           final bool liked = post.likedBy.contains(_currentUserId);
           final bool scrapped = post.scrappedBy.contains(_currentUserId);
 
@@ -404,7 +411,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   }
 
   Widget _buildCommentTile(CommunityComment comment, {required bool isReply}) {
-    final bool isMine = comment.authorId == _currentUserId;
+    final bool isMine = comment.userId == _currentUserId;
 
     return Padding(
       padding: EdgeInsets.only(

@@ -6,6 +6,8 @@
 // 1. Firebase 콘솔 > 프로젝트 설정 > 서비스 계정 > "새 비공개 키 생성" 으로
 //    serviceAccountKey.json 파일을 받아서 이 스크립트와 같은 폴더에 둡니다.
 // 2. npm install firebase-admin
+// 3. assets/emoticons/penguin/, assets/emoticons/cloud/ 폴더를 만들고
+//    이번에 받은 svg 20개씩을 각각 넣어주세요 (character/emoji/meme와 동일한 방식).
 
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
@@ -27,6 +29,8 @@ const characterFiles = [
 
 const emojiFiles = characterFiles; // 파일명 동일, 폴더만 다름
 const memeFiles = characterFiles;
+const penguinFiles = characterFiles; // penguin, cloud도 동일한 20종 파일명 사용
+const cloudFiles = characterFiles;
 
 function buildItems(folder, files) {
   return files.map((f) => ({
@@ -41,7 +45,7 @@ async function seed() {
       id: 'emo_character_test',
       name: '곰돌이 냠냠팩',
       imageUrl: 'assets/emoticons/character/01_smile.svg',
-      pricePoint: 500,
+      pricePoint: 2500,
       isActive: true,
       items: buildItems('character', characterFiles),
     },
@@ -49,7 +53,7 @@ async function seed() {
       id: 'emo_emoji_test',
       name: '찐텐 이모지팩',
       imageUrl: 'assets/emoticons/emoji/01_smile.svg',
-      pricePoint: 500,
+      pricePoint: 1500,
       isActive: true,
       items: buildItems('emoji', emojiFiles),
     },
@@ -57,9 +61,25 @@ async function seed() {
       id: 'emo_meme_test',
       name: '리액션 폭발팩',
       imageUrl: 'assets/emoticons/meme/01_smile.svg',
-      pricePoint: 500,
+      pricePoint: 1000,
       isActive: true,
       items: buildItems('meme', memeFiles),
+    },
+    {
+      id: 'emo_penguin_test',
+      name: '펭귄 뒤뚱팩',
+      imageUrl: 'assets/emoticons/penguin/01_smile.svg',
+      pricePoint: 2500,
+      isActive: true,
+      items: buildItems('penguin', penguinFiles),
+    },
+    {
+      id: 'emo_cloud_test',
+      name: '구름 몽실팩',
+      imageUrl: 'assets/emoticons/cloud/01_smile.svg',
+      pricePoint: 3000,
+      isActive: true,
+      items: buildItems('cloud', cloudFiles),
     },
   ];
 

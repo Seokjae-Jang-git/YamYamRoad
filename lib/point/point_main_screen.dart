@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
@@ -10,6 +11,7 @@ import 'logic/portone_point_payment_api_client.dart';
 import 'models/point_models.dart';
 import 'widgets/gifticon_detail_screen.dart';
 import 'widgets/portone_payment_screen.dart';
+import '../stamp/widgets/stamp_dev_place_entry_page.dart';
 
 typedef PointPackagePurchaseHandler =
     Future<void> Function(PointPackage pointPackage);
@@ -126,28 +128,49 @@ class _PointMainScreenState extends State<PointMainScreen> {
     return StreamBuilder<List<EmoticonProduct>>(
       stream: _repository.watchEmoticons(),
       builder: (context, snapshot) {
-        return _AsyncContent<List<EmoticonProduct>>(
-          snapshot: snapshot,
-          emptyMessage: '판매 중인 이모티콘이 없습니다.',
-          builder: (emoticons) {
-            return GridView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-              itemCount: emoticons.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.86,
+        return Column(
+          children: [
+            Expanded(
+              child: _AsyncContent<List<EmoticonProduct>>(
+                snapshot: snapshot,
+                emptyMessage: '판매 중인 이모티콘이 없습니다.',
+                builder: (emoticons) {
+                  return GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    itemCount: emoticons.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 0.86,
+                        ),
+                    itemBuilder: (context, index) {
+                      final emoticon = emoticons[index];
+                      return _EmoticonThumbnail(
+                        emoticon: emoticon,
+                        onTap: () => _showEmoticonPackage(emoticon),
+                      );
+                    },
+                  );
+                },
               ),
-              itemBuilder: (context, index) {
-                final emoticon = emoticons[index];
-                return _EmoticonThumbnail(
-                  emoticon: emoticon,
-                  onTap: () => _showEmoticonPackage(emoticon),
-                );
-              },
-            );
-          },
+            ),
+            if (kDebugMode)
+              SafeArea(
+                top: false,
+                minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: _openStampDevPage,
+                    icon: const Icon(Icons.bug_report_outlined),
+                    label: const Text('개발용 스탬프 테스트'),
+                  ),
+                ),
+              ),
+          ],
         );
       },
     );
@@ -238,6 +261,14 @@ class _PointMainScreenState extends State<PointMainScreen> {
       builder: (context) => _EmoticonPackageSheet(
         emoticon: emoticon,
         onPurchase: () => _purchaseEmoticon(emoticon),
+      ),
+    );
+  }
+
+  Future<void> _openStampDevPage() {
+    return Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const StampDevPlaceEntryPage(),
       ),
     );
   }
