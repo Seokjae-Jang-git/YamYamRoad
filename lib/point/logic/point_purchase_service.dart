@@ -46,13 +46,17 @@ class FirestorePointPurchaseService implements PointPurchaseService {
     final itemRef = _firestore.collection('emoticon').doc(emoticonId);
     final purchaseId = 'emoticon_$emoticonId';
     final purchaseRef = userRef.collection('users_purchase').doc(purchaseId);
+    final ownedEmoticonRef = userRef
+        .collection('users_emoticon')
+        .doc(emoticonId);
 
     return _firestore.runTransaction((transaction) async {
       final userSnapshot = await transaction.get(userRef);
       final itemSnapshot = await transaction.get(itemRef);
       final purchaseSnapshot = await transaction.get(purchaseRef);
+      final ownedEmoticonSnapshot = await transaction.get(ownedEmoticonRef);
 
-      if (purchaseSnapshot.exists) {
+      if (purchaseSnapshot.exists || ownedEmoticonSnapshot.exists) {
         throw const PointPurchaseException('already_owned', '이미 구매한 이모티콘입니다.');
       }
       if (!itemSnapshot.exists || itemSnapshot.data()?['isActive'] == false) {
@@ -79,6 +83,14 @@ class FirestorePointPurchaseService implements PointPurchaseService {
         itemId: emoticonId,
         usage: usage,
       );
+      final acquiredAt = FieldValue.serverTimestamp();
+      transaction.set(ownedEmoticonRef, {
+        'purchaseId': purchaseId,
+        'isVisible': true,
+        'displayOrder': 0,
+        'acquiredAt': acquiredAt,
+        'updatedAt': acquiredAt,
+      });
 
       return _buildResult(purchaseId, usage);
     });
@@ -141,42 +153,43 @@ class FirestorePointPurchaseService implements PointPurchaseService {
       'usedAt': null,
     });
 
-    if (usage.usedFreePoint > 0) {
-      _writePointTransaction(
-        transaction: transaction,
-        userRef: userRef,
-        purchaseId: purchaseId,
-        amount: -usage.usedFreePoint,
-        pointType: 'free',
-        createdAt: createdAt,
-      );
-    }
-    if (usage.usedPaidPoint > 0) {
-      _writePointTransaction(
-        transaction: transaction,
-        userRef: userRef,
-        purchaseId: purchaseId,
-        amount: -usage.usedPaidPoint,
-        pointType: 'paid',
-        createdAt: createdAt,
-      );
-    }
+    _writePointTransaction(
+      transaction: transaction,
+      userRef: userRef,
+      purchaseId: purchaseId,
+      usage: usage,
+      createdAt: createdAt,
+    );
   }
 
   void _writePointTransaction({
     required Transaction transaction,
     required DocumentReference<Map<String, dynamic>> userRef,
     required String purchaseId,
-    required int amount,
-    required String pointType,
+    required PointUsageCalculation usage,
     required FieldValue createdAt,
   }) {
+    final usedPoint = usage.usedFreePoint + usage.usedPaidPoint;
+    if (usedPoint <= 0) {
+      return;
+    }
+
     final transactionRef = userRef.collection('users_point_transaction').doc();
+    final pointType = usage.usedFreePoint > 0 && usage.usedPaidPoint > 0
+        ? 'mixed'
+        : usage.usedFreePoint > 0
+        ? 'free'
+        : 'paid';
+
     transaction.set(transactionRef, {
       'type': 'use',
       'source': 'purchase',
-      'amount': amount,
+      'amount': -usedPoint,
       'pointType': pointType,
+      'usedFreePoint': usage.usedFreePoint,
+      'usedPaidPoint': usage.usedPaidPoint,
+      'freePointBalanceAfter': usage.remainingFreePoint,
+      'paidPointBalanceAfter': usage.remainingPaidPoint,
       'refType': 'purchase',
       'refId': purchaseId,
       'createdAt': createdAt,
