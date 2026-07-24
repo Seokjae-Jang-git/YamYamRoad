@@ -176,6 +176,14 @@ class AuthService {
         'withdrawnAt': null,
       };
       await docRef.set(newUser);
+
+      // 🌟 가입 직후 서브컬렉션 초기화
+      // (users_badge/users_purchase는 실제 뱃지 획득·구매가 일어나기 전까지는
+      //  Firestore 특성상 문서가 없으면 컬렉션 자체가 보이지 않아 자연스러운 상태입니다.
+      //  여기서는 "가입 시점에 실제로 발생하는 이벤트"인 환영 알림과
+      //  포인트 잔액 0원 개설 내역만 심어둡니다.)
+      await _seedNewUserSubcollections(uid: uid, nickname: nickname);
+
       return UserModel(
         uid: uid,
         isNewUser: true,
@@ -204,6 +212,48 @@ class AuthService {
         isWithdrawn: isWithdrawn,
         withdrawnAt: (data['withdrawnAt'] as Timestamp?)?.toDate(),
       );
+    }
+  }
+
+  /// 🌟 신규 유저 가입 직후 서브컬렉션 초기 데이터 생성
+  /// - users_notification: 환영 알림 1건
+  /// - users_point_transaction: 포인트 잔액 0원으로 개설되었다는 내역 1건
+  ///
+  /// users_badge / users_purchase는 실제 획득·구매 이벤트가 있을 때
+  /// (BadgeService.checkAndGrantBadges, 포인트 구매 로직 등에서) 자연스럽게
+  /// 첫 문서가 생기면서 컬렉션이 생성되므로 여기서는 건드리지 않습니다.
+  static Future<void> _seedNewUserSubcollections({
+    required String uid,
+    String? nickname,
+  }) async {
+    final userRef = _firestore.collection('users').doc(uid);
+    final batch = _firestore.batch();
+
+    final notificationRef = userRef.collection('users_notification').doc();
+    batch.set(notificationRef, {
+      'type': 'welcome',
+      'title': '얌얌로드에 오신 걸 환영해요!',
+      'message': '${nickname ?? '회원'}님, 가입을 축하드려요. 첫 스탬프를 찍고 뱃지를 모아보세요 🎉',
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    final pointTransactionRef = userRef.collection('users_point_transaction').doc();
+    batch.set(pointTransactionRef, {
+      'type': 'signup',
+      'amount': 0,
+      'balanceAfter': 0,
+      'description': '회원가입으로 포인트 계정이 개설되었습니다.',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    try {
+      await batch.commit();
+    } catch (e) {
+      // 서브컬렉션 초기화 실패는 가입 자체를 막을 이유가 아니므로 로그만 남깁니다.
+      // (users 문서는 이미 생성된 상태)
+      // ignore: avoid_print
+      print('🔴 신규 유저 서브컬렉션 초기화 실패 (uid=$uid): $e');
     }
   }
 

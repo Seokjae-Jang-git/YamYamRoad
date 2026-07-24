@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../common/user_data.dart';
 import '../../services/auth_service.dart';
 import 'community_post.dart';
+import '../../features/emoticon/emoticon_picker_sheet.dart';
 
 // 🌟 새 글 작성 + 기존 글 수정을 모두 담당하는 화면
 // existingPost 가 넘어오면 '수정 모드'로 동작합니다.
@@ -20,8 +21,11 @@ class CommunityWriteScreen extends StatefulWidget {
 
 class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
   static const int _maxImages = 5;
+  static const String _customRegionOption = '직접입력';
 
   final TextEditingController _contentController = TextEditingController();
+  // 🌟 지역 '직접입력' 선택 시 사용할 텍스트 컨트롤러
+  final TextEditingController _customRegionController = TextEditingController();
 
   // 🌟 이미 업로드되어 있는 이미지 (수정 모드에서 넘어온 기존 URL)
   final List<String> _existingImageUrls = [];
@@ -39,6 +43,8 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
 
   bool get _isEditMode => widget.existingPost != null;
 
+  bool get _isCustomRegionSelected => _selectedRegion == _customRegionOption;
+
   int get _totalImageCount => _existingImageUrls.length + _newImages.length;
 
   @override
@@ -47,16 +53,38 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
     if (_isEditMode) {
       final post = widget.existingPost!;
       _contentController.text = post.content;
-      _selectedRegion = post.region;
       _selectedCategory = post.category;
       _existingImageUrls.addAll(post.imageUrls);
+
+      // 🌟 기존 글의 지역이 미리 정의된 옵션(성수동/가로수길)에 없다면
+      // '직접입력'을 선택한 상태로 보고 그 값을 텍스트 필드에 채워둡니다.
+      if (post.region == '성수동' || post.region == '가로수길') {
+        _selectedRegion = post.region;
+      } else {
+        _selectedRegion = _customRegionOption;
+        _customRegionController.text = post.region;
+      }
     }
   }
 
   @override
   void dispose() {
     _contentController.dispose();
+    _customRegionController.dispose();
     super.dispose();
+  }
+
+  // 🌟 이모티콘 피커에서 고른 토큰을 커서 위치에 삽입
+  void _insertEmoticon(String token) {
+    final text = _contentController.text;
+    final selection = _contentController.selection;
+    final start = selection.start >= 0 ? selection.start : text.length;
+    final end = selection.end >= 0 ? selection.end : text.length;
+    final newText = text.replaceRange(start, end, token);
+    _contentController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: start + token.length),
+    );
   }
 
   Future<void> _pickImages() async {
@@ -113,10 +141,21 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
     return urls;
   }
 
+  // 🌟 실제 저장에 쓰일 최종 지역명 (직접입력이면 텍스트 필드 값, 아니면 선택된 옵션 그대로)
+  String get _finalRegion =>
+      _isCustomRegionSelected ? _customRegionController.text.trim() : _selectedRegion;
+
   Future<void> _submit() async {
     if (_contentController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('내용을 입력해주세요.')),
+      );
+      return;
+    }
+
+    if (_isCustomRegionSelected && _finalRegion.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('지역을 직접 입력해주세요.')),
       );
       return;
     }
@@ -134,7 +173,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
             .doc(widget.existingPost!.id)
             .update({
           'content': _contentController.text.trim(),
-          'region': _selectedRegion,
+          'region': _finalRegion,
           'category': _selectedCategory,
           'imageUrls': finalImageUrls,
         });
@@ -143,9 +182,9 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
         final post = CommunityPost(
           id: '',
           userId: _currentUid, // 🌟 authorId → userId
-          authorNickname: UserData.nickname ?? '이름없음',
-          authorProfileImage: UserData.profileImagePath,
-          region: _selectedRegion,
+          nickname: UserData.nickname ?? '이름없음',
+          profileImage: UserData.profileImagePath,
+          region: _finalRegion,
           category: _selectedCategory,
           content: _contentController.text.trim(),
           imageUrls: finalImageUrls,
@@ -214,12 +253,51 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
                     border: InputBorder.none,
                   ),
                 ),
+                const SizedBox(height: 4),
+                // 🌟 이모티콘 삽입 버튼
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconButton(
+                    icon: const Icon(Icons.emoji_emotions_outlined, color: Colors.grey),
+                    tooltip: '이모티콘',
+                    onPressed: _isSubmitting
+                        ? null
+                        : () => EmoticonPickerSheet.show(
+                      context,
+                      uid: _currentUid,
+                      onSelect: _insertEmoticon,
+                    ),
+                  ),
+                ),
                 const Divider(),
                 const SizedBox(height: 16),
                 const Text('지역', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 8),
-                _buildChoiceRow(_regionOptions, _selectedRegion,
-                        (val) => setState(() => _selectedRegion = val)),
+                _buildChoiceRow(_regionOptions, _selectedRegion, (val) {
+                  setState(() => _selectedRegion = val);
+                }),
+                // 🌟 '직접입력' 선택 시에만 지역명 입력 필드 노출
+                if (_isCustomRegionSelected) ...[
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _customRegionController,
+                    maxLength: 20,
+                    decoration: InputDecoration(
+                      hintText: '지역명을 입력해주세요 (예: 연남동)',
+                      hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
+                      isDense: true,
+                      filled: true,
+                      fillColor: const Color(0xFFF5F5F5),
+                      counterText: '',
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 const Text('카테고리', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 8),
