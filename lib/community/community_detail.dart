@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../common/user_data.dart';
+import '../features/emoticon/emoticon_span_builder.dart';
+import '../features/emoticon/emoticon_picker_sheet.dart';
 import '../services/auth_service.dart';
 import 'community_post.dart';
 import 'community_comment.dart';
@@ -100,13 +102,40 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
 
     if (selected == null) return;
 
+    // 🌟 '기타' 선택 시 상세 사유 입력받기
+    String? detail;
+    if (selected == '기타') {
+      detail = await _askReportDetail();
+      if (detail == null || detail.trim().isEmpty) return; // 취소 시 신고 안 함
+    }
+
+    // 🌟 중복 신고 방지 (같은 유저가 같은 글 두 번 신고 못하게)
+    final existing = await FirebaseFirestore.instance
+        .collection('reports')
+        .where('targetId', isEqualTo: widget.postId)
+        .where('userId', isEqualTo: _currentUserId)
+        .limit(1)
+        .get();
+
+    if (existing.docs.isNotEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('이미 신고한 게시글이에요.')),
+        );
+      }
+      return;
+    }
+
     try {
       await FirebaseFirestore.instance.collection('reports').add({
-        'postId': widget.postId,
-        'reporterId': _currentUserId,
+        'targetType': 'post',
+        'targetId': widget.postId,
+        'userId': _currentUserId,
         'reason': selected,
+        'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
       });
+
       await FirebaseFirestore.instance
           .collection('community_posts')
           .doc(widget.postId)
@@ -125,6 +154,25 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
         );
       }
     }
+  }
+
+  Future<String?> _askReportDetail() async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('신고 상세 사유'),
+        content: TextField(
+          controller: controller,
+          maxLines: 3,
+          decoration: const InputDecoration(hintText: '구체적인 사유를 입력해주세요'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text('확인')),
+        ],
+      ),
+    );
   }
 
   Future<void> _toggleLike(CommunityPost post) async {
@@ -225,6 +273,19 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     _commentFocusNode.requestFocus();
   }
 
+  // 🌟 댓글/대댓글 입력창에서 이모티콘 삽입 (커서 위치 기준)
+  void _insertCommentEmoticon(String token) {
+    final text = _commentController.text;
+    final selection = _commentController.selection;
+    final start = selection.start >= 0 ? selection.start : text.length;
+    final end = selection.end >= 0 ? selection.end : text.length;
+    final newText = text.replaceRange(start, end, token);
+    _commentController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: start + token.length),
+    );
+  }
+
   void _cancelReply() {
     setState(() => _replyTarget = null);
   }
@@ -271,10 +332,10 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                           CircleAvatar(
                             radius: 22,
                             backgroundColor: const Color(0xFFF5F5F5),
-                            backgroundImage: post.authorProfileImage != null
-                                ? NetworkImage(post.authorProfileImage!)
+                            backgroundImage: post.profileImage != null
+                                ? NetworkImage(post.profileImage!)
                                 : null,
-                            child: post.authorProfileImage == null
+                            child: post.profileImage == null
                                 ? const Icon(Icons.person_outline, color: Colors.grey)
                                 : null,
                           ),
@@ -283,8 +344,19 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(post.authorNickname ?? '익명',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                // 🌟 닉네임 옆에 뱃지 노출 (얌얌북/커뮤니티 목록과 동일 방식)
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Flexible(
+                                      child: Text(post.nickname ?? '익명',
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    _AuthorBadgeRow(userId: post.userId),
+                                  ],
+                                ),
                                 Text('${post.region} · ${post.category}',
                                     style: const TextStyle(fontSize: 12, color: Colors.grey)),
                               ],
@@ -312,7 +384,10 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      Text(post.content, style: const TextStyle(fontSize: 14)),
+                      EmoticonRichContent(
+                        content: post.content,
+                        style: const TextStyle(fontSize: 14, color: Colors.black),
+                      ),
                       if (post.imageUrls.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         ClipRRect(
@@ -453,21 +528,18 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                   ],
                 ),
                 const SizedBox(height: 3),
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      if (comment.replyToNickname != null)
-                        TextSpan(
-                          text: '@${comment.replyToNickname} ',
-                          style: const TextStyle(
-                              color: Color(0xFFFF8A3D), fontWeight: FontWeight.w600, fontSize: 13),
-                        ),
-                      TextSpan(
-                        text: comment.content,
-                        style: const TextStyle(fontSize: 13, color: Colors.black87),
-                      ),
-                    ],
-                  ),
+                EmoticonRichContent(
+                  content: comment.content,
+                  emojiSize: 16,
+                  style: const TextStyle(fontSize: 13, color: Colors.black87),
+                  leadingSpans: comment.replyToNickname != null
+                      ? [
+                    TextSpan(
+                      text: '@${comment.replyToNickname} ',
+                      style: const TextStyle(color: Color(0xFFFF8A3D), fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                  ]
+                      : const [],
                 ),
                 const SizedBox(height: 4),
                 Row(
@@ -525,6 +597,19 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
               ),
             Row(
               children: [
+                // 🌟 댓글/대댓글용 이모티콘 버튼 (보유한 팩만 노출됨)
+                IconButton(
+                  icon: const Icon(Icons.emoji_emotions_outlined, color: Colors.grey),
+                  tooltip: '이모티콘',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => EmoticonPickerSheet.show(
+                    context,
+                    uid: _currentUserId,
+                    onSelect: _insertCommentEmoticon,
+                  ),
+                ),
+                const SizedBox(width: 6),
                 Expanded(
                   child: TextField(
                     controller: _commentController,
@@ -570,5 +655,265 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     if (diff.inMinutes < 60) return '${diff.inMinutes}분 전';
     if (diff.inHours < 24) return '${diff.inHours}시간 전';
     return '${time.month}/${time.day}';
+  }
+}
+
+/// 🌟 게시글 상세 화면의 작성자 닉네임 옆에 붙는 뱃지 목록.
+/// 얌얌북(FeedCardWidget)과 동일한 규칙: 획득한 전체 뱃지 중 대표 뱃지(isSelected+displayOrder)를
+/// 우선 정렬해 최대 3개까지 아이콘으로 보여주고, 나머지는 +N으로 표시합니다.
+/// (대표 뱃지를 지정하지 않은 계정도 획득한 뱃지가 있으면 아이콘이 뜹니다.)
+class _AuthorBadgeRow extends StatelessWidget {
+  final String userId;
+
+  const _AuthorBadgeRow({Key? key, required this.userId}) : super(key: key);
+
+  Future<List<Map<String, dynamic>>> _fetchAllUserBadges() async {
+    final cleanUid = userId.trim();
+    if (cleanUid.isEmpty) {
+      return [];
+    }
+
+    try {
+      final userBadgeSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(cleanUid)
+          .collection('users_badge')
+          .get();
+
+      if (userBadgeSnap.docs.isEmpty) return [];
+
+      var selectedDocs = userBadgeSnap.docs
+          .where((d) => d.data()['isSelected'] == true)
+          .toList();
+
+      selectedDocs.sort((a, b) {
+        final orderA = (a.data()['displayOrder'] as num?)?.toInt() ?? 99;
+        final orderB = (b.data()['displayOrder'] as num?)?.toInt() ?? 99;
+        return orderA.compareTo(orderB);
+      });
+
+      var unselectedDocs = userBadgeSnap.docs
+          .where((d) => d.data()['isSelected'] != true)
+          .toList();
+
+      final allDocs = [...selectedDocs, ...unselectedDocs];
+      final badgeIds = allDocs
+          .map((d) => d.data()['badgeId'] as String?)
+          .whereType<String>()
+          .toList();
+
+      final List<Map<String, dynamic>> badgeDetails = [];
+      for (final bId in badgeIds) {
+        final badgeDoc = await FirebaseFirestore.instance.collection('badge').doc(bId).get();
+        if (badgeDoc.exists && badgeDoc.data()?['isActive'] == true) {
+          final data = badgeDoc.data()!;
+          badgeDetails.add({
+            'id': bId,
+            'name': data['name'] ?? '뱃지',
+            'description': data['description'] ?? '',
+            'imageUrl': data['imageUrl'] ?? '',
+            'iconUrl': data['iconUrl'] ?? data['imageUrl'] ?? '',
+          });
+        }
+      }
+
+      return badgeDetails;
+    } catch (e) {
+      debugPrint('🔴 [BadgeCheck] 뱃지 로드 중 에러 발생: $e');
+      return [];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _fetchAllUserBadges(),
+      builder: (context, snapshot) {
+        final allBadges = snapshot.data ?? [];
+        if (allBadges.isEmpty) return const SizedBox.shrink();
+
+        const int maxDisplayCount = 3;
+        final displayBadges = allBadges.take(maxDisplayCount).toList();
+        final bool hasMore = allBadges.length > maxDisplayCount;
+        final int extraCount = allBadges.length - maxDisplayCount;
+
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ...displayBadges.asMap().entries.map((entry) {
+              final int index = entry.key;
+              final badge = entry.value;
+              final String iconUrl = badge['iconUrl'] ?? '';
+              return GestureDetector(
+                onTap: () => _showBadgeSliderBottomSheet(context, allBadges, initialIndex: index),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 4),
+                  width: 22,
+                  height: 22,
+                  decoration: const BoxDecoration(shape: BoxShape.circle),
+                  child: ClipOval(
+                    child: iconUrl.isEmpty
+                        ? const SizedBox.shrink()
+                        : Image.network(
+                      iconUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+              );
+            }),
+            if (hasMore)
+              GestureDetector(
+                onTap: () => _showBadgeSliderBottomSheet(context, allBadges, initialIndex: maxDisplayCount),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEEEEEE),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '+$extraCount',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black87),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 🌟 좌우 스와이프 가능한 슬라이드형 뱃지 전체보기 바텀 시트 (얌얌북 FeedCardWidget과 동일 UI)
+  void _showBadgeSliderBottomSheet(
+      BuildContext context,
+      List<Map<String, dynamic>> allBadges, {
+        int initialIndex = 0,
+      }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        int currentPage = initialIndex;
+        final PageController pageController = PageController(initialPage: initialIndex);
+
+        return StatefulBuilder(
+          builder: (context, setBottomSheetState) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '보유한 뱃지 (${currentPage + 1}/${allBadges.length})',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                  ),
+                  SizedBox(
+                    height: 190,
+                    child: PageView.builder(
+                      controller: pageController,
+                      itemCount: allBadges.length,
+                      onPageChanged: (index) {
+                        setBottomSheetState(() {
+                          currentPage = index;
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        final badge = allBadges[index];
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 100,
+                              height: 100,
+                              child: Image.network(
+                                badge['imageUrl'],
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) =>
+                                const Icon(Icons.workspace_premium, size: 70, color: Colors.orange),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              badge['name'],
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              badge['description'] ?? '',
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade700,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  if (allBadges.length > 1) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(allBadges.length, (dotIndex) {
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: currentPage == dotIndex ? 16 : 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(3),
+                            color: currentPage == dotIndex ? Colors.black : Colors.grey.shade300,
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        '확인',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 }

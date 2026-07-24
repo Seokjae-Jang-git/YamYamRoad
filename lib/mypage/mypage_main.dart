@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:yamyam_road/mypage/badge/badge_main_screen.dart';
+import 'package:yamyam_road/mypage/report/report_list_screen.dart';
 import '../common/user_data.dart';
 import '../../services/auth_service.dart';
 import '../services/after_stamp_service.dart';
@@ -11,6 +12,7 @@ import 'stamp/stamp_main_screen.dart';
 import 'badge/badge_main_screen.dart';
 import 'point/point_main_screen.dart';
 
+import 'badge_grant_debug_tool.dart';
 
 // 분리한 컴포넌트들 임포트
 import 'setting/setting.dart';
@@ -73,7 +75,7 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
   void _openPoint() => Navigator.push(context, MaterialPageRoute(builder: (context) => const PointMainScreen()));
   void _openInquiry() => Navigator.push(context, MaterialPageRoute(builder: (context) => const InquiryListScreen()));
   void _openSetting() => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingScreen()));
-
+  void _openReport() => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReportListScreen()));
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +144,8 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
                   openStamp: _openStamp,
                   openBadge: _openBadge,
                   openPoint: _openPoint,
-                openInquiry: _openInquiry,
+                  openInquiry: _openInquiry,
+                  openReport: _openReport,
                   openSetting: _openSetting,
               ),
               const SizedBox(height: 16),
@@ -160,8 +163,9 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
               const SizedBox(height: 16),
               _buildCardSection('문의', buildInquiryContent(), onDetailTap: _openInquiry),
               const SizedBox(height: 16),
-              _buildCardSection('신고', buildReportContent()),
+              _buildCardSection('신고', buildReportContent(), onDetailTap: _openReport),
               const SizedBox(height: 32),
+              const BadgeRealCheckDebugButton(),
             ],
           ),
         ),

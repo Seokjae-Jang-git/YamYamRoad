@@ -9,6 +9,7 @@ class MenuGrid extends StatelessWidget {
   final VoidCallback openBadge;
   final VoidCallback openPoint;
   final VoidCallback openInquiry;
+  final VoidCallback openReport;
   final VoidCallback openSetting;
 
   const MenuGrid({
@@ -19,6 +20,7 @@ class MenuGrid extends StatelessWidget {
     required this.openBadge,
     required this.openPoint,
     required this.openInquiry,
+    required this.openReport,
     required this.openSetting,
   }) : super(key: key);
 
@@ -55,6 +57,8 @@ class MenuGrid extends StatelessWidget {
               openPoint();
             } else if (label == '문의') {
               openInquiry();
+            } else if (label == '신고') {
+              openReport();
             } else if (label == '설정') {
               openSetting();
             } else {
