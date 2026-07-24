@@ -40,26 +40,26 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     });
 
     try {
-      // 1. 캐시/Firestore에서 장소 목록 조회 (캐시 적용되어 0.001초 만에 즉시 가져옴)
+      // 1. 캐시/Firestore에서 장소 목록 조회
       final fetchedPlaces = await _placeRepository.fetchPlacesByIds(widget.road.roadPlace);
 
       if (!mounted) return;
 
-      // 2. 장소 데이터가 확보되었으므로 화면 로딩을 즉시 해제하여 화면을 먼저 띄웁니다!
+      // 2. 장소 데이터가 확보되었으므로 화면 로딩을 즉시 해제
       setState(() {
         _places = fetchedPlaces;
         _isLoading = false;
       });
 
-      // 3. 화면이 떠 있는 상태에서 백그라운드로 GPS 현재 위치를 구합니다.
-      final position = await LocationService.getCurrentLocation();
+      // 3. 화면이 떠 있는 상태에서 백그라운드로 안전하게 GPS 현재 위치를 구함 (5초 타임아웃 / Fallback 적용)
+      final locationResult = await LocationService.getCurrentLocationWithFallback();
 
-      // 4. GPS 수신 성공 시 실측 거리를 계산하여 화면 데이터만 매끄럽게 업데이트
-      if (position != null && mounted) {
+      // 4. GPS 수신 성공 시 실측 거리를 계산하여 화면 데이터 업데이트
+      if (mounted) {
         final updatedPlaces = fetchedPlaces.map((place) {
           return place.copyWithCalculatedDistance(
-            position.latitude,
-            position.longitude,
+            locationResult.latitude,
+            locationResult.longitude,
           );
         }).toList();
 

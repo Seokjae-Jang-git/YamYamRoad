@@ -7,7 +7,7 @@ import 'home_stamp_dashboard.dart';
 import 'home_recommended_roads_section.dart';
 import 'ad_banner.dart';
 import '../../ad/ad_station_page.dart';
-import '../../road/data/place_mock_data.dart';
+import '../../road/models/place_model.dart'; // 🆕 진짜 PlaceModel로 타입 임포트 변경
 import '../../providers/user_location_provider.dart';
 
 class HomeContentView extends StatelessWidget {
@@ -22,10 +22,13 @@ class HomeContentView extends StatelessWidget {
   Widget build(BuildContext context) {
     // 전역 위치 상태 구독 (추천 로드 섹션 연동용)
     final locationProvider = context.watch<UserLocationProvider>();
-    final double userLat = locationProvider.currentPosition.latitude;
-    final double userLng = locationProvider.currentPosition.longitude;
 
-    final List<PlaceData> stampVerifiablePlaces = masterPlaces.take(6).toList();
+    // 안전한 Getter(userLat, userLng) 사용
+    final double userLat = locationProvider.userLat;
+    final double userLng = locationProvider.userLng;
+
+    // 🌟 버튼 클릭 시 Firestore 위치 기반으로 최신 매장 10개를 직접 조회하므로 기본값은 빈 리스트 전달
+    const List<PlaceModel> stampVerifiablePlaces = [];
 
     return SingleChildScrollView(
       child: Column(
@@ -50,14 +53,15 @@ class HomeContentView extends StatelessWidget {
             child: HomeStampDashboard(
               verifiablePlaces: stampVerifiablePlaces,
               onPlaceSelected: (selectedPlace) {
+                // 🌟 placeId -> id (Firestore 문서 고유 ID)로 수정 완료
                 debugPrint('================================================');
-                debugPrint('부모 화면 수신 데이터 [Selected Place ID]: ${selectedPlace.placeId}');
+                debugPrint('부모 화면 수신 데이터 [Selected Place ID]: ${selectedPlace.id}');
                 debugPrint('================================================');
 
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      '선택 완료: [${selectedPlace.name}] (ID: ${selectedPlace.placeId})\n콘솔 로그에 ID가 기록되었습니다.',
+                      '선택 완료: [${selectedPlace.name}] (ID: ${selectedPlace.id})\n콘솔 로그에 ID가 기록되었습니다.',
                     ),
                     backgroundColor: Colors.blue[800],
                     duration: const Duration(seconds: 3),
