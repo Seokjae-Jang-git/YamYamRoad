@@ -43,7 +43,11 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            // 🌟 문의 작성/상세 화면을 거쳐 들어왔더라도
+            //    뒤로가기 한 번으로 바로 마이페이지 메인 화면까지 이동합니다.
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          },
         ),
         title: const Text(
           '문의 내역',

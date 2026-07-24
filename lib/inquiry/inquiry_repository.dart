@@ -10,7 +10,19 @@ import 'inquiry.dart';
 /// 컬렉션명: inquiry (단수)
 class InquiryRepository extends ChangeNotifier {
   InquiryRepository._internal() {
+    // 🌟 앱 시작 시점의 로그인 상태로 최초 1회 구독
     _listenToFirestore();
+
+    // 🌟 로그인/로그아웃/계정 전환이 일어날 때마다 자동으로 재구독합니다.
+    //    (로그인 화면이나 로그아웃 로직에서 refreshSubscription()을
+    //     따로 호출해줄 필요가 없어져서, 호출 누락으로 인한
+    //     "이전 계정 문의가 계속 보이는" 버그를 방지합니다.)
+    _authSub = AuthService.authStateChanges.listen((user) {
+      final newUid = user?.uid;
+      if (newUid == _lastUid) return; // 동일 유저면 재구독 불필요
+      _lastUid = newUid;
+      _listenToFirestore();
+    });
   }
 
   static final InquiryRepository instance = InquiryRepository._internal();
@@ -25,16 +37,24 @@ class InquiryRepository extends ChangeNotifier {
   List<Inquiry> get inquiries => List.unmodifiable(_inquiries);
 
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _sub;
+  StreamSubscription<dynamic>? _authSub;
+  String? _lastUid;
 
   void _listenToFirestore() {
     final uid = AuthService.currentUser?.uid;
+    _lastUid = uid;
+
+    // 🌟 이전 유저(또는 이전 세션)의 구독을 반드시 먼저 해제합니다.
+    //    해제하지 않으면 계정을 전환했을 때 이전 구독의 콜백이 뒤늦게
+    //    도착해 새 유저의 목록을 덮어써버리는 경합 상태가 생길 수 있습니다.
+    _sub?.cancel();
+
     if (uid == null) {
       _inquiries = [];
       notifyListeners();
       return;
     }
 
-    _sub?.cancel();
     _sub = _collection
         .where('userId', isEqualTo: uid)
         .orderBy('createdAt', descending: true)
@@ -53,14 +73,16 @@ class InquiryRepository extends ChangeNotifier {
       }
 
       _inquiries = parsed;
-      debugPrint('🟢 [InquiryRepository] 목록 갱신됨. 총 ${_inquiries.length}건');
+      debugPrint('🟢 [InquiryRepository] 목록 갱신됨. 총 ${_inquiries.length}건 (uid=$uid)');
       notifyListeners();
     }, onError: (e, stackTrace) {
       debugPrint('🔴 [InquiryRepository] 구독 자체 실패: $e');
     });
   }
 
-  /// 로그아웃/로그인으로 유저가 바뀌었을 때 다시 구독합니다.
+  /// 로그아웃/로그인으로 유저가 바뀌었을 때 수동으로 다시 구독하고 싶을 때
+  /// 호출할 수 있습니다. (authStateChanges 리스너가 이미 자동으로 처리하므로
+  /// 보통은 호출할 필요가 없지만, 예외적인 상황을 위해 남겨둡니다.)
   void refreshSubscription() {
     _listenToFirestore();
   }
@@ -156,6 +178,7 @@ class InquiryRepository extends ChangeNotifier {
   @override
   void dispose() {
     _sub?.cancel();
+    _authSub?.cancel();
     super.dispose();
   }
 }

@@ -28,7 +28,7 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
     if (query.isEmpty) return false;
     final q = query.toLowerCase();
     return post.content.toLowerCase().contains(q) ||
-        (post.authorNickname ?? '').toLowerCase().contains(q) ||
+        (post.nickname ?? '').toLowerCase().contains(q) ||
         post.region.toLowerCase().contains(q) ||
         post.category.toLowerCase().contains(q);
   }
@@ -143,7 +143,7 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
               children: [
                 Row(
                   children: [
-                    Text(post.authorNickname ?? '익명',
+                    Text(post.nickname ?? '익명',
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(width: 6),
                     Text('${post.region} · ${post.category}',
