@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../road/data/place_mock_data.dart'; // 🆕 가짜 모델을 도려내고, 진짜 PlaceData 공용 모델로 연동!
+import '../../road/models/place_model.dart'; // 🆕 진짜 PlaceModel로 경로 변경!
 
 class StampVerificationDialog extends StatelessWidget {
-  final List<PlaceData> places; // 🆕 진짜 PlaceData 목록으로 수급 규격화
-  final Function(PlaceData) onPlaceSelected;
+  final List<PlaceModel> places; // 🆕 진짜 PlaceModel 규격 적용
+  final Function(PlaceModel) onPlaceSelected;
 
   const StampVerificationDialog({
     super.key,
@@ -16,14 +16,14 @@ class StampVerificationDialog extends StatelessWidget {
     return AlertDialog(
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20), // 🎨 더 둥글고 트렌디한 모서리 깎기
+        borderRadius: BorderRadius.circular(20), // 🎨 더 둥글고 트렌디한 모서리
       ),
       titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       title: Row(
         children: [
-          // 🍒 체리 컨셉의 화사한 원형 아이콘 배경 구현
+          // 🍒 체리 컨셉의 화사한 원형 아이콘 배경
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -45,7 +45,7 @@ class StampVerificationDialog extends StatelessWidget {
       ),
       content: SizedBox(
         width: double.maxFinite,
-        height: 380, // 팝업창 내부 리스트 뷰 높이 최적화
+        height: 380, // 팝업창 내부 리스트뷰 높이
         child: places.isEmpty
             ? const Center(
           child: Text(
@@ -75,7 +75,7 @@ class StampVerificationDialog extends StatelessWidget {
               ),
               child: ListTile(
                 contentPadding: const EdgeInsets.all(8),
-                // 🎨 투박한 회색 글씨 대신, 산뜻한 파스텔 오렌지 컨테이너에 맛있는 디저트 이모지 썸네일 배치!
+                // 🖼️ 실제 썸네일 이미지 출력 + 실패 시 🍰 디저트 이모지 보완
                 leading: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
@@ -83,10 +83,16 @@ class StampVerificationDialog extends StatelessWidget {
                     height: 50,
                     color: Colors.orange[50],
                     alignment: Alignment.center,
-                    child: const Text(
-                      '🍰',
-                      style: TextStyle(fontSize: 24),
-                    ),
+                    child: place.thumbnailUrl.isNotEmpty
+                        ? Image.network(
+                      place.thumbnailUrl,
+                      width: 50,
+                      height: 50,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                      const Text('🍰', style: TextStyle(fontSize: 24)),
+                    )
+                        : const Text('🍰', style: TextStyle(fontSize: 24)),
                   ),
                 ),
                 title: Text(
@@ -103,7 +109,7 @@ class StampVerificationDialog extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 4),
-                    // 🏃 내 위치 기반 달리기 이모지와 거리 표시
+                    // 🏃 실측 거리 표시 (예: 7.3km)
                     Text(
                       '🏃 ${place.distance}',
                       style: TextStyle(
@@ -117,7 +123,7 @@ class StampVerificationDialog extends StatelessWidget {
                       children: [
                         const Icon(Icons.star, color: Colors.amber, size: 12),
                         Text(
-                          ' ${place.rating}',
+                          ' ${place.rating.toStringAsFixed(1)}',
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
@@ -130,7 +136,7 @@ class StampVerificationDialog extends StatelessWidget {
                           style: TextStyle(fontSize: 11),
                         ),
                         Text(
-                          ' ${place.stampCount}개',
+                          ' ${place.stampCount}',
                           style: TextStyle(
                             fontSize: 11,
                             color: Colors.redAccent[400],
@@ -153,14 +159,14 @@ class StampVerificationDialog extends StatelessWidget {
                     ),
                   ),
                   onPressed: () {
-                    // 🌟 [임효진 님의 소중한 콘솔 로그 완벽 사수!]
+                    // 🌟 실제 Firestore 문서 ID(place.id) 기준 콘솔 출력
                     debugPrint('============== STAMP VERIFICATION ==============');
                     debugPrint('[클릭 이벤트] 유저가 스탬프 인증 업체를 선택했습니다.');
-                    debugPrint('선택된 업체 고유 ID (placeId): ${place.placeId}');
+                    debugPrint('선택된 업체 고유 ID (id): ${place.id}');
                     debugPrint('선택된 업체 이름 (name): ${place.name}');
                     debugPrint('================================================');
 
-                    // 기존 콜백 실행 (부모인 HomeContentView에 선택 데이터 송신)
+                    // 부모 화면으로 선택 데이터 송신
                     onPlaceSelected(place);
                   },
                   child: const Text(
