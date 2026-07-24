@@ -7,6 +7,7 @@ class MenuGrid extends StatelessWidget {
   final VoidCallback openCommunity;
   final VoidCallback openStamp;
   final VoidCallback openBadge;
+  final VoidCallback openPoint;
   final VoidCallback openInquiry;
   final VoidCallback openSetting;
 
@@ -16,6 +17,7 @@ class MenuGrid extends StatelessWidget {
     required this.openCommunity,
     required this.openStamp,
     required this.openBadge,
+    required this.openPoint,
     required this.openInquiry,
     required this.openSetting,
   }) : super(key: key);
@@ -49,6 +51,8 @@ class MenuGrid extends StatelessWidget {
               openStamp();
             } else if (label == '뱃지') {
               openBadge();
+            } else if (label == '포인트') {
+              openPoint();
             } else if (label == '문의') {
               openInquiry();
             } else if (label == '설정') {

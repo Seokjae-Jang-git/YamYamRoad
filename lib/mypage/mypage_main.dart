@@ -9,6 +9,8 @@ import 'community_my/community_my.dart';
 import '../inquiry/inquiry_list_screen.dart';
 import 'stamp/stamp_main_screen.dart';
 import 'badge/badge_main_screen.dart';
+import 'point/point_main_screen.dart';
+
 
 // 분리한 컴포넌트들 임포트
 import 'setting/setting.dart';
@@ -68,6 +70,7 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
   void _openCommunity() => Navigator.push(context, MaterialPageRoute(builder: (context) => const CommunityMyScreen()));
   void _openStamp() => Navigator.push(context, MaterialPageRoute(builder: (context) => const StampMainScreen()));
   void _openBadge() => Navigator.push(context, MaterialPageRoute(builder: (context) => const BadgeMainScreen()));
+  void _openPoint() => Navigator.push(context, MaterialPageRoute(builder: (context) => const PointMainScreen()));
   void _openInquiry() => Navigator.push(context, MaterialPageRoute(builder: (context) => const InquiryListScreen()));
   void _openSetting() => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingScreen()));
 
@@ -138,7 +141,8 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
                   openCommunity: _openCommunity,
                   openStamp: _openStamp,
                   openBadge: _openBadge,
-                  openInquiry: _openInquiry,
+                  openPoint: _openPoint,
+                openInquiry: _openInquiry,
                   openSetting: _openSetting,
               ),
               const SizedBox(height: 16),
