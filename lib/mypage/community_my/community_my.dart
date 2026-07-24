@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import '../../../common/user_data.dart';
-import 'repository/community_my_repository.dart'; // 🌟 경로 임포트 수정
-import 'widgets/feed_card_widget.dart';          // 🌟 경로 임포트 수정
+import 'repository/community_my_repository.dart';
+import 'widgets/feed_card_widget.dart';
 
 class CommunityMyScreen extends StatefulWidget {
   const CommunityMyScreen({Key? key}) : super(key: key);
@@ -49,14 +49,29 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
               stream: FirebaseFirestore.instance
                   .collection('users')
                   .doc(UserData.uid)
-                  .collection('post_scrap')
-                  .orderBy('scrapedAt', descending: true)
+                  .collection('users_myscrap')
+                  .orderBy('scrapedAt', descending: true) // 🌟 scrapedAt 으로 맞춤
                   .snapshots(),
               builder: (context, scrapSnapshot) {
+                if (scrapSnapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        '에러 발생:\n${scrapSnapshot.error}',
+                        style: const TextStyle(color: Colors.red, fontSize: 13),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  );
+                }
+
                 if (scrapSnapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator(color: Colors.black));
                 }
+
                 final scrapDocs = scrapSnapshot.data?.docs ?? [];
+
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -72,8 +87,8 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         itemCount: scrapDocs.length,
                         itemBuilder: (context, index) {
-                          final scrapData = scrapDocs[index].data() as Map<String, dynamic>;
-                          final String targetPostId = scrapData['postId'] ?? '';
+                          final scrapDoc = scrapDocs[index];
+                          final String targetPostId = scrapDoc.id; // 문서 ID가 원본 피드 ID
 
                           return FutureBuilder<DocumentSnapshot>(
                             future: FirebaseFirestore.instance.collection('posts').doc(targetPostId).get(),
@@ -81,9 +96,11 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
                               if (postSnapshot.connectionState == ConnectionState.waiting) {
                                 return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator(color: Colors.black, strokeWidth: 1.5)));
                               }
+
                               if (!postSnapshot.hasData || !postSnapshot.data!.exists) {
                                 return const SizedBox.shrink();
                               }
+
                               final originFeed = postSnapshot.data!.data() as Map<String, dynamic>;
                               originFeed['postId'] = postSnapshot.data!.id;
 
@@ -106,7 +123,7 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator(color: Colors.black));
                 }
-                // 🌟 수정된 레포지토리 메서드 적용
+
                 final List<Map<String, dynamic>> processedFeeds = CommunityMyRepository.processFeeds(
                   docs: snapshot.data?.docs ?? [],
                   selectedFilter: _selectedFilter,
