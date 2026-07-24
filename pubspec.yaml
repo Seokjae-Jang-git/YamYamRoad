@@ -64,7 +64,7 @@ dependencies:
   geocoding: ^5.0.0
   firebase_messaging: ^16.4.3
   http: ^1.6.0
-
+  device_info_plus: ^13.2.0
 
 dev_dependencies:
   flutter_test:

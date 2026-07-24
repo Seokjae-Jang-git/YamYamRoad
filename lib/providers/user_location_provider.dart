@@ -21,12 +21,13 @@ class UserLocationProvider with ChangeNotifier {
   }
 
   /// 위치 정보 수동/자동 새로고침
-  Future<void> refreshLocation() async {
+  /// [forceRefresh]: 향후 확장성을 위해 옵션은 유지하되, 내부 통합 위치 수신을 호출합니다.
+  Future<void> refreshLocation({bool forceRefresh = false}) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      // LocationService의 3단계 Fallback 적용 메서드 호출
+      // LocationService의 통합 위치 수신(디버그 우회 + Fallback) 호출
       final result = await LocationService.getCurrentLocationWithFallback();
 
       _userLat = result.latitude;

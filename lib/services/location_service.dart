@@ -20,10 +20,15 @@ class LocationDataResult {
 }
 
 class LocationService {
-  // 🏛️ 기본 좌표 (서울시청) - 3순위 Fallback
+  // 🏛️ 기본 좌표 (서울시청) - 4순위 최종 Fallback
   static const double defaultLat = 37.5665;
   static const double defaultLng = 126.9780;
   static const String defaultAddress = '서울특별시 중구 태평로1가 31';
+
+  // 🐛 디버그 모드 전용 테스트 좌표 (서초구청)
+  static const double debugLat = 37.4837;
+  static const double debugLng = 127.0324;
+  static const String debugAddress = '서울특별시 서초구 남부순환로 2584';
 
   /// Google Reverse Geocoding REST API를 호출하여 좌표를 주소 문자열로 변환
   static Future<String> getAddressFromCoordinates(double lat, double lng) async {
@@ -54,7 +59,7 @@ class LocationService {
     return '위치 정보 수신 완료';
   }
 
-  /// 2순위: Firestore 사용자 문서에서 저장된 lastLocation 조회
+  /// 3순위: Firestore 사용자 문서에서 저장된 lastLocation 조회
   static Future<LocationDataResult?> getLastLocationFromFirestore() async {
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -81,7 +86,7 @@ class LocationService {
     return null;
   }
 
-  /// 1순위 성공 시: Firestore에 최신 위치 백업 저장
+  /// 최신 위치 성공 수신 시: Firestore에 위치 백업 저장
   static Future<void> saveLastLocationToFirestore(double lat, double lng, String address) async {
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -101,8 +106,20 @@ class LocationService {
     }
   }
 
-  /// 🌟 통합 위치 수신 (3단계 Fallback 메커니즘 + 에뮬레이터 NMEA 크래시 방지)
+  /// 🌟 통합 위치 수신 (디버그 우회 + 4단계 Fallback 메커니즘)
   static Future<LocationDataResult> getCurrentLocationWithFallback() async {
+    // 0️⃣ 디버그 모드(kDebugMode) 우회 처리: 에뮬레이터 버그 방지 및 개발 생산성 확보
+    if (kDebugMode) {
+      debugPrint('🐛 [LocationService] 디버그 모드(kDebugMode) 감지: 서초구청 우회(Mock) 좌표를 반환합니다.');
+      return LocationDataResult(
+        latitude: debugLat,
+        longitude: debugLng,
+        address: debugAddress,
+      );
+    }
+
+    // ------------------- 아래는 실제 기기(Release 모드) 작동 로직 -------------------
+
     // [단계 A] GPS 기기 서비스 활성화 확인
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
@@ -125,7 +142,7 @@ class LocationService {
       return await _getFallbackLocation();
     }
 
-    // [단계 C] 1순위-A: 기기 내 마지막 기록 위치(LastKnownPosition) 먼저 확인 (NMEA 크래시 방지)
+    // [단계 C] 1순위: 기기 내 마지막 기록 위치(LastKnownPosition) 먼저 확인
     try {
       final lastPosition = await Geolocator.getLastKnownPosition();
       if (lastPosition != null) {
@@ -142,21 +159,21 @@ class LocationService {
       debugPrint('⚠️ [LocationService] LastKnownPosition 조회 중 경고: $e');
     }
 
-    // [단계 C] 1순위-B: 실시간 GPS 수신 시도 (LocationManager 사용으로 네이티브 튕김 방지)
+    // [단계 D] 2순위: 실시간 GPS 수신 시도 (2초 타임아웃 안전망 적용)
     try {
-      debugPrint('📡 [LocationService] 현재 GPS 위치 수신 시도 중 (5초 제한, LocationManager 모드)...');
+      debugPrint('📡 [LocationService] 현재 GPS 위치 수신 시도 중 (2초 제한)...');
 
       late final LocationSettings locationSettings;
       if (defaultTargetPlatform == TargetPlatform.android) {
         locationSettings = AndroidSettings(
           accuracy: LocationAccuracy.high,
-          timeLimit: const Duration(seconds: 5),
-          forceLocationManager: true, // 에뮬레이터 NMEA/FusedLocationClient 충돌 방지 핵심 옵션
+          timeLimit: const Duration(seconds: 2), // 2초 타임아웃 설정
+          forceLocationManager: true,
         );
       } else {
         locationSettings = const LocationSettings(
           accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 5),
+          timeLimit: Duration(seconds: 2),
         );
       }
 
@@ -180,15 +197,15 @@ class LocationService {
     }
   }
 
-  /// Fallback 처리: (2순위) DB lastLocation -> (3순위) 기본 서울시청
+  /// Fallback 처리: (3순위) DB lastLocation -> (4순위) 기본 서울시청
   static Future<LocationDataResult> _getFallbackLocation() async {
-    // 2순위: DB의 lastLocation
+    // 3순위: DB의 lastLocation
     final lastLoc = await getLastLocationFromFirestore();
     if (lastLoc != null) {
       return lastLoc;
     }
 
-    // 3순위: 기본 좌표 (서울시청)
+    // 4순위: 기본 좌표 (서울시청)
     debugPrint('🏛️ [LocationService] 저장된 DB 정보가 없어 기본 위치(서울시청)를 사용합니다.');
     return LocationDataResult(
       latitude: defaultLat,
