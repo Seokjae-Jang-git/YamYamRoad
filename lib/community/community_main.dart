@@ -32,7 +32,7 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
 
   Query<Map<String, dynamic>> _buildQuery() {
     return FirebaseFirestore.instance
-        .collection('community_posts')
+        .collection('posts')
         .orderBy(_sortField, descending: true);
   }
 
@@ -64,7 +64,7 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('커뮤니티',
+        title: const Text('얌얌북',
             style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,

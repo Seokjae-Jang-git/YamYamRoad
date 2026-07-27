@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../common/user_data.dart';
 import '../features/emoticon/emoticon_span_builder.dart';
 import '../features/emoticon/emoticon_picker_sheet.dart';
+import '../features/emoticon/emoticon_text_controller.dart';
 import '../services/auth_service.dart';
 import 'community_post.dart';
 import 'community_comment.dart';
@@ -22,7 +23,9 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   String get _currentUserId => AuthService.currentUser?.uid ?? UserData.uid ?? 'unknown_uid';
   String get _currentUserNickname => UserData.nickname ?? '이름없음';
 
-  final TextEditingController _commentController = TextEditingController();
+  // 🌟 이모티콘 토큰을 실제 이미지로 인라인 렌더링하는 컨트롤러
+  final EmoticonTextEditingController _commentController =
+  EmoticonTextEditingController();
   final FocusNode _commentFocusNode = FocusNode();
 
   // 🌟 대댓글 작성 중인 대상 (null이면 원댓글 작성 모드)
@@ -55,7 +58,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     if (confirmed == true) {
       try {
         await FirebaseFirestore.instance
-            .collection('community_posts')
+            .collection('posts')
             .doc(widget.postId)
             .delete();
         if (mounted) Navigator.pop(context);
@@ -137,7 +140,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
       });
 
       await FirebaseFirestore.instance
-          .collection('community_posts')
+          .collection('posts')
           .doc(widget.postId)
           .update({'reportCount': FieldValue.increment(1)});
 
@@ -176,7 +179,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   }
 
   Future<void> _toggleLike(CommunityPost post) async {
-    final ref = FirebaseFirestore.instance.collection('community_posts').doc(post.id);
+    final ref = FirebaseFirestore.instance.collection('posts').doc(post.id);
     final liked = post.likedBy.contains(_currentUserId);
     await ref.update({
       'likedBy': liked
@@ -187,7 +190,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   }
 
   Future<void> _toggleScrap(CommunityPost post) async {
-    final ref = FirebaseFirestore.instance.collection('community_posts').doc(post.id);
+    final ref = FirebaseFirestore.instance.collection('posts').doc(post.id);
     final scrapped = post.scrappedBy.contains(_currentUserId);
     await ref.update({
       'scrappedBy': scrapped
@@ -206,7 +209,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
 
-    final postRef = FirebaseFirestore.instance.collection('community_posts').doc(widget.postId);
+    final postRef = FirebaseFirestore.instance.collection('posts').doc(widget.postId);
     final commentsRef = postRef.collection('comments');
 
     final comment = CommunityComment(
@@ -253,7 +256,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     );
     if (confirmed != true) return;
 
-    final postRef = FirebaseFirestore.instance.collection('community_posts').doc(widget.postId);
+    final postRef = FirebaseFirestore.instance.collection('posts').doc(widget.postId);
 
     try {
       await postRef.collection('comments').doc(comment.id).delete();
@@ -274,7 +277,10 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   }
 
   // 🌟 댓글/대댓글 입력창에서 이모티콘 삽입 (커서 위치 기준)
-  void _insertCommentEmoticon(String token) {
+  // imageUrl을 함께 받아 즉시 캐시에 등록 -> 네트워크 재조회 없이 바로 렌더링됨
+  void _insertCommentEmoticon(String token, String imageUrl) {
+    _commentController.cacheToken(token, imageUrl);
+
     final text = _commentController.text;
     final selection = _commentController.selection;
     final start = selection.start >= 0 ? selection.start : text.length;
@@ -299,11 +305,11 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
-        title: const Text('커뮤니티', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: const Text('얌얌북', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
       ),
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
-            .collection('community_posts')
+            .collection('posts')
             .doc(widget.postId)
             .snapshots(),
         builder: (context, snapshot) {
@@ -438,7 +444,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   Widget _buildCommentList() {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('community_posts')
+          .collection('posts')
           .doc(widget.postId)
           .collection('comments')
           .orderBy('createdAt')
@@ -606,14 +612,19 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                   onPressed: () => EmoticonPickerSheet.show(
                     context,
                     uid: _currentUserId,
-                    onSelect: _insertCommentEmoticon,
+                    onSelect: (token, imageUrl) {
+                      _insertCommentEmoticon(token, imageUrl);
+                      setState(() {}); // 🌟 입력창 즉시 갱신
+                    },
                   ),
                 ),
                 const SizedBox(width: 6),
                 Expanded(
+                  // 🌟 이모티콘 토큰이 실제 이미지로 바로 보이는 입력창
                   child: TextField(
                     controller: _commentController,
                     focusNode: _commentFocusNode,
+                    onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
                       hintText: _replyTarget != null ? '답글을 입력하세요' : '댓글을 입력하세요',
                       hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),

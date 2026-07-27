@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'emoticon_image.dart';
 import 'emoticon_product_repository.dart';
 import 'emoticon_token.dart';
 
@@ -74,13 +75,7 @@ class EmoticonRichContent extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 1),
           child: imageUrl == null
               ? SizedBox(width: emojiSize, height: emojiSize)
-              : Image.network(
-            imageUrl,
-            width: emojiSize,
-            height: emojiSize,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => SizedBox(width: emojiSize, height: emojiSize),
-          ),
+              : EmoticonImage(imageUrl: imageUrl, size: emojiSize),
         ),
       ));
       last = match.end;

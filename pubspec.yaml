@@ -50,7 +50,8 @@ dependencies:
   # PortOne의 안정 버전 WebView가 AGP 9와 충돌하여 공식 AGP 9 수정 버전을 고정합니다.
   flutter_inappwebview: 6.2.0-beta.3
   in_app_purchase: ^3.3.0
-  flutter_svg: ^2.0.10
+  flutter_svg: ^2.0.10+1
+  extended_text_field: ^16.0.0
 
 
   image_picker: ^1.2.3

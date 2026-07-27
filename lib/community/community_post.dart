@@ -10,6 +10,11 @@ class CommunityPost {
   final String category;
   final String content;
   final List<String> imageUrls;
+  final List<String> videoUrls;       // 🌟 추가
+  final List<String> tags;            // 🌟 추가
+  final List<String> emoticonIds;     // 🌟 추가
+  final List<String> searchKeywords;  // 🌟 추가
+  final String status;                // 🌟 추가
   final int likeCount;
   final int commentCount;
   final int scrapCount;
@@ -17,6 +22,7 @@ class CommunityPost {
   final List<String> likedBy;
   final List<String> scrappedBy;
   final DateTime createdAt;
+  final DateTime? updatedAt;          // 🌟 추가
 
   CommunityPost({
     required this.id,
@@ -28,6 +34,11 @@ class CommunityPost {
     required this.category,
     required this.content,
     this.imageUrls = const [],
+    this.videoUrls = const [],
+    this.tags = const [],
+    this.emoticonIds = const [],
+    this.searchKeywords = const [],
+    this.status = 'active',
     this.likeCount = 0,
     this.commentCount = 0,
     this.scrapCount = 0,
@@ -35,9 +46,9 @@ class CommunityPost {
     this.likedBy = const [],
     this.scrappedBy = const [],
     required this.createdAt,
+    this.updatedAt,
   });
 
-  /// Firestore 데이터 타입 불일치 방지 헬퍼 메서드
   static List<String> _toStringList(dynamic value) {
     if (value == null) return [];
     if (value is List) {
@@ -49,7 +60,6 @@ class CommunityPost {
     return [];
   }
 
-  /// 숫자 데이터 안전 변환 헬퍼 메서드
   static int _toInt(dynamic value, {int defaultValue = 0}) {
     if (value is int) return value;
     if (value is double) return value.toInt();
@@ -59,7 +69,12 @@ class CommunityPost {
     return defaultValue;
   }
 
-  /// Map 데이터 기반 객체 생성 (단위 테스트 및 일반 Map 변환용)
+  static DateTime? _toDateTimeOrNull(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
+
   factory CommunityPost.fromMap(Map<String, dynamic> data, String id) {
     return CommunityPost(
       id: id,
@@ -73,6 +88,11 @@ class CommunityPost {
       category: (data['category'] as String?)?.isNotEmpty == true ? data['category'] : '전체',
       content: (data['content'] ?? '').toString(),
       imageUrls: _toStringList(data['imageUrls']),
+      videoUrls: _toStringList(data['videoUrls']),
+      tags: _toStringList(data['tags']),
+      emoticonIds: _toStringList(data['emoticonIds']),
+      searchKeywords: _toStringList(data['searchKeywords']),
+      status: (data['status'] as String?)?.isNotEmpty == true ? data['status'] : 'active',
       likeCount: _toInt(data['likeCount']),
       commentCount: _toInt(data['commentCount']),
       scrapCount: _toInt(data['scrapCount']),
@@ -84,16 +104,15 @@ class CommunityPost {
           : (data['createdAt'] is String)
           ? DateTime.tryParse(data['createdAt']) ?? DateTime.now()
           : DateTime.now(),
+      updatedAt: _toDateTimeOrNull(data['updatedAt']),
     );
   }
 
-  /// Firestore DocumentSnapshot 기반 객체 생성
   factory CommunityPost.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     return CommunityPost.fromMap(data, doc.id);
   }
 
-  /// Firestore 저장용 Map 변환
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
@@ -104,6 +123,11 @@ class CommunityPost {
       'category': category,
       'content': content,
       'imageUrls': imageUrls,
+      'videoUrls': videoUrls,
+      'tags': tags,
+      'emoticonIds': emoticonIds,
+      'searchKeywords': searchKeywords,
+      'status': status,
       'likeCount': likeCount,
       'commentCount': commentCount,
       'scrapCount': scrapCount,
@@ -111,20 +135,25 @@ class CommunityPost {
       'likedBy': likedBy,
       'scrappedBy': scrappedBy,
       'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
     };
   }
 
-  /// 불변 객체의 상태 변경을 위한 copyWith 추가
   CommunityPost copyWith({
     String? id,
     String? userId,
-    String? authorNickname,
-    String? authorProfileImage,
-    List<String>? authorBadges,
+    String? nickname,
+    String? profileImage,
+    List<String>? badge,
     String? region,
     String? category,
     String? content,
     List<String>? imageUrls,
+    List<String>? videoUrls,
+    List<String>? tags,
+    List<String>? emoticonIds,
+    List<String>? searchKeywords,
+    String? status,
     int? likeCount,
     int? commentCount,
     int? scrapCount,
@@ -132,6 +161,7 @@ class CommunityPost {
     List<String>? likedBy,
     List<String>? scrappedBy,
     DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return CommunityPost(
       id: id ?? this.id,
@@ -143,6 +173,11 @@ class CommunityPost {
       category: category ?? this.category,
       content: content ?? this.content,
       imageUrls: imageUrls ?? this.imageUrls,
+      videoUrls: videoUrls ?? this.videoUrls,
+      tags: tags ?? this.tags,
+      emoticonIds: emoticonIds ?? this.emoticonIds,
+      searchKeywords: searchKeywords ?? this.searchKeywords,
+      status: status ?? this.status,
       likeCount: likeCount ?? this.likeCount,
       commentCount: commentCount ?? this.commentCount,
       scrapCount: scrapCount ?? this.scrapCount,
@@ -150,6 +185,7 @@ class CommunityPost {
       likedBy: likedBy ?? this.likedBy,
       scrappedBy: scrappedBy ?? this.scrappedBy,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }

@@ -7,6 +7,7 @@ import '../../common/user_data.dart';
 import '../../services/auth_service.dart';
 import 'community_post.dart';
 import '../../features/emoticon/emoticon_picker_sheet.dart';
+import '../../features/emoticon/emoticon_text_controller.dart';
 
 // 🌟 새 글 작성 + 기존 글 수정을 모두 담당하는 화면
 // existingPost 가 넘어오면 '수정 모드'로 동작합니다.
@@ -23,7 +24,9 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
   static const int _maxImages = 5;
   static const String _customRegionOption = '직접입력';
 
-  final TextEditingController _contentController = TextEditingController();
+  // 🌟 이모티콘 토큰을 실제 이미지로 인라인 렌더링하는 컨트롤러
+  final EmoticonTextEditingController _contentController =
+  EmoticonTextEditingController();
   // 🌟 지역 '직접입력' 선택 시 사용할 텍스트 컨트롤러
   final TextEditingController _customRegionController = TextEditingController();
 
@@ -56,6 +59,12 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
       _selectedCategory = post.category;
       _existingImageUrls.addAll(post.imageUrls);
 
+      // 🌟 기존 글에 이모티콘 토큰이 있으면 이미지를 조회해서 캐시에 채워준 뒤
+      // 다시 그려서 실제 이모티콘이 보이게 합니다.
+      _contentController.warmUpCache().then((changed) {
+        if (changed && mounted) setState(() {});
+      });
+
       // 🌟 기존 글의 지역이 미리 정의된 옵션(성수동/가로수길)에 없다면
       // '직접입력'을 선택한 상태로 보고 그 값을 텍스트 필드에 채워둡니다.
       if (post.region == '성수동' || post.region == '가로수길') {
@@ -75,7 +84,10 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
   }
 
   // 🌟 이모티콘 피커에서 고른 토큰을 커서 위치에 삽입
-  void _insertEmoticon(String token) {
+  // imageUrl을 함께 받아 즉시 캐시에 등록 -> 네트워크 재조회 없이 바로 렌더링됨
+  void _insertEmoticon(String token, String imageUrl) {
+    _contentController.cacheToken(token, imageUrl);
+
     final text = _contentController.text;
     final selection = _contentController.selection;
     final start = selection.start >= 0 ? selection.start : text.length;
@@ -130,7 +142,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
       final fileName = '${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
       final ref = FirebaseStorage.instance
           .ref()
-          .child('community_posts')
+          .child('posts')
           .child(_currentUid)
           .child(fileName);
 
@@ -169,7 +181,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
       if (_isEditMode) {
         // 🌟 기존 글 수정
         await FirebaseFirestore.instance
-            .collection('community_posts')
+            .collection('posts')
             .doc(widget.existingPost!.id)
             .update({
           'content': _contentController.text.trim(),
@@ -192,7 +204,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
         );
 
         await FirebaseFirestore.instance
-            .collection('community_posts')
+            .collection('posts')
             .add(post.toMap());
       }
 
@@ -245,9 +257,11 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
               children: [
                 _buildImagePicker(),
                 const SizedBox(height: 16),
+                // 🌟 이모티콘 토큰이 실제 이미지로 바로 보이는 입력창
                 TextField(
                   controller: _contentController,
                   maxLines: 5,
+                  onChanged: (_) => setState(() {}),
                   decoration: const InputDecoration(
                     hintText: '오늘 다녀온 빵집, 발견한 메뉴를 자유롭게 공유해보세요',
                     border: InputBorder.none,
@@ -265,7 +279,10 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
                         : () => EmoticonPickerSheet.show(
                       context,
                       uid: _currentUid,
-                      onSelect: _insertEmoticon,
+                      onSelect: (token, imageUrl) {
+                        _insertEmoticon(token, imageUrl);
+                        setState(() {});
+                      },
                     ),
                   ),
                 ),
