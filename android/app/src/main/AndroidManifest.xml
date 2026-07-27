@@ -11,6 +11,12 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
+        <!-- ⬇️ Google AdMob 테스트 앱 ID 메타데이터 추가 ⬇️ -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713"/>
+        <!-- ⬆️ 추가 완료 ⬆️ -->
+
         <!-- 구글 지도 API Key 설정 (.env의 GOOGLE_MAPS_API_KEY를 build.gradle.kts를 통해 전달받음) -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
