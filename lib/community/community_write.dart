@@ -55,15 +55,14 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
     super.initState();
     if (_isEditMode) {
       final post = widget.existingPost!;
-      _contentController.text = post.content;
+      // 🌟 저장돼 있던 원문(토큰 포함)을 편집용 플레이스홀더 텍스트로 변환하고,
+      // 이모티콘 이미지도 함께 조회해서 채워줍니다. (예전의 text 직접 대입 +
+      // warmUpCache 두 단계를 이 한 번의 호출이 대신합니다.)
+      _contentController.loadStoredContent(post.content).then((_) {
+        if (mounted) setState(() {});
+      });
       _selectedCategory = post.category;
       _existingImageUrls.addAll(post.imageUrls);
-
-      // 🌟 기존 글에 이모티콘 토큰이 있으면 이미지를 조회해서 캐시에 채워준 뒤
-      // 다시 그려서 실제 이모티콘이 보이게 합니다.
-      _contentController.warmUpCache().then((changed) {
-        if (changed && mounted) setState(() {});
-      });
 
       // 🌟 기존 글의 지역이 미리 정의된 옵션(성수동/가로수길)에 없다면
       // '직접입력'을 선택한 상태로 보고 그 값을 텍스트 필드에 채워둡니다.
@@ -84,19 +83,8 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
   }
 
   // 🌟 이모티콘 피커에서 고른 토큰을 커서 위치에 삽입
-  // imageUrl을 함께 받아 즉시 캐시에 등록 -> 네트워크 재조회 없이 바로 렌더링됨
   void _insertEmoticon(String token, String imageUrl) {
-    _contentController.cacheToken(token, imageUrl);
-
-    final text = _contentController.text;
-    final selection = _contentController.selection;
-    final start = selection.start >= 0 ? selection.start : text.length;
-    final end = selection.end >= 0 ? selection.end : text.length;
-    final newText = text.replaceRange(start, end, token);
-    _contentController.value = TextEditingValue(
-      text: newText,
-      selection: TextSelection.collapsed(offset: start + token.length),
-    );
+    _contentController.insertEmoticon(token, imageUrl);
   }
 
   Future<void> _pickImages() async {
@@ -177,6 +165,8 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
     try {
       final uploadedUrls = await _uploadNewImages();
       final finalImageUrls = [..._existingImageUrls, ...uploadedUrls];
+      // 🌟 저장은 항상 플레이스홀더가 아니라 실제 토큰 문자열로 변환해서 씁니다.
+      final storageContent = _contentController.toStorageText().trim();
 
       if (_isEditMode) {
         // 🌟 기존 글 수정
@@ -184,7 +174,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
             .collection('posts')
             .doc(widget.existingPost!.id)
             .update({
-          'content': _contentController.text.trim(),
+          'content': storageContent,
           'region': _finalRegion,
           'category': _selectedCategory,
           'imageUrls': finalImageUrls,
@@ -198,7 +188,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
           profileImage: UserData.profileImagePath,
           region: _finalRegion,
           category: _selectedCategory,
-          content: _contentController.text.trim(),
+          content: storageContent,
           imageUrls: finalImageUrls,
           createdAt: DateTime.now(),
         );

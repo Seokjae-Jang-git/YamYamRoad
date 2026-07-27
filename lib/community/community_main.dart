@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../features/emoticon/emoticon_span_builder.dart';
 import 'community_post.dart';
 import 'community_write.dart';
 import 'community_detail.dart';
@@ -185,9 +186,11 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
               createdAt: post.createdAt,
             ),
             const SizedBox(height: 10),
-            Text(
-              post.content,
-              style: const TextStyle(fontSize: 13, height: 1.4),
+            // 🌟 이모티콘 토큰([emoji:xxx.svg])을 실제 이미지로 인라인 렌더링 (상세페이지와 동일)
+            EmoticonRichContent(
+              content: post.content,
+              emojiSize: 16,
+              style: const TextStyle(fontSize: 13, height: 1.4, color: Colors.black),
             ),
             if (post.imageUrls.isNotEmpty) ...[
               const SizedBox(height: 10),
