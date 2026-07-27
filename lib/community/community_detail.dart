@@ -31,6 +31,10 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   // 🌟 대댓글 작성 중인 대상 (null이면 원댓글 작성 모드)
   CommunityComment? _replyTarget;
 
+  // 🌟 이모티콘 패널을 입력창 위에 모달이 아닌 "인라인"으로 펼쳐서 보여줄지 여부
+  // (모달 바텀시트로 띄우면 화면 전체를 덮어서 입력창/답글 배너가 가려지는 문제가 있었음)
+  bool _showEmoticonPicker = false;
+
   @override
   void dispose() {
     _commentController.dispose();
@@ -226,7 +230,10 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
       await commentsRef.add(comment.toMap());
       await postRef.update({'commentCount': FieldValue.increment(1)});
       _commentController.clear();
-      setState(() => _replyTarget = null);
+      setState(() {
+        _replyTarget = null;
+        _showEmoticonPicker = false;
+      });
       FocusScope.of(context).unfocus();
     } catch (e) {
       debugPrint('댓글 등록 중 오류 발생: $e');
@@ -272,7 +279,10 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   }
 
   void _startReply(CommunityComment comment) {
-    setState(() => _replyTarget = comment);
+    setState(() {
+      _replyTarget = comment;
+      _showEmoticonPicker = false; // 🌟 답글 시작 시엔 키보드가 바로 뜨도록 이모티콘 패널은 닫아둠
+    });
     _commentFocusNode.requestFocus();
   }
 
@@ -290,6 +300,24 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
       text: newText,
       selection: TextSelection.collapsed(offset: start + token.length),
     );
+  }
+
+  // 🌟 이모티콘 버튼 탭: 패널을 열고 닫음 (모달이 아닌 인라인 패널이라 키보드는 직접 내려줌)
+  void _toggleEmoticonPicker() {
+    if (_showEmoticonPicker) {
+      setState(() => _showEmoticonPicker = false);
+      _commentFocusNode.requestFocus();
+    } else {
+      FocusScope.of(context).unfocus();
+      setState(() => _showEmoticonPicker = true);
+    }
+  }
+
+  // 🌟 입력창을 다시 탭하면 이모티콘 패널을 닫고 키보드로 전환
+  void _onCommentFieldTap() {
+    if (_showEmoticonPicker) {
+      setState(() => _showEmoticonPicker = false);
+    }
   }
 
   void _cancelReply() {
@@ -573,6 +601,8 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   }
 
   // 🌟 하단 댓글 입력창
+  // - 이모티콘 버튼을 누르면 모달로 화면을 덮는 대신, 입력창/답글 배너는 그대로 보이고
+  //   그 아래에 이모티콘 패널이 인라인으로 펼쳐집니다. (기존엔 showModalBottomSheet라 가려졌음)
   Widget _buildCommentInput() {
     return SafeArea(
       top: false,
@@ -605,18 +635,14 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
               children: [
                 // 🌟 댓글/대댓글용 이모티콘 버튼 (보유한 팩만 노출됨)
                 IconButton(
-                  icon: const Icon(Icons.emoji_emotions_outlined, color: Colors.grey),
+                  icon: Icon(
+                    _showEmoticonPicker ? Icons.keyboard_alt_outlined : Icons.emoji_emotions_outlined,
+                    color: Colors.grey,
+                  ),
                   tooltip: '이모티콘',
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
-                  onPressed: () => EmoticonPickerSheet.show(
-                    context,
-                    uid: _currentUserId,
-                    onSelect: (token, imageUrl) {
-                      _insertCommentEmoticon(token, imageUrl);
-                      setState(() {}); // 🌟 입력창 즉시 갱신
-                    },
-                  ),
+                  onPressed: _toggleEmoticonPicker,
                 ),
                 const SizedBox(width: 6),
                 Expanded(
@@ -624,6 +650,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                   child: TextField(
                     controller: _commentController,
                     focusNode: _commentFocusNode,
+                    onTap: _onCommentFieldTap,
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
                       hintText: _replyTarget != null ? '답글을 입력하세요' : '댓글을 입력하세요',
@@ -654,6 +681,18 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                 ),
               ],
             ),
+            // 🌟 인라인 이모티콘 패널: 입력창/답글 배너 아래에 펼쳐지며 이들을 가리지 않음
+            if (_showEmoticonPicker)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: EmoticonPickerSheet(
+                  uid: _currentUserId,
+                  onSelect: (token, imageUrl) {
+                    _insertCommentEmoticon(token, imageUrl);
+                    setState(() {});
+                  },
+                ),
+              ),
           ],
         ),
       ),
