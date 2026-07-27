@@ -2,14 +2,18 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+
 import '../common/user_data.dart';
-import '../features/emoticon/emoticon_span_builder.dart';
-import '../features/emoticon/emoticon_picker_sheet.dart';
 import '../features/emoticon/emoticon_text_controller.dart';
 import '../services/auth_service.dart';
 import 'community_post.dart';
 import 'community_comment.dart';
 import 'community_write.dart';
+
+// 🌟 방금 만든 위젯들 불러오기
+import 'widgets/post_content_widget.dart';
+import 'widgets/comment_list_widget.dart';
+import 'widgets/comment_input_widget.dart';
 
 class CommunityDetailScreen extends StatefulWidget {
   final String postId;
@@ -24,15 +28,10 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   String get _currentUserId => AuthService.currentUser?.uid ?? UserData.uid ?? 'unknown_uid';
   String get _currentUserNickname => UserData.nickname ?? '이름없음';
 
-  // 🌟 이모티콘 토큰을 실제 이미지로 인라인 렌더링하는 컨트롤러
   final EmoticonTextEditingController _commentController = EmoticonTextEditingController();
   final FocusNode _commentFocusNode = FocusNode();
 
-  // 🌟 대댓글 작성 중인 대상 (null이면 원댓글 작성 모드)
   CommunityComment? _replyTarget;
-
-  // 🌟 이모티콘 패널을 입력창 위에 모달이 아닌 "인라인"으로 펼쳐서 보여줄지 여부
-  // (모달 바텀시트로 띄우면 화면 전체를 덮어서 입력창/답글 배너가 가려지는 문제가 있었음)
   bool _showEmoticonPicker = false;
 
   @override
@@ -42,7 +41,6 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     super.dispose();
   }
 
-  // 🌟 게시글 삭제
   Future<void> _deletePost() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -61,32 +59,18 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
 
     if (confirmed == true) {
       try {
-        await FirebaseFirestore.instance
-            .collection('posts')
-            .doc(widget.postId)
-            .delete();
+        await FirebaseFirestore.instance.collection('posts').doc(widget.postId).delete();
         if (mounted) Navigator.pop(context);
       } catch (e) {
-        debugPrint('글 삭제 중 오류 발생: $e');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('삭제에 실패했어요.')),
-          );
-        }
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('삭제에 실패했어요.')));
       }
     }
   }
 
   void _editPost(CommunityPost post) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CommunityWriteScreen(existingPost: post),
-      ),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (context) => CommunityWriteScreen(existingPost: post)));
   }
 
-  // 🌟 [해결책 1] DB 중복 체크를 포함한 신고번호 생성 함수 (REP-20260727-A8F2)
   Future<String> _generateUniqueReportId() async {
     final now = DateTime.now();
     final String dateStr = DateFormat('yyyyMMdd').format(now);
@@ -96,7 +80,6 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     String reportId;
     bool isDuplicate = true;
 
-    // 중복되지 않는 신고번호가 생성될 때까지 반복
     do {
       final randomCode = List.generate(4, (index) => chars[random.nextInt(chars.length)]).join();
       reportId = 'REP-$dateStr-$randomCode';
@@ -105,7 +88,6 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
         final doc = await FirebaseFirestore.instance.collection('reports').doc(reportId).get();
         isDuplicate = doc.exists;
       } catch (_) {
-        // 보안 규칙 또는 문서 미존재 시 사용 가능한 ID로 간주
         isDuplicate = false;
       }
     } while (isDuplicate);
@@ -113,7 +95,6 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     return reportId;
   }
 
-  // 🌟 게시글 신고
   Future<void> _reportPost() async {
     final reasons = ['부적절한 내용', '스팸/광고', '욕설/비방', '허위 정보', '기타'];
     final selected = await showModalBottomSheet<String>(
@@ -137,14 +118,12 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
 
     if (selected == null) return;
 
-    // '기타' 선택 시 상세 사유 입력받기
     String? detail;
     if (selected == '기타') {
       detail = await _askReportDetail();
-      if (detail == null || detail.trim().isEmpty) return; // 취소 시 신고 안 함
+      if (detail == null || detail.trim().isEmpty) return;
     }
 
-    // 중복 신고 방지 (같은 유저가 같은 글 두 번 신고 못하게)
     final existing = await FirebaseFirestore.instance
         .collection('reports')
         .where('targetId', isEqualTo: widget.postId)
@@ -153,23 +132,14 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
         .get();
 
     if (existing.docs.isNotEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('이미 신고한 게시글이에요.')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('이미 신고한 게시글이에요.')));
       return;
     }
 
     try {
-      // 🌟 100% 중복 검증된 신고번호 생성
       final String reportId = await _generateUniqueReportId();
 
-      // 🌟 .doc(reportId).set()으로 Firestore 문서 ID 지정 생성
-      await FirebaseFirestore.instance
-          .collection('reports')
-          .doc(reportId)
-          .set({
+      await FirebaseFirestore.instance.collection('reports').doc(reportId).set({
         'reportId': reportId,
         'targetType': 'post',
         'targetId': widget.postId,
@@ -180,23 +150,11 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      await FirebaseFirestore.instance
-          .collection('posts')
-          .doc(widget.postId)
-          .update({'reportCount': FieldValue.increment(1)});
+      await FirebaseFirestore.instance.collection('posts').doc(widget.postId).update({'reportCount': FieldValue.increment(1)});
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('신고가 접수되었습니다.')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('신고가 접수되었습니다.')));
     } catch (e) {
-      debugPrint('신고 처리 중 오류 발생: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('신고 접수에 실패했어요.')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('신고 접수에 실패했어요.')));
     }
   }
 
@@ -223,9 +181,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     final ref = FirebaseFirestore.instance.collection('posts').doc(post.id);
     final liked = post.likedBy.contains(_currentUserId);
     await ref.update({
-      'likedBy': liked
-          ? FieldValue.arrayRemove([_currentUserId])
-          : FieldValue.arrayUnion([_currentUserId]),
+      'likedBy': liked ? FieldValue.arrayRemove([_currentUserId]) : FieldValue.arrayUnion([_currentUserId]),
       'likeCount': FieldValue.increment(liked ? -1 : 1),
     });
   }
@@ -234,16 +190,13 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     final ref = FirebaseFirestore.instance.collection('posts').doc(post.id);
     final scrapped = post.scrappedBy.contains(_currentUserId);
     await ref.update({
-      'scrappedBy': scrapped
-          ? FieldValue.arrayRemove([_currentUserId])
-          : FieldValue.arrayUnion([_currentUserId]),
+      'scrappedBy': scrapped ? FieldValue.arrayRemove([_currentUserId]) : FieldValue.arrayUnion([_currentUserId]),
       'scrapCount': FieldValue.increment(scrapped ? -1 : 1),
     });
   }
 
-  // 🌟 댓글/대댓글 등록
   Future<void> _submitComment() async {
-    final text = _commentController.text.trim();
+    final text = _commentController.toStorageText().trim(); // 저장용 토큰으로 변환하여 저장
     if (text.isEmpty) return;
 
     final postRef = FirebaseFirestore.instance.collection('posts').doc(widget.postId);
@@ -269,16 +222,10 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
       });
       FocusScope.of(context).unfocus();
     } catch (e) {
-      debugPrint('댓글 등록 중 오류 발생: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('댓글 등록에 실패했어요.')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('댓글 등록에 실패했어요.')));
     }
   }
 
-  // 🌟 댓글/대댓글 삭제
   Future<void> _deleteComment(CommunityComment comment) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -287,72 +234,39 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
         content: const Text('이 댓글을 삭제하시겠어요?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('삭제', style: TextStyle(color: Colors.red)),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('삭제', style: TextStyle(color: Colors.red))),
         ],
       ),
     );
     if (confirmed != true) return;
 
-    final postRef = FirebaseFirestore.instance.collection('posts').doc(widget.postId);
-
     try {
+      final postRef = FirebaseFirestore.instance.collection('posts').doc(widget.postId);
       await postRef.collection('comments').doc(comment.id).delete();
       await postRef.update({'commentCount': FieldValue.increment(-1)});
     } catch (e) {
-      debugPrint('댓글 삭제 중 오류 발생: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('댓글 삭제에 실패했어요.')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('댓글 삭제에 실패했어요.')));
     }
   }
 
   void _startReply(CommunityComment comment) {
     setState(() {
       _replyTarget = comment;
-      _showEmoticonPicker = false; // 🌟 답글 시작 시엔 키보드가 바로 뜨도록 이모티콘 패널은 닫아둠
+      _showEmoticonPicker = false;
     });
     _commentFocusNode.requestFocus();
   }
 
-  void _insertCommentEmoticon(String token, String imageUrl) {
-    _commentController.cacheToken(token, imageUrl);
-
-    final text = _commentController.text;
-    final selection = _commentController.selection;
-    final start = selection.start >= 0 ? selection.start : text.length;
-    final end = selection.end >= 0 ? selection.end : text.length;
-    final newText = text.replaceRange(start, end, token);
-    _commentController.value = TextEditingValue(
-      text: newText,
-      selection: TextSelection.collapsed(offset: start + token.length),
-    );
-  }
-
-  // 🌟 이모티콘 버튼 탭: 패널을 열고 닫음 (모달이 아닌 인라인 패널이라 키보드는 직접 내려줌)
   void _toggleEmoticonPicker() {
-    if (_showEmoticonPicker) {
-      setState(() => _showEmoticonPicker = false);
-      _commentFocusNode.requestFocus();
-    } else {
-      FocusScope.of(context).unfocus();
-      setState(() => _showEmoticonPicker = true);
-    }
-  }
-
-  // 🌟 입력창을 다시 탭하면 이모티콘 패널을 닫고 키보드로 전환
-  void _onCommentFieldTap() {
-    if (_showEmoticonPicker) {
-      setState(() => _showEmoticonPicker = false);
-    }
-  }
-
-  void _cancelReply() {
-    setState(() => _replyTarget = null);
+    setState(() {
+      if (_showEmoticonPicker) {
+        _showEmoticonPicker = false;
+        _commentFocusNode.requestFocus();
+      } else {
+        FocusScope.of(context).unfocus();
+        _showEmoticonPicker = true;
+      }
+    });
   }
 
   @override
@@ -367,22 +281,12 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
         title: const Text('얌얌북', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
       ),
       body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('posts')
-            .doc(widget.postId)
-            .snapshots(),
+        stream: FirebaseFirestore.instance.collection('posts').doc(widget.postId).snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator(color: Colors.black));
-          }
-          if (!snapshot.data!.exists) {
-            return const Center(child: Text('삭제되었거나 존재하지 않는 글이에요.'));
-          }
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator(color: Colors.black));
+          if (!snapshot.data!.exists) return const Center(child: Text('삭제되었거나 존재하지 않는 글이에요.'));
 
           final post = CommunityPost.fromFirestore(snapshot.data!);
-          final bool isMine = post.userId == _currentUserId;
-          final bool liked = post.likedBy.contains(_currentUserId);
-          final bool scrapped = post.scrappedBy.contains(_currentUserId);
 
           return Column(
             children: [
@@ -392,603 +296,49 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 22,
-                            backgroundColor: const Color(0xFFF5F5F5),
-                            backgroundImage: post.profileImage != null
-                                ? NetworkImage(post.profileImage!)
-                                : null,
-                            child: post.profileImage == null
-                                ? const Icon(Icons.person_outline, color: Colors.grey)
-                                : null,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Flexible(
-                                      child: Text(post.nickname ?? '익명',
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    _AuthorBadgeRow(userId: post.userId),
-                                  ],
-                                ),
-                                Text('${post.region} · ${post.category}',
-                                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                              ],
-                            ),
-                          ),
-                          isMine
-                              ? PopupMenuButton<String>(
-                            onSelected: (value) {
-                              if (value == 'edit') _editPost(post);
-                              if (value == 'delete') _deletePost();
-                            },
-                            itemBuilder: (context) => const [
-                              PopupMenuItem(value: 'edit', child: Text('수정')),
-                              PopupMenuItem(value: 'delete', child: Text('삭제')),
-                            ],
-                          )
-                              : PopupMenuButton<String>(
-                            onSelected: (value) {
-                              if (value == 'report') _reportPost();
-                            },
-                            itemBuilder: (context) => const [
-                              PopupMenuItem(value: 'report', child: Text('신고')),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      EmoticonRichContent(
-                        content: post.content,
-                        style: const TextStyle(fontSize: 14, color: Colors.black),
-                      ),
-                      if (post.imageUrls.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(post.imageUrls.first, fit: BoxFit.cover),
-                        ),
-                      ],
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () => _toggleLike(post),
-                            child: Icon(liked ? Icons.favorite : Icons.favorite_border,
-                                size: 20, color: liked ? Colors.red : Colors.grey),
-                          ),
-                          const SizedBox(width: 4),
-                          Text('좋아요 ${post.likeCount}', style: const TextStyle(fontSize: 13)),
-                          const SizedBox(width: 16),
-                          const Icon(Icons.chat_bubble_outline, size: 18, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text('댓글 ${post.commentCount}', style: const TextStyle(fontSize: 13)),
-                          const SizedBox(width: 16),
-                          GestureDetector(
-                            onTap: () => _toggleScrap(post),
-                            child: Icon(scrapped ? Icons.bookmark : Icons.bookmark_border,
-                                size: 20, color: scrapped ? const Color(0xFFFF8A3D) : Colors.grey),
-                          ),
-                          const SizedBox(width: 4),
-                          Text('스크랩 ${post.scrapCount}', style: const TextStyle(fontSize: 13)),
-                        ],
+                      // 🌟 분리된 위젯 1: 게시글 본문 영역
+                      PostContentWidget(
+                        post: post,
+                        currentUserId: _currentUserId,
+                        isMine: post.userId == _currentUserId,
+                        isLiked: post.likedBy.contains(_currentUserId),
+                        isScrapped: post.scrappedBy.contains(_currentUserId),
+                        onEdit: () => _editPost(post),
+                        onDelete: _deletePost,
+                        onReport: _reportPost,
+                        onLikeToggle: () => _toggleLike(post),
+                        onScrapToggle: () => _toggleScrap(post),
                       ),
                       const Divider(height: 32),
-                      _buildCommentList(),
+                      // 🌟 분리된 위젯 2: 댓글 리스트 영역
+                      CommentListWidget(
+                        postId: widget.postId,
+                        currentUserId: _currentUserId,
+                        onStartReply: _startReply,
+                        onDeleteComment: _deleteComment,
+                      ),
                     ],
                   ),
                 ),
               ),
-              _buildCommentInput(),
+              // 🌟 분리된 위젯 3: 댓글 입력창 영역
+              CommentInputWidget(
+                controller: _commentController,
+                focusNode: _commentFocusNode,
+                replyTarget: _replyTarget,
+                showEmoticonPicker: _showEmoticonPicker,
+                currentUserId: _currentUserId,
+                onCancelReply: () => setState(() => _replyTarget = null),
+                onToggleEmoticon: _toggleEmoticonPicker,
+                onFieldTap: () {
+                  if (_showEmoticonPicker) setState(() => _showEmoticonPicker = false);
+                },
+                onSubmit: _submitComment,
+              ),
             ],
           );
         },
       ),
-    );
-  }
-
-  Widget _buildCommentList() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('posts')
-          .doc(widget.postId)
-          .collection('comments')
-          .orderBy('createdAt')
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child: Center(child: CircularProgressIndicator(color: Colors.black)),
-          );
-        }
-
-        final allComments =
-        snapshot.data!.docs.map((doc) => CommunityComment.fromFirestore(doc)).toList();
-
-        final topLevel = allComments.where((c) => c.parentId == null).toList();
-        final repliesByParent = <String, List<CommunityComment>>{};
-        for (final c in allComments.where((c) => c.parentId != null)) {
-          repliesByParent.putIfAbsent(c.parentId!, () => []).add(c);
-        }
-
-        if (topLevel.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child: Center(
-              child: Text('첫 댓글을 남겨보세요!', style: TextStyle(color: Colors.grey, fontSize: 13)),
-            ),
-          );
-        }
-
-        return Column(
-          children: topLevel.map((comment) {
-            final replies = repliesByParent[comment.id] ?? [];
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildCommentTile(comment, isReply: false),
-                ...replies.map((reply) => _buildCommentTile(reply, isReply: true)),
-              ],
-            );
-          }).toList(),
-        );
-      },
-    );
-  }
-
-  Widget _buildCommentTile(CommunityComment comment, {required bool isReply}) {
-    final bool isMine = comment.userId == _currentUserId;
-
-    return Padding(
-      padding: EdgeInsets.only(
-        left: isReply ? 40 : 0,
-        top: 12,
-        bottom: 0,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (isReply)
-            const Padding(
-              padding: EdgeInsets.only(right: 6, top: 2),
-              child: Icon(Icons.subdirectory_arrow_right, size: 16, color: Colors.grey),
-            ),
-          CircleAvatar(
-            radius: isReply ? 14 : 16,
-            backgroundColor: const Color(0xFFF5F5F5),
-            backgroundImage: comment.authorProfileImage != null
-                ? NetworkImage(comment.authorProfileImage!)
-                : null,
-            child: comment.authorProfileImage == null
-                ? Icon(Icons.person_outline, size: isReply ? 14 : 16, color: Colors.grey)
-                : null,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(comment.authorNickname,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    const SizedBox(width: 6),
-                    if (comment.createdAt != null)
-                      Text(_formatTime(comment.createdAt!),
-                          style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                  ],
-                ),
-                const SizedBox(height: 3),
-                EmoticonRichContent(
-                  content: comment.content,
-                  emojiSize: 16,
-                  style: const TextStyle(fontSize: 13, color: Colors.black87),
-                  leadingSpans: comment.replyToNickname != null
-                      ? [
-                    TextSpan(
-                      text: '@${comment.replyToNickname} ',
-                      style: const TextStyle(color: Color(0xFFFF8A3D), fontWeight: FontWeight.w600, fontSize: 13),
-                    ),
-                  ]
-                      : const [],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => _startReply(comment),
-                      child: const Text('답글쓰기',
-                          style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
-                    ),
-                    if (isMine) ...[
-                      const SizedBox(width: 12),
-                      GestureDetector(
-                        onTap: () => _deleteComment(comment),
-                        child: const Text('삭제', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCommentInput() {
-    return SafeArea(
-      top: false,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Colors.grey.shade200)),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (_replyTarget != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  children: [
-                    Text('${_replyTarget!.authorNickname}님에게 답글 남기는 중',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFFFF8A3D))),
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: _cancelReply,
-                      child: const Icon(Icons.close, size: 16, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-            Row(
-              children: [
-                IconButton(
-                  icon: Icon(
-                    _showEmoticonPicker ? Icons.keyboard_alt_outlined : Icons.emoji_emotions_outlined,
-                    color: Colors.grey,
-                  ),
-                  tooltip: '이모티콘',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  onPressed: () => EmoticonPickerSheet.show(
-                    context,
-                    uid: _currentUserId,
-                    onSelect: (token, imageUrl) {
-                      _insertCommentEmoticon(token, imageUrl);
-                      setState(() {});
-                    },
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: TextField(
-                    controller: _commentController,
-                    focusNode: _commentFocusNode,
-                    onTap: _onCommentFieldTap,
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      hintText: _replyTarget != null ? '답글을 입력하세요' : '댓글을 입력하세요',
-                      hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
-                      filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    style: const TextStyle(fontSize: 13),
-                    onSubmitted: (_) => _submitComment(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: _submitComment,
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFF8A3D),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.send, size: 16, color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-            // 🌟 인라인 이모티콘 패널: 입력창/답글 배너 아래에 펼쳐지며 이들을 가리지 않음
-            if (_showEmoticonPicker)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: EmoticonPickerSheet(
-                  uid: _currentUserId,
-                  onSelect: (token, imageUrl) {
-                    _insertCommentEmoticon(token, imageUrl);
-                    setState(() {});
-                  },
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatTime(DateTime time) {
-    final diff = DateTime.now().difference(time);
-    if (diff.inMinutes < 1) return '방금 전';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}분 전';
-    if (diff.inHours < 24) return '${diff.inHours}시간 전';
-    return '${time.month}/${time.day}';
-  }
-}
-
-class _AuthorBadgeRow extends StatelessWidget {
-  final String userId;
-
-  const _AuthorBadgeRow({Key? key, required this.userId}) : super(key: key);
-
-  Future<List<Map<String, dynamic>>> _fetchAllUserBadges() async {
-    final cleanUid = userId.trim();
-    if (cleanUid.isEmpty) {
-      return [];
-    }
-
-    try {
-      final userBadgeSnap = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(cleanUid)
-          .collection('users_badge')
-          .get();
-
-      if (userBadgeSnap.docs.isEmpty) return [];
-
-      var selectedDocs = userBadgeSnap.docs
-          .where((d) => d.data()['isSelected'] == true)
-          .toList();
-
-      selectedDocs.sort((a, b) {
-        final orderA = (a.data()['displayOrder'] as num?)?.toInt() ?? 99;
-        final orderB = (b.data()['displayOrder'] as num?)?.toInt() ?? 99;
-        return orderA.compareTo(orderB);
-      });
-
-      var unselectedDocs = userBadgeSnap.docs
-          .where((d) => d.data()['isSelected'] != true)
-          .toList();
-
-      final allDocs = [...selectedDocs, ...unselectedDocs];
-      final badgeIds = allDocs
-          .map((d) => d.data()['badgeId'] as String?)
-          .whereType<String>()
-          .toList();
-
-      final List<Map<String, dynamic>> badgeDetails = [];
-      for (final bId in badgeIds) {
-        final badgeDoc = await FirebaseFirestore.instance.collection('badge').doc(bId).get();
-        if (badgeDoc.exists && badgeDoc.data()?['isActive'] == true) {
-          final data = badgeDoc.data()!;
-          badgeDetails.add({
-            'id': bId,
-            'name': data['name'] ?? '뱃지',
-            'description': data['description'] ?? '',
-            'imageUrl': data['imageUrl'] ?? '',
-            'iconUrl': data['iconUrl'] ?? data['imageUrl'] ?? '',
-          });
-        }
-      }
-
-      return badgeDetails;
-    } catch (e) {
-      debugPrint('🔴 [BadgeCheck] 뱃지 로드 중 에러 발생: $e');
-      return [];
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _fetchAllUserBadges(),
-      builder: (context, snapshot) {
-        final allBadges = snapshot.data ?? [];
-        if (allBadges.isEmpty) return const SizedBox.shrink();
-
-        const int maxDisplayCount = 3;
-        final displayBadges = allBadges.take(maxDisplayCount).toList();
-        final bool hasMore = allBadges.length > maxDisplayCount;
-        final int extraCount = allBadges.length - maxDisplayCount;
-
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ...displayBadges.asMap().entries.map((entry) {
-              final int index = entry.key;
-              final badge = entry.value;
-              final String iconUrl = badge['iconUrl'] ?? '';
-              return GestureDetector(
-                onTap: () => _showBadgeSliderBottomSheet(context, allBadges, initialIndex: index),
-                child: Container(
-                  margin: const EdgeInsets.only(right: 4),
-                  width: 22,
-                  height: 22,
-                  decoration: const BoxDecoration(shape: BoxShape.circle),
-                  child: ClipOval(
-                    child: iconUrl.isEmpty
-                        ? const SizedBox.shrink()
-                        : Image.network(
-                      iconUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                    ),
-                  ),
-                ),
-              );
-            }),
-            if (hasMore)
-              GestureDetector(
-                onTap: () => _showBadgeSliderBottomSheet(context, allBadges, initialIndex: maxDisplayCount),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEEEEEE),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '+$extraCount',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black87),
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showBadgeSliderBottomSheet(
-      BuildContext context,
-      List<Map<String, dynamic>> allBadges, {
-        int initialIndex = 0,
-      }) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (BuildContext context) {
-        int currentPage = initialIndex;
-        final PageController pageController = PageController(initialPage: initialIndex);
-
-        return StatefulBuilder(
-          builder: (context, setBottomSheetState) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    '보유한 뱃지 (${currentPage + 1}/${allBadges.length})',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
-                  ),
-                  SizedBox(
-                    height: 190,
-                    child: PageView.builder(
-                      controller: pageController,
-                      itemCount: allBadges.length,
-                      onPageChanged: (index) {
-                        setBottomSheetState(() {
-                          currentPage = index;
-                        });
-                      },
-                      itemBuilder: (context, index) {
-                        final badge = allBadges[index];
-                        return Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            SizedBox(
-                              width: 100,
-                              height: 100,
-                              child: Image.network(
-                                badge['imageUrl'],
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.workspace_premium, size: 70, color: Colors.orange),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              badge['name'],
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              badge['description'] ?? '',
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey.shade700,
-                                height: 1.3,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                  if (allBadges.length > 1) ...[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(allBadges.length, (dotIndex) {
-                        return Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          width: currentPage == dotIndex ? 16 : 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(3),
-                            color: currentPage == dotIndex ? Colors.black : Colors.grey.shade300,
-                          ),
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text(
-                        '확인',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            );
-          },
-        );
-      },
     );
   }
 }
