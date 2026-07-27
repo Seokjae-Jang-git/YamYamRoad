@@ -1,5 +1,7 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../common/user_data.dart';
 import '../features/emoticon/emoticon_span_builder.dart';
 import '../features/emoticon/emoticon_picker_sheet.dart';
@@ -8,7 +10,6 @@ import '../services/auth_service.dart';
 import 'community_post.dart';
 import 'community_comment.dart';
 import 'community_write.dart';
-
 
 class CommunityDetailScreen extends StatefulWidget {
   final String postId;
@@ -24,8 +25,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   String get _currentUserNickname => UserData.nickname ?? '이름없음';
 
   // 🌟 이모티콘 토큰을 실제 이미지로 인라인 렌더링하는 컨트롤러
-  final EmoticonTextEditingController _commentController =
-  EmoticonTextEditingController();
+  final EmoticonTextEditingController _commentController = EmoticonTextEditingController();
   final FocusNode _commentFocusNode = FocusNode();
 
   // 🌟 대댓글 작성 중인 대상 (null이면 원댓글 작성 모드)
@@ -82,6 +82,34 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     );
   }
 
+  // 🌟 [해결책 1] DB 중복 체크를 포함한 신고번호 생성 함수 (REP-20260727-A8F2)
+  Future<String> _generateUniqueReportId() async {
+    final now = DateTime.now();
+    final String dateStr = DateFormat('yyyyMMdd').format(now);
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final random = Random();
+
+    String reportId;
+    bool isDuplicate = true;
+
+    // 중복되지 않는 신고번호가 생성될 때까지 반복
+    do {
+      final randomCode = List.generate(4, (index) => chars[random.nextInt(chars.length)]).join();
+      reportId = 'REP-$dateStr-$randomCode';
+
+      try {
+        final doc = await FirebaseFirestore.instance.collection('reports').doc(reportId).get();
+        isDuplicate = doc.exists;
+      } catch (_) {
+        // 보안 규칙 또는 문서 미존재 시 사용 가능한 ID로 간주
+        isDuplicate = false;
+      }
+    } while (isDuplicate);
+
+    return reportId;
+  }
+
+  // 🌟 게시글 신고
   Future<void> _reportPost() async {
     final reasons = ['부적절한 내용', '스팸/광고', '욕설/비방', '허위 정보', '기타'];
     final selected = await showModalBottomSheet<String>(
@@ -105,14 +133,14 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
 
     if (selected == null) return;
 
-    // 🌟 '기타' 선택 시 상세 사유 입력받기
+    // '기타' 선택 시 상세 사유 입력받기
     String? detail;
     if (selected == '기타') {
       detail = await _askReportDetail();
       if (detail == null || detail.trim().isEmpty) return; // 취소 시 신고 안 함
     }
 
-    // 🌟 중복 신고 방지 (같은 유저가 같은 글 두 번 신고 못하게)
+    // 중복 신고 방지 (같은 유저가 같은 글 두 번 신고 못하게)
     final existing = await FirebaseFirestore.instance
         .collection('reports')
         .where('targetId', isEqualTo: widget.postId)
@@ -130,11 +158,20 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     }
 
     try {
-      await FirebaseFirestore.instance.collection('reports').add({
+      // 🌟 100% 중복 검증된 신고번호 생성
+      final String reportId = await _generateUniqueReportId();
+
+      // 🌟 .doc(reportId).set()으로 Firestore 문서 ID 지정 생성
+      await FirebaseFirestore.instance
+          .collection('reports')
+          .doc(reportId)
+          .set({
+        'reportId': reportId,
         'targetType': 'post',
         'targetId': widget.postId,
         'userId': _currentUserId,
         'reason': selected,
+        'reasonDetail': detail ?? '',
         'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -201,10 +238,6 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   }
 
   // 🌟 댓글/대댓글 등록
-  // - _replyTarget이 null이면 원댓글로 등록됩니다.
-  // - _replyTarget이 원댓글이면 그 댓글의 id가 parentId가 되고,
-  //   _replyTarget이 이미 대댓글이면 같은 원댓글 아래로 묶이도록 parentId를 그대로 이어받습니다.
-  //   (대댓글에 또 답글을 달아도 트리가 2단계로만 유지됨)
   Future<void> _submitComment() async {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
@@ -214,7 +247,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
 
     final comment = CommunityComment(
       id: '',
-      userId: _currentUserId, // 🌟 authorId → userId
+      userId: _currentUserId,
       authorNickname: _currentUserNickname,
       authorProfileImage: UserData.profileImagePath,
       content: text,
@@ -276,8 +309,6 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     _commentFocusNode.requestFocus();
   }
 
-  // 🌟 댓글/대댓글 입력창에서 이모티콘 삽입 (커서 위치 기준)
-  // imageUrl을 함께 받아 즉시 캐시에 등록 -> 네트워크 재조회 없이 바로 렌더링됨
   void _insertCommentEmoticon(String token, String imageUrl) {
     _commentController.cacheToken(token, imageUrl);
 
@@ -321,7 +352,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
           }
 
           final post = CommunityPost.fromFirestore(snapshot.data!);
-          final bool isMine = post.userId == _currentUserId; // 🌟 authorId → userId
+          final bool isMine = post.userId == _currentUserId;
           final bool liked = post.likedBy.contains(_currentUserId);
           final bool scrapped = post.scrappedBy.contains(_currentUserId);
 
@@ -350,7 +381,6 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // 🌟 닉네임 옆에 뱃지 노출 (얌얌북/커뮤니티 목록과 동일 방식)
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
@@ -426,7 +456,6 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                         ],
                       ),
                       const Divider(height: 32),
-                      // 🌟 댓글 목록
                       _buildCommentList(),
                     ],
                   ),
@@ -440,7 +469,6 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     );
   }
 
-  // 🌟 댓글 목록 (원댓글 + 대댓글 트리 구성)
   Widget _buildCommentList() {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -572,7 +600,6 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     );
   }
 
-  // 🌟 하단 댓글 입력창
   Widget _buildCommentInput() {
     return SafeArea(
       top: false,
@@ -603,7 +630,6 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
               ),
             Row(
               children: [
-                // 🌟 댓글/대댓글용 이모티콘 버튼 (보유한 팩만 노출됨)
                 IconButton(
                   icon: const Icon(Icons.emoji_emotions_outlined, color: Colors.grey),
                   tooltip: '이모티콘',
@@ -614,13 +640,12 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                     uid: _currentUserId,
                     onSelect: (token, imageUrl) {
                       _insertCommentEmoticon(token, imageUrl);
-                      setState(() {}); // 🌟 입력창 즉시 갱신
+                      setState(() {});
                     },
                   ),
                 ),
                 const SizedBox(width: 6),
                 Expanded(
-                  // 🌟 이모티콘 토큰이 실제 이미지로 바로 보이는 입력창
                   child: TextField(
                     controller: _commentController,
                     focusNode: _commentFocusNode,
@@ -669,10 +694,6 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   }
 }
 
-/// 🌟 게시글 상세 화면의 작성자 닉네임 옆에 붙는 뱃지 목록.
-/// 얌얌북(FeedCardWidget)과 동일한 규칙: 획득한 전체 뱃지 중 대표 뱃지(isSelected+displayOrder)를
-/// 우선 정렬해 최대 3개까지 아이콘으로 보여주고, 나머지는 +N으로 표시합니다.
-/// (대표 뱃지를 지정하지 않은 계정도 획득한 뱃지가 있으면 아이콘이 뜹니다.)
 class _AuthorBadgeRow extends StatelessWidget {
   final String userId;
 
@@ -795,7 +816,6 @@ class _AuthorBadgeRow extends StatelessWidget {
     );
   }
 
-  // 🌟 좌우 스와이프 가능한 슬라이드형 뱃지 전체보기 바텀 시트 (얌얌북 FeedCardWidget과 동일 UI)
   void _showBadgeSliderBottomSheet(
       BuildContext context,
       List<Map<String, dynamic>> allBadges, {
