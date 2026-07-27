@@ -33,7 +33,7 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
   @override
   void initState() {
     super.initState();
-    _updateStream(); // 🌟 2. 화면이 처음 켜질 때 1회 통신 연결
+    _updateStream();
   }
 
   void _updateStream() {
@@ -77,7 +77,7 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
       _appliedSort = _selectedSort;
       _isFilterExpanded = false;
 
-      _updateStream(); // 🌟 추가: [조회]를 눌렀을 때만 DB 리스트 새로고침!
+      _updateStream();
     });
   }
 
@@ -96,7 +96,7 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
     );
   }
 
-  // 상단 내 보유 포인트 요약 카드
+  // 상단 내 보유 포인트 요약 카드 (회색 영역 제거 및 1px 구분선 적용)
   Widget _buildPointSummaryCard(String uid) {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
@@ -104,13 +104,25 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
         if (!snapshot.hasData) return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()));
 
         final data = snapshot.data!.data() as Map<String, dynamic>?;
-        final int paidPoint = data?['paidPointBalance'] ?? 0;
-        final int freePoint = data?['freePointBalance'] ?? 0;
-        final int totalPoint = paidPoint + freePoint;
+
+        num parseToNum(dynamic value) {
+          if (value == null) return 0;
+          if (value is num) return value;
+          if (value is String) return num.tryParse(value) ?? 0;
+          return 0;
+        }
+
+        final num paidPoint = parseToNum(data?['paidPointBalance']);
+        final num freePoint = parseToNum(data?['freePointBalance']);
+        final num totalPoint = paidPoint + freePoint;
 
         return Container(
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 8))),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            // 🌟 회색 바(border width 8)를 없애고 연한 1px 실선으로 구분
+            border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -140,7 +152,10 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
   // 와이어프레임 기반 필터 아코디언 UI
   Widget _buildFilterAccordion() {
     return Container(
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade300, width: 1))),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
+      ),
       child: Column(
         children: [
           // 기본 요약 바 (토글 버튼)
@@ -246,31 +261,33 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
     );
   }
 
-  // 🌟 거래 내역 리스트 (필터 적용됨)
+  // 거래 내역 리스트
   Widget _buildTransactionList(String uid) {
     return StreamBuilder<QuerySnapshot>(
       stream: _transactionStream,
       builder: (context, snapshot) {
-        // 🚨 정렬이나 필터 쿼리에서 Firestore 인덱스 에러가 날 경우 화면에 빨간 글씨로 표시
         if (snapshot.hasError) {
           return Center(child: Text('데이터 로드 오류:\n${snapshot.error}', style: const TextStyle(color: Colors.red), textAlign: TextAlign.center));
         }
 
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: Colors.black));
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return const Center(child: Text('포인트 거래 내역이 없습니다.', style: TextStyle(color: Colors.grey)));
 
-        // 🌟 Client-side 필터링 (구분 필터 엄격하게 적용)
+        num parseToNum(dynamic value) {
+          if (value == null) return 0;
+          if (value is num) return value;
+          if (value is String) return num.tryParse(value) ?? 0;
+          return 0;
+        }
+
         final docs = snapshot.data!.docs.where((doc) {
           final txData = doc.data() as Map<String, dynamic>;
-          final num amount = txData['amount'] ?? 0; // 포인트 증감량
+          final num amount = parseToNum(txData['amount']);
 
-          // 1. '충전' 선택 시 -> 포인트가 0 이하면(증가하지 않았으면) 리스트에서 제외
           if (_appliedType == '충전' && amount <= 0) return false;
-
-          // 2. '사용' 선택 시 -> 포인트가 0 이상이면(감소하지 않았으면) 리스트에서 제외
           if (_appliedType == '사용' && amount >= 0) return false;
 
-          return true; // '전체'이거나 조건에 맞으면 통과
+          return true;
         }).toList();
 
         if (docs.isEmpty) return const Center(child: Text('조건에 맞는 내역이 없습니다.', style: TextStyle(color: Colors.grey)));
@@ -345,18 +362,14 @@ class TransactionItemWidget extends StatefulWidget {
 
 class _TransactionItemWidgetState extends State<TransactionItemWidget> {
   bool _isExpanded = false;
-
-  // 🌟 1. 제목 조회 결과를 담아둘 Future 변수 선언
   late Future<String> _titleFuture;
 
   @override
   void initState() {
     super.initState();
-    // 🌟 2. 위젯이 처음 화면에 나타날 때 단 한 번만 함수 실행!
     _titleFuture = _fetchTransactionTitle(widget.uid, widget.txData);
   }
 
-  // (만약 리스트의 데이터가 통째로 바뀌면 제목도 새로고침하기 위한 방어 코드)
   @override
   void didUpdateWidget(TransactionItemWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -365,7 +378,6 @@ class _TransactionItemWidgetState extends State<TransactionItemWidget> {
     }
   }
 
-  // 거래 유형(refType)에 따라 여러 컬렉션을 연쇄 조회하여 제목을 반환하는 비동기 함수
   Future<String> _fetchTransactionTitle(String uid, Map<String, dynamic> txData) async {
     try {
       final String refType = txData['refType'] ?? '';
@@ -374,7 +386,6 @@ class _TransactionItemWidgetState extends State<TransactionItemWidget> {
 
       if (refId == null) return fallback;
 
-      // 1. 결제 (purchase) 관련 로직
       if (refType == 'purchase') {
         final purchaseDoc = await FirebaseFirestore.instance
             .collection('users')
@@ -387,12 +398,9 @@ class _TransactionItemWidgetState extends State<TransactionItemWidget> {
         final purchaseData = purchaseDoc.data()!;
         final String purchaseType = purchaseData['purchaseType'] ?? '';
 
-        // 1-1. 포인트 충전
         if (purchaseType == 'point_package') {
           return '포인트 충전';
-        }
-        // 1-2. 이모티콘 또는 기프티콘 구매
-        else if (purchaseType == 'emoticon' || purchaseType == 'gifticon') {
+        } else if (purchaseType == 'emoticon' || purchaseType == 'gifticon') {
           final String? itemId = purchaseData['itemId'];
           if (itemId == null) return fallback;
 
@@ -407,9 +415,7 @@ class _TransactionItemWidgetState extends State<TransactionItemWidget> {
           }
           return '$prefix - 상품 정보 없음';
         }
-      }
-      // 2. 스탬프 (stamp) 관련 로직
-      else if (refType == 'stamp') {
+      } else if (refType == 'stamp') {
         final stampDoc = await FirebaseFirestore.instance.collection('stamp').doc(refId).get();
 
         if (!stampDoc.exists) return fallback;
@@ -440,12 +446,22 @@ class _TransactionItemWidgetState extends State<TransactionItemWidget> {
         ? DateFormat('yyyy. MM. dd HH:mm').format(timestamp.toDate())
         : '-';
 
-    final num amount = txData['amount'] ?? 0;
+    // 🌟 타입 방어 파싱 함수
+    num parseToNum(dynamic value) {
+      if (value == null) return 0;
+      if (value is num) return value;
+      if (value is String) return num.tryParse(value) ?? 0;
+      return 0;
+    }
+
+    final num amount = parseToNum(txData['amount']);
     final bool isEarn = amount > 0;
     final String amountStr = '${isEarn ? '+' : '-'} ${NumberFormat('#,###').format(amount.abs())} 포인트';
     final Color amountColor = isEarn ? Colors.black : Colors.red;
 
-    // refType이 purchase이고, 포인트 충전(양수)인 경우만 '결제내역 보기' 활성화
+    final num paidBalance = parseToNum(txData['paidPointBalanceAfter']);
+    final num freeBalance = parseToNum(txData['freePointBalanceAfter']);
+
     final bool showPaymentDetails = txData['refType'] == 'purchase' && txData['refId'] != null && isEarn;
 
     return Column(
@@ -481,7 +497,25 @@ class _TransactionItemWidgetState extends State<TransactionItemWidget> {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    Text(amountStr, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: amountColor)),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          amountStr,
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: amountColor),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '유료: ${NumberFormat('#,###').format(paidBalance)} 포인트',
+                          style: const TextStyle(fontSize: 11, color: Colors.black54),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '무료: ${NumberFormat('#,###').format(freeBalance)} 포인트',
+                          style: const TextStyle(fontSize: 11, color: Colors.black54),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
                 if (showPaymentDetails) ...[
@@ -512,16 +546,15 @@ class _TransactionItemWidgetState extends State<TransactionItemWidget> {
                   .doc(txData['refId'])
                   .get(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const SizedBox(height: 50, child: Center(child: CircularProgressIndicator()));
+                if (!snapshot.hasData) return const SizedBox(height: 50, child: Center(child: CircularProgressIndicator(color: Colors.black)));
 
                 final purchaseData = snapshot.data!.data() as Map<String, dynamic>?;
                 if (purchaseData == null) return const Text('결제 정보를 불러올 수 없습니다.', style: TextStyle(fontSize: 13));
 
-                final paidAmount = purchaseData['paidAmount'] ?? 0;
+                final paidAmount = parseToNum(purchaseData['paidAmount']);
                 final paymentMethod = purchaseData['paymentMethod'] == 'cash' ? '신용카드' : '기타';
                 final approvalNum = purchaseData['approvalNumber'] ?? "-";
 
-                // 카드사 한글 매핑 테이블
                 final Map<String, String> cardIssuerMap = {
                   'HYUNDAI_CARD': '현대',
                   'KOOKMIN_CARD': '국민',

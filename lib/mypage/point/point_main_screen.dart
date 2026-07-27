@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 // TODO: 각 탭 화면 파일 import 필요 (현재는 포인트 조회 탭만 연결)
+import 'emoticon/emoticon_tab.dart';
 import 'giftcon/gifticon_tab.dart';
 import 'point_history/point_history_tab.dart';
 
@@ -48,7 +49,7 @@ class PointMainScreen extends StatelessWidget {
             PointHistoryTab(),
 
             // 2. 이모티콘 탭 (추후 구현)
-            Center(child: Text('이모티콘 관리 화면 준비 중')),
+            EmoticonTab(),
 
             // 3. 기프티콘 탭 (추후 구현)
             GifticonTab()
