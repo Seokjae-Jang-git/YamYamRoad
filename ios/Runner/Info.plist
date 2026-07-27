@@ -72,5 +72,9 @@
         <string>nmap</string>
         <string>kakaomap</string>
     </array>
+    <!-- ⬇️ Google AdMob 테스트 앱 ID 추가 ⬇️ -->
+    <key>GADApplicationIdentifier</key>
+    <string>ca-app-pub-3940256099942544~1458002511</string>
+    <!-- ⬆️ 추가 완료 ⬆️ -->
 </dict>
 </plist>

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../common/user_data.dart';
 import '../../services/auth_service.dart';
 
@@ -20,33 +19,14 @@ class _HomeHeaderState extends State<HomeHeader> {
   @override
   void initState() {
     super.initState();
-    _loadProfileIfNeeded();
+    _loadProfile();
   }
 
-  // UserData 프로필 정보 로드
-  Future<void> _loadProfileIfNeeded() async {
-    final String? currentUid = AuthService.currentUser?.uid;
-    if (currentUid == null) return;
-
-    if (UserData.uid == currentUid && UserData.nickname != null) return;
-
-    try {
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUid).get();
-      if (!mounted) return;
-      if (userDoc.exists) {
-        final data = userDoc.data() as Map<String, dynamic>;
-        setState(() {
-          UserData.uid = currentUid;
-          UserData.nickname = data['nickname'] ?? '이름없음';
-          UserData.name = data['name'] ?? '';
-          UserData.phone = data['phone'] ?? '';
-          UserData.profileImagePath = data['profileImageUrl'];
-          UserData.isDefaultProfileImage =
-          (data['profileImageUrl'] == null || data['profileImageUrl'].toString().isEmpty);
-        });
-      }
-    } catch (e) {
-      debugPrint('🔴 홈 헤더 프로필 로드 실패: $e');
+  // AuthService를 통해 프로필 로드 후 화면 갱신
+  Future<void> _loadProfile() async {
+    await AuthService.loadUserProfileToUserData();
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -120,13 +100,9 @@ class _HomeHeaderState extends State<HomeHeader> {
   Future<void> _handleLogout() async {
     try {
       await AuthService.logout();
-
-      UserData.uid = null;
-      UserData.nickname = null;
-      UserData.name = null;
-      UserData.phone = null;
-      UserData.profileImagePath = null;
-      UserData.isDefaultProfileImage = true;
+      if (mounted) {
+        setState(() {});
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
