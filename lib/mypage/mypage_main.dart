@@ -47,7 +47,8 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
     }
 
     try {
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUid).get();
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection(
+          'users').doc(currentUid).get();
       if (userDoc.exists) {
         Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
         setState(() {
@@ -56,7 +57,10 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
           UserData.name = data['name'] ?? '';
           UserData.phone = data['phone'] ?? '';
           UserData.profileImagePath = data['profileImageUrl'];
-          UserData.isDefaultProfileImage = (data['profileImageUrl'] == null || data['profileImageUrl'].toString().isEmpty);
+          UserData.isDefaultProfileImage =
+          (data['profileImageUrl'] == null || data['profileImageUrl']
+              .toString()
+              .isEmpty);
           _isLoading = false;
         });
       } else {
@@ -68,14 +72,37 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
     }
   }
 
-  void _openDiary() => Navigator.push(context, MaterialPageRoute(builder: (context) => const DiaryScreen()));
-  void _openCommunity() => Navigator.push(context, MaterialPageRoute(builder: (context) => const CommunityMyScreen()));
-  void _openStamp() => Navigator.push(context, MaterialPageRoute(builder: (context) => const StampMainScreen()));
-  void _openBadge() => Navigator.push(context, MaterialPageRoute(builder: (context) => const BadgeMainScreen()));
-  void _openPoint() => Navigator.push(context, MaterialPageRoute(builder: (context) => const PointMainScreen()));
-  void _openInquiry() => Navigator.push(context, MaterialPageRoute(builder: (context) => const InquiryListScreen()));
-  void _openSetting() => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingScreen()));
-  void _openReport() => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReportListScreen()));
+  void _openDiary() =>
+      Navigator.push(context,
+          MaterialPageRoute(builder: (context) => const DiaryScreen()));
+
+  void _openCommunity() =>
+      Navigator.push(context,
+          MaterialPageRoute(builder: (context) => const CommunityMyScreen()));
+
+  void _openStamp() =>
+      Navigator.push(context,
+          MaterialPageRoute(builder: (context) => const StampMainScreen()));
+
+  void _openBadge() =>
+      Navigator.push(context,
+          MaterialPageRoute(builder: (context) => const BadgeMainScreen()));
+
+  void _openPoint() =>
+      Navigator.push(context,
+          MaterialPageRoute(builder: (context) => const PointMainScreen()));
+
+  void _openInquiry() =>
+      Navigator.push(context,
+          MaterialPageRoute(builder: (context) => const InquiryListScreen()));
+
+  void _openSetting() =>
+      Navigator.push(context,
+          MaterialPageRoute(builder: (context) => const SettingScreen()));
+
+  void _openReport() =>
+      Navigator.push(context,
+          MaterialPageRoute(builder: (context) => const ReportListScreen()));
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +116,8 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('마이페이지', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: const Text('마이페이지',
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
@@ -139,31 +167,38 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
 
               // 🌟 분리된 아이콘 격자 메뉴
               MenuGrid(
-                  openDiary: _openDiary,
-                  openCommunity: _openCommunity,
-                  openStamp: _openStamp,
-                  openBadge: _openBadge,
-                  openPoint: _openPoint,
-                  openInquiry: _openInquiry,
-                  openReport: _openReport,
-                  openSetting: _openSetting,
+                openDiary: _openDiary,
+                openCommunity: _openCommunity,
+                openStamp: _openStamp,
+                openBadge: _openBadge,
+                openPoint: _openPoint,
+                openInquiry: _openInquiry,
+                openReport: _openReport,
+                openSetting: _openSetting,
               ),
               const SizedBox(height: 16),
 
               // 외부에서 공급받는 컴포넌트 바인딩 구조
-              _buildCardSection('다이어리', buildDiaryContent(), onDetailTap: _openDiary),
+              _buildCardSection(
+                  '다이어리', buildDiaryContent(), onDetailTap: _openDiary),
               const SizedBox(height: 16),
-              _buildCardSection('얌얌북', buildYamyamBookContent(), onDetailTap: _openCommunity),
+              _buildCardSection(
+                  '얌얌북', buildYamyamBookContent(), onDetailTap: _openCommunity),
               const SizedBox(height: 16),
-              _buildCardSection('스탬프', buildStampContent(), onDetailTap: _openStamp),
+              _buildCardSection(
+                  '스탬프', buildStampContent(), onDetailTap: _openStamp),
               const SizedBox(height: 16),
-              _buildCardSection('뱃지', buildBadgeContent(), onDetailTap: _openBadge),
+              _buildCardSection(
+                  '뱃지', buildBadgeContent(), onDetailTap: _openBadge),
               const SizedBox(height: 16),
-              _buildPointSection('포인트', buildPointContent()),
+              _buildCardSection(
+                  '포인트', buildPointContent(context), onDetailTap: _openPoint),
               const SizedBox(height: 16),
-              _buildCardSection('문의', buildInquiryContent(), onDetailTap: _openInquiry),
+              _buildCardSection(
+                  '문의', buildInquiryContent(), onDetailTap: _openInquiry),
               const SizedBox(height: 16),
-              _buildCardSection('신고', buildReportContent(), onDetailTap: _openReport),
+              _buildCardSection(
+                  '신고', buildReportContent(), onDetailTap: _openReport),
               const SizedBox(height: 32),
               const BadgeRealCheckDebugButton(),
             ],
@@ -173,39 +208,30 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
     );
   }
 
-  Widget _buildCardSection(String title, Widget content, {VoidCallback? onDetailTap}) {
+  Widget _buildCardSection(String title, Widget content,
+      {VoidCallback? onDetailTap}) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(title, style: const TextStyle(
+                  fontWeight: FontWeight.bold, fontSize: 16)),
               TextButton(
                 onPressed: onDetailTap ?? () {},
-                style: TextButton.styleFrom(minimumSize: Size.zero, padding: EdgeInsets.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                child: const Text('자세히 보기', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                style: TextButton.styleFrom(minimumSize: Size.zero,
+                    padding: EdgeInsets.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                child: const Text('자세히 보기',
+                    style: TextStyle(fontSize: 12, color: Colors.grey)),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          content,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPointSection(String title, Widget content) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 16),
           content,
         ],

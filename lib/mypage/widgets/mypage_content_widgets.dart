@@ -263,14 +263,32 @@ Future<List<Map<String, dynamic>>> _fetchBadgeDetails(List<String> badgeIds) asy
   return details;
 }
 
-// 5. 포인트 콘텐츠
-Widget buildPointContent() {
+// 5. 포인트 콘텐츠 (실시간 DB 연동 + 거래 내역 기반 누적 집계)
+Widget buildPointContent(BuildContext context) {
+  final String uid = UserData.uid ?? '';
+
+  if (uid.isEmpty) {
+    return const Text('로그인 정보가 없습니다.', style: TextStyle(color: Colors.grey, fontSize: 13));
+  }
+
+  final numberFormat = NumberFormat('#,###');
+
+  num parseToNum(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value;
+    if (value is String) return num.tryParse(value) ?? 0;
+    return 0;
+  }
+
   Widget buildPointBox(String title, String point) {
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(4)),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(4),
+        ),
         child: Column(
           children: [
             Text(title, style: const TextStyle(fontSize: 12, color: Colors.black54)),
@@ -282,13 +300,65 @@ Widget buildPointContent() {
     );
   }
 
-  return Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-      buildPointBox('보유 포인트', '8,000 Point'),
-      buildPointBox('충전 포인트', '10,000 Point'),
-      buildPointBox('사용 포인트', '2,000 Point'),
-    ],
+  // 1. 현재 보유 포인트 (users 문서 실시간 읽기)
+  return StreamBuilder<DocumentSnapshot>(
+    stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+    builder: (context, userSnapshot) {
+      if (userSnapshot.connectionState == ConnectionState.waiting) {
+        return const SizedBox(
+          height: 60,
+          child: Center(child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2)),
+        );
+      }
+
+      num paidPoint = 0;
+      num freePoint = 0;
+
+      if (userSnapshot.hasData && userSnapshot.data!.exists) {
+        final userData = userSnapshot.data!.data() as Map<String, dynamic>? ?? {};
+        paidPoint = parseToNum(userData['paidPointBalance']);
+        freePoint = parseToNum(userData['freePointBalance']);
+      }
+
+      final num totalBalance = paidPoint + freePoint; // 보유 포인트
+
+      // 2. 누적 충전/사용 포인트 (users_point_transaction 서브 컬렉션 실시간 집계)
+      return StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('users_point_transaction')
+            .snapshots(),
+        builder: (context, txSnapshot) {
+          num totalChargedPoint = 0; // 누적 충전 포인트 (amount > 0)
+          num totalUsedPoint = 0;    // 누적 사용 포인트 (amount < 0)
+
+          if (txSnapshot.hasData && txSnapshot.data!.docs.isNotEmpty) {
+            for (var doc in txSnapshot.data!.docs) {
+              final txData = doc.data() as Map<String, dynamic>;
+              final num amount = parseToNum(txData['amount']);
+
+              if (amount > 0) {
+                // 유료 결제 + 무상 획득(스탬프/광고) 합산
+                totalChargedPoint += amount;
+              } else if (amount < 0) {
+                // 사용 내역 (절대값으로 합산)
+                totalUsedPoint += amount.abs();
+              }
+            }
+          }
+
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              buildPointBox('보유 포인트', '${numberFormat.format(totalBalance)} Point'),
+              buildPointBox('충전 포인트', '${numberFormat.format(totalChargedPoint)} Point'),
+              buildPointBox('사용 포인트', '${numberFormat.format(totalUsedPoint)} Point'),
+            ],
+          );
+        },
+      );
+    },
   );
 }
 
