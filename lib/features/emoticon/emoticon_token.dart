@@ -10,5 +10,5 @@ class EmoticonToken {
   String toText() => '[emoji:$productId:$itemId]';
 
   static final RegExp pattern =
-  RegExp(r'\[emoji:([a-zA-Z0-9_\-]+):([a-zA-Z0-9_\-]+)\]');
+  RegExp(r'\[emoji:([a-zA-Z0-9_\-]+):([a-zA-Z0-9_\-.]+)\]');
 }
