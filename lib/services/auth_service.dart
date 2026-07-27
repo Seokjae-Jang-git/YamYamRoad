@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import '../common/user_data.dart';
 
 /// Blaze 요금제 기반 인증 서비스.
 ///
@@ -36,6 +37,32 @@ class AuthService {
   /// 로그인 상태 변화를 실시간으로 감지하는 스트림.
   /// main.dart에서 앱 시작 화면(홈/스플래시)을 분기할 때 사용하세요.
   static Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  /// 현재 로그인된 사용자의 Firestore 프로필 정보를 조회하여 UserData 전역 객체에 저장합니다.
+  static Future<void> loadUserProfileToUserData() async {
+    final String? currentUid = _auth.currentUser?.uid;
+    if (currentUid == null) return;
+
+    // 이미 유저 데이터가 올바르게 세팅되어 있는 경우 불필요한 Firestore 조회 방지
+    if (UserData.uid == currentUid && UserData.nickname != null) return;
+
+    try {
+      final userDoc = await _firestore.collection('users').doc(currentUid).get();
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>;
+        UserData.uid = currentUid;
+        UserData.nickname = data['nickname'] as String? ?? '이름없음';
+        UserData.name = data['name'] as String? ?? '';
+        UserData.phone = data['phone'] as String? ?? '';
+        UserData.profileImagePath = data['profileImageUrl'] as String?;
+        UserData.isDefaultProfileImage =
+        (data['profileImageUrl'] == null || data['profileImageUrl'].toString().isEmpty);
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('🔴 프로필 데이터 로드 실패: $e');
+    }
+  }
 
   /// 현재 로그인한 사용자의 Firestore 프로필까지 포함한 정보를 가져옵니다.
   /// 비로그인 상태면 null을 반환합니다.
@@ -257,9 +284,17 @@ class AuthService {
     }
   }
 
-  /// 로그아웃
+  /// 로그아웃 및 전역 UserData 초기화
   static Future<void> logout() async {
     await _auth.signOut();
+
+    // 전역 유저 메모리 데이터 즉시 초기화
+    UserData.uid = null;
+    UserData.nickname = null;
+    UserData.name = null;
+    UserData.phone = null;
+    UserData.profileImagePath = null;
+    UserData.isDefaultProfileImage = true;
   }
 }
 
