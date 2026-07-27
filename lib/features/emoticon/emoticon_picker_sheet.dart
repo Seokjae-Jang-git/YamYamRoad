@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import '../../point/models/point_models.dart';
+import 'emoticon_image.dart';
 import 'emoticon_product_repository.dart';
 import 'emoticon_service.dart';
 import 'emoticon_token.dart';
 
 class EmoticonPickerSheet extends StatelessWidget {
   final String uid;
-  final ValueChanged<String> onSelect;
+  final void Function(String token, String imageUrl) onSelect; // 🌟 변경
 
   const EmoticonPickerSheet({Key? key, required this.uid, required this.onSelect}) : super(key: key);
 
-  static Future<void> show(BuildContext context, {required String uid, required ValueChanged<String> onSelect}) {
+  static Future<void> show(
+      BuildContext context, {
+        required String uid,
+        required void Function(String token, String imageUrl) onSelect, // 🌟 변경
+      }) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -94,12 +99,11 @@ class EmoticonPickerSheet extends StatelessWidget {
       itemBuilder: (context, index) {
         final item = product.items[index];
         return GestureDetector(
-          onTap: () => onSelect(EmoticonToken(product.id, item.itemId).toText()),
-          child: Image.network(
-            item.imageUrl,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported_outlined, color: Colors.grey),
+          onTap: () => onSelect(
+            EmoticonToken(product.id, item.itemId).toText(),
+            item.imageUrl, // 🌟 이미지 URL도 함께 전달
           ),
+          child: EmoticonImage(imageUrl: item.imageUrl, size: 48),
         );
       },
     );

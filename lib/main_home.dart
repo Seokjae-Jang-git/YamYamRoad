@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart'; // 🚀 AdMob SDK 임포트 추가
 import 'yamyam_home/main_home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
@@ -26,6 +27,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // 4. 구글 애드몹 SDK 엔진 초기화 🚀
+  await MobileAds.instance.initialize();
 
   // 카카오 SDK 초기화 - 반드시 앱 시작 시 한 번 호출해야 함
   kakao.KakaoSdk.init(

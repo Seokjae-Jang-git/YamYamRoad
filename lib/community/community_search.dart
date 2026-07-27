@@ -83,7 +83,7 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
       )
           : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
-            .collection('community_posts')
+            .collection('posts')
             .orderBy('createdAt', descending: true)
             .limit(200)
             .snapshots(),

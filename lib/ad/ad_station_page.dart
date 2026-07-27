@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
+import '../services/point_service.dart';
+import 'models/point_model.dart';
 import 'widgets/point_status_card.dart';
 import 'widgets/ad_tab_bar.dart';
 import 'widgets/ad_reward_card.dart';
@@ -12,15 +15,30 @@ class AdStationPage extends StatefulWidget {
 }
 
 class _AdStationPageState extends State<AdStationPage> {
-  // 💰 실시간 포인트 가상 변수 (정산 테스트용)
-  int _currentPoints = 150;
+  final PointService _pointService = PointService();
 
-  // 자체 광고 시청 처리 및 포인트 적립 연동 함수
+  // 자체 광고 시청 처리 및 Firestore 포인트 적립 연동 함수
   Future<void> _playInHouseAd({
+    required String uid,
+    required String adId,
     required String brandName,
     required int durationSeconds,
     required int rewardPoints,
+    required PointModel pointModel,
   }) async {
+    // 0. 오늘 이미 시청한 광고인지 사전 체크
+    if (pointModel.hasWatchedToday(adId)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('오늘 이미 시청 보상을 받은 광고입니다. 내일 다시 참여해주세요!'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     // 1. 디버그 콘솔 로그 기록
     debugPrint('=============== IN-HOUSE AD TRIGGER ===============');
     debugPrint('시청 광고 브랜드: $brandName');
@@ -40,39 +58,67 @@ class _AdStationPageState extends State<AdStationPage> {
       ),
     );
 
-    // 3. 광고를 다 봤다면 기분 좋은 정산 진행!
+    // 3. 광고를 다 봤다면 Firestore DB 트랜잭션 정산 진행
     if (isCompleted == true) {
-      setState(() {
-        _currentPoints += rewardPoints;
-      });
-
-      // 성공 축하 다이얼로그 팝업 안내
       if (!mounted) return;
+
+      // 로딩 인디케이터 표시
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          title: const Row(
-            children: [
-              Icon(Icons.monetization_on, color: Colors.amber),
-              SizedBox(width: 8),
-              Text('포인트 적립 완료!'),
-            ],
-          ),
-          content: Text('[$brandName] 광고 시청 보상으로\n$rewardPoints P가 성공적으로 적립되었습니다.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('확인', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-            ),
-          ],
+        barrierDismissible: false,
+        builder: (_) => const Center(
+          child: CircularProgressIndicator(),
         ),
       );
+
+      // Firestore 포인트 증가 + 시청 기록 + 히스토리 저장
+      final bool success = await _pointService.claimAdReward(
+        uid: uid,
+        adId: adId,
+        rewardAmount: rewardPoints,
+        adTitle: '[$brandName] 광고 시청',
+      );
+
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // 로딩 닫기
+
+      if (success) {
+        // 성공 축하 다이얼로그 팝업 안내
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            title: const Row(
+              children: [
+                Icon(Icons.monetization_on, color: Colors.amber),
+                SizedBox(width: 8),
+                Text('포인트 적립 완료!'),
+              ],
+            ),
+            content: Text('[$brandName] 광고 시청 보상으로\n$rewardPoints P가 성공적으로 적립되었습니다.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('확인', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('포인트 적립 실패: 오늘 이미 보상을 받았거나 오류가 발생했습니다.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final String? uid = AuthService.currentUser?.uid;
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -97,26 +143,50 @@ class _AdStationPageState extends State<AdStationPage> {
           ),
         ),
         backgroundColor: Colors.white,
-        body: Column(
-          children: [
-            // 1. 내 현재 포인트 잔액 표시 카드 (실시간 변수 연동 완료)
-            PointStatusCard(points: _currentPoints),
+        body: uid == null
+            ? const Center(
+          child: Text(
+            '로그인이 필요한 서비스입니다.',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+        )
+            : StreamBuilder<PointModel?>(
+          stream: _pointService.getPointStream(uid),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-            // 2. 세련된 세그먼트형 알약 탭바
-            const AdTabBar(),
+            if (snapshot.hasError) {
+              return Center(
+                child: Text('데이터를 불러오는데 실패했습니다: ${snapshot.error}'),
+              );
+            }
 
-            const SizedBox(height: 16),
+            final pointModel = snapshot.data ?? PointModel.initial();
 
-            // 3. 탭 전환 콘텐츠 영역
-            Expanded(
-              child: TabBarView(
-                children: [
-                  _buildAdMobTab(context),
-                  _buildInHouseTab(context),
-                ],
-              ),
-            ),
-          ],
+            return Column(
+              children: [
+                // 1. 내 현재 포인트 잔액 표시 카드 (Firestore 실시간 데이터 연동)
+                PointStatusCard(points: pointModel.points),
+
+                // 2. 세련된 세그먼트형 알약 탭바
+                const AdTabBar(),
+
+                const SizedBox(height: 16),
+
+                // 3. 탭 전환 콘텐츠 영역
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _buildAdMobTab(context),
+                      _buildInHouseTab(context, uid, pointModel),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -190,8 +260,16 @@ class _AdStationPageState extends State<AdStationPage> {
     );
   }
 
-  // [탭 2] 자체 제휴 (Phase 2) 뷰 영역 (실제 광고 시청 및 정산 연결 완료)
-  Widget _buildInHouseTab(BuildContext context) {
+  // [탭 2] 자체 제휴 (Phase 2) 뷰 영역 (실제 광고 시청 및 Firestore 정산 연결 완료)
+  Widget _buildInHouseTab(
+      BuildContext context,
+      String uid,
+      PointModel pointModel,
+      ) {
+    final bool isBakeryWatched = pointModel.hasWatchedToday('inhouse_bakery');
+    final bool isAmericanoWatched = pointModel.hasWatchedToday('inhouse_americano');
+    final bool isDonutWatched = pointModel.hasWatchedToday('inhouse_donut');
+
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
@@ -219,37 +297,52 @@ class _AdStationPageState extends State<AdStationPage> {
 
         AdRewardCard(
           title: '🍰 [제휴] 얌얌 베이커리 신메뉴 홍보',
-          specs: '보상: 30 P (영상 길이: 10초로 단축 테스트)', // 테스트 편의를 위해 10초 설정
-          reward: '30 P',
+          specs: isBakeryWatched
+              ? '오늘 시청 완료 (내일 다시 참여 가능)'
+              : '보상: 30 P (영상 길이: 10초로 단축 테스트)',
+          reward: isBakeryWatched ? '완료' : '30 P',
           isSponsor: true,
           onTap: () => _playInHouseAd(
+            uid: uid,
+            adId: 'inhouse_bakery',
             brandName: '얌얌 베이커리',
-            durationSeconds: 10, // 원활한 검증을 위해 10초로 세팅 (추후 변경 가능)
+            durationSeconds: 10,
             rewardPoints: 30,
+            pointModel: pointModel,
           ),
         ),
 
         AdRewardCard(
           title: '☕ [제휴] 카페 아메리카노 감성 CF',
-          specs: '보상: 20 P (영상 길이: 7초로 단축 테스트)',
-          reward: '20 P',
+          specs: isAmericanoWatched
+              ? '오늘 시청 완료 (내일 다시 참여 가능)'
+              : '보상: 20 P (영상 길이: 7초로 단축 테스트)',
+          reward: isAmericanoWatched ? '완료' : '20 P',
           isSponsor: true,
           onTap: () => _playInHouseAd(
+            uid: uid,
+            adId: 'inhouse_americano',
             brandName: '카페 아메리카노',
             durationSeconds: 7,
             rewardPoints: 20,
+            pointModel: pointModel,
           ),
         ),
 
         AdRewardCard(
           title: '🍩 [제휴] 도넛홀릭 브랜드 스토리',
-          specs: '보상: 40 P (영상 길이: 15초로 단축 테스트)',
-          reward: '40 P',
+          specs: isDonutWatched
+              ? '오늘 시청 완료 (내일 다시 참여 가능)'
+              : '보상: 40 P (영상 길이: 15초로 단축 테스트)',
+          reward: isDonutWatched ? '완료' : '40 P',
           isSponsor: true,
           onTap: () => _playInHouseAd(
+            uid: uid,
+            adId: 'inhouse_donut',
             brandName: '도넛홀릭',
             durationSeconds: 15,
             rewardPoints: 40,
+            pointModel: pointModel,
           ),
         ),
       ],

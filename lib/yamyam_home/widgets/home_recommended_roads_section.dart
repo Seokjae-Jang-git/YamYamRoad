@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../road/models/road.dart';
+import '../../services/road_service.dart';
 import 'home_road_swiper.dart';
 
-/// 내 위치 기반 추천 로드 섹션 (타이틀 + DB 스트림 조회 + 거리 정렬 + 스위퍼)
+/// 내 위치 기반 추천 로드 섹션 (타이틀 + DB 스트림 구독 + 스위퍼)
 class HomeRecommendedRoadsSection extends StatelessWidget {
   final double userLat;
   final double userLng;
@@ -48,9 +48,12 @@ class HomeRecommendedRoadsSection extends StatelessWidget {
 
         const SizedBox(height: 16),
 
-        // 2. Firestore 실시간 스트림 연동 (거리 오름차순 정렬 상위 5개)
-        StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance.collection('road').snapshots(),
+        // 2. Firestore 실시간 스트림 연동 (RoadService를 통해 거리 오름차순 정렬 상위 5개 수신)
+        StreamBuilder<List<Road>>(
+          stream: RoadService.getRecommendedRoadsStream(
+            userLat: userLat,
+            userLng: userLng,
+          ),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const SizedBox(
@@ -61,27 +64,14 @@ class HomeRecommendedRoadsSection extends StatelessWidget {
               );
             }
 
-            if (snapshot.hasError || !snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
               return const SizedBox(
                 height: 220,
                 child: Center(child: Text('추천 코스 데이터를 불러올 수 없습니다.')),
               );
             }
 
-            // Firestore 문서들을 Road 객체로 변환
-            final List<Road> roads = snapshot.data!.docs
-                .map((doc) => Road.fromFirestore(doc))
-                .toList();
-
-            // 내 위치(userLat, userLng)로부터 최단 거리 순 정렬
-            roads.sort((a, b) {
-              final distA = a.getMinDistanceKm(userLat, userLng);
-              final distB = b.getMinDistanceKm(userLat, userLng);
-              return distA.compareTo(distB);
-            });
-
-            // 상위 5개 추출
-            final topFiveRoads = roads.take(5).toList();
+            final topFiveRoads = snapshot.data!;
 
             return HomeRoadSwiper(
               recommendedRoads: topFiveRoads,
