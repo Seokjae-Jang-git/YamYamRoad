@@ -127,9 +127,10 @@ class PointService {
     }
   }
 
-  /// 5. Google AdMob 광고 시청 완료 후 무료 포인트 적립 + admob_reward_log 기록
+  /// 5. Google AdMob 광고 시청 완료 후 무료 포인트 적립 + admob_reward_log 기록 (1일 1회 검증 반영)
   Future<bool> earnAdMobReward({
     required String uid,
+    required String adId,
     required int rewardAmount,
     String rewardType = 'FREE_POINT',
   }) async {
@@ -152,13 +153,25 @@ class PointService {
         }
 
         final pointModel = PointModel.fromMap(userData);
+
+        // 1일 1회 중복 지급 방지 검증 (AdMob 전용)
+        if (pointModel.hasWatchedToday(adId)) {
+          debugPrint('⚠️ 이미 오늘 시청 보상을 받은 AdMob 광고입니다: $adId');
+          return false;
+        }
+
+        final now = DateTime.now();
         final updatedFreeBalance = pointModel.freePointBalance + rewardAmount;
+
+        final updatedWatchHistory = Map<String, DateTime>.from(pointModel.adWatchHistory);
+        updatedWatchHistory[adId] = now;
 
         final updatedModel = pointModel.copyWith(
           freePointBalance: updatedFreeBalance,
+          adWatchHistory: updatedWatchHistory,
         );
 
-        // 1) users 문서 업데이트
+        // 1) users 문서 업데이트 (시청 기록 및 포인트 변동)
         transaction.set(userDocRef, updatedModel.toMap(), SetOptions(merge: true));
 
         // 2) users_point_transaction 원장 기록 생성
@@ -168,6 +181,7 @@ class PointService {
           'pointType': 'FREE',
           'amount': rewardAmount,
           'balanceAfter': updatedFreeBalance,
+          'adId': adId,
           'description': '구글 애드몹 광고 시청 보상',
           'createdAt': FieldValue.serverTimestamp(),
         });
@@ -175,6 +189,7 @@ class PointService {
         // 3) admob_reward_log 로그 기록 생성
         transaction.set(admobLogDocRef, {
           'userId': uid,
+          'adId': adId,
           'rewardType': rewardType,
           'rewardAmount': rewardAmount,
           'createdAt': FieldValue.serverTimestamp(),
@@ -185,7 +200,7 @@ class PointService {
       });
 
       if (isSuccess) {
-        debugPrint('✅ AdMob 무료 포인트 적립 및 admob_reward_log 기록 완료: +${rewardAmount}P');
+        debugPrint('✅ AdMob 무료 포인트 적립 및 admob_reward_log 기록 완료: +${rewardAmount}P ($adId)');
       }
 
       return isSuccess;

@@ -67,8 +67,26 @@ class _AdStationPageState extends State<AdStationPage> {
     );
   }
 
-  /// 🎬 Google AdMob 광고 시청 및 정산 호출
-  void _showAdMobRewardAd(String uid, int rewardPoints) {
+  /// 🎬 Google AdMob 광고 시청 및 정산 호출 (1일 1회 사전 검증 적용)
+  void _showAdMobRewardAd({
+    required String uid,
+    required String adId,
+    required int rewardPoints,
+    required PointModel pointModel,
+  }) {
+    // 0. 오늘 이미 시청한 AdMob 광고인지 사전 체크
+    if (pointModel.hasWatchedToday(adId)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('오늘 이미 시청 보상을 받은 광고입니다. 내일 다시 참여해주세요!'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     if (_rewardedAd == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -99,9 +117,10 @@ class _AdStationPageState extends State<AdStationPage> {
 
     _rewardedAd!.show(
       onUserEarnedReward: (AdWithoutView ad, RewardItem reward) async {
-        // Firestore DB에 AdMob 시청 무료 포인트 적립 트랜잭션 수행
+        // Firestore DB에 AdMob 시청 무료 포인트 적립 트랜잭션 수행 (adId 전달)
         final bool success = await _pointService.earnAdMobReward(
           uid: uid,
+          adId: adId,
           rewardAmount: rewardPoints,
         );
 
@@ -131,7 +150,7 @@ class _AdStationPageState extends State<AdStationPage> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('포인트 적립 실패: 오류가 발생했습니다.'),
+              content: Text('포인트 적립 실패: 오늘 이미 보상을 받았거나 오류가 발생했습니다.'),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -301,7 +320,7 @@ class _AdStationPageState extends State<AdStationPage> {
                 Expanded(
                   child: TabBarView(
                     children: [
-                      _buildAdMobTab(context, uid),
+                      _buildAdMobTab(context, uid, pointModel),
                       _buildInHouseTab(context, uid, pointModel),
                     ],
                   ),
@@ -314,8 +333,15 @@ class _AdStationPageState extends State<AdStationPage> {
     );
   }
 
-  // [탭 1] 구글 애드몹 뷰 영역 (실제 AdMob 시청 연동 완료)
-  Widget _buildAdMobTab(BuildContext context, String uid) {
+  // [탭 1] 구글 애드몹 뷰 영역 (동적 1일 1회 시청 완료 상태 반영)
+  Widget _buildAdMobTab(
+      BuildContext context,
+      String uid,
+      PointModel pointModel,
+      ) {
+    final bool isInterstitialWatched = pointModel.hasWatchedToday('admob_interstitial');
+    final bool isVideoWatched = pointModel.hasWatchedToday('admob_rewarded');
+
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
@@ -343,18 +369,32 @@ class _AdStationPageState extends State<AdStationPage> {
 
         AdRewardCard(
           title: '⚡ 보상형 전면 광고',
-          specs: _isAdLoading ? '광고 로딩 중...' : '특징: 광고 시청 시 즉시 보상 지급!',
-          reward: '10 P',
+          specs: isInterstitialWatched
+              ? '오늘 시청 완료 (내일 다시 참여 가능)'
+              : (_isAdLoading ? '광고 로딩 중...' : '특징: 광고 시청 시 즉시 보상 지급!'),
+          reward: isInterstitialWatched ? '완료' : '10 P',
           isSponsor: false,
-          onTap: () => _showAdMobRewardAd(uid, 10),
+          onTap: () => _showAdMobRewardAd(
+            uid: uid,
+            adId: 'admob_interstitial',
+            rewardPoints: 10,
+            pointModel: pointModel,
+          ),
         ),
 
         AdRewardCard(
           title: '🎬 보상형 영상 광고',
-          specs: _isAdLoading ? '광고 로딩 중...' : '특징: 15초~30초 시청 시 큰 보상 지급',
-          reward: '30 P',
+          specs: isVideoWatched
+              ? '오늘 시청 완료 (내일 다시 참여 가능)'
+              : (_isAdLoading ? '광고 로딩 중...' : '특징: 15초~30초 시청 시 큰 보상 지급'),
+          reward: isVideoWatched ? '완료' : '30 P',
           isSponsor: false,
-          onTap: () => _showAdMobRewardAd(uid, 30),
+          onTap: () => _showAdMobRewardAd(
+            uid: uid,
+            adId: 'admob_rewarded',
+            rewardPoints: 30,
+            pointModel: pointModel,
+          ),
         ),
       ],
     );
