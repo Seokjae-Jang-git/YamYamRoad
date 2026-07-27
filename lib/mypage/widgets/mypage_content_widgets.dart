@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../common/user_data.dart';
+import '../../services/auth_service.dart';
 import '../repository/mypage_repository.dart';
 import '../stamp/repository/stamp_repository.dart';
 
@@ -373,13 +374,75 @@ Widget buildInquiryContent() {
   );
 }
 
-// 7. 신고 콘텐츠
+// 🌟 DB 상태값을 화면용 한글로 변환하는 함수 (클래스 내부에 추가)
+String _getDisplayStatus(String status) {
+  switch (status.trim().toLowerCase()) {
+    case 'pending':
+      return '접수 완료';
+    case 'in_review':
+      return '처리 중';
+    case 'completed':
+      return '처리 완료';
+    default:
+      return status;
+  }
+}
+
+// 7. 신고 콘텐츠 (실시간 데이터 연동)
 Widget buildReportContent() {
-  return Column(
-    children: [
-      buildListRow('신고 글 내용.... 오늘은 카페 라떼를....', '처리 대기 중'),
-      const SizedBox(height: 8),
-      buildListRow('신고 글 내용.... 오늘은 성수동에 유명한....', '처리 완료'),
-    ],
+  // 현재 로그인한 유저 ID 가져오기
+  final String currentUserId = AuthService.currentUser?.uid ?? UserData.uid ?? '';
+
+  if (currentUserId.isEmpty) {
+    return const SizedBox.shrink();
+  }
+
+  return StreamBuilder<QuerySnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('reports')
+        .where('userId', isEqualTo: currentUserId)
+        .orderBy('createdAt', descending: true) // 최신순 정렬
+        .limit(2) // 🌟 최근 2건만 가져오기
+        .snapshots(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: 20),
+          child: Center(child: CircularProgressIndicator(color: Colors.black)),
+        );
+      }
+
+      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: 20),
+          child: Center(
+            child: Text(
+              '최근 접수된 신고 내역이 없습니다.',
+              style: TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+          ),
+        );
+      }
+
+      final docs = snapshot.data!.docs;
+
+      return Column(
+        children: List.generate(docs.length, (index) {
+          final data = docs[index].data() as Map<String, dynamic>;
+          final String reportId = data['reportId'] ?? docs[index].id;
+          final String rawStatus = data['status'] ?? 'pending';
+
+          // 🌟 상태값 한글 변환
+          final String displayStatus = _getDisplayStatus(rawStatus);
+
+          return Padding(
+            // 마지막 항목은 하단 여백 제거
+            padding: EdgeInsets.only(bottom: index == docs.length - 1 ? 0 : 8.0),
+            // 🌟 설계안에 맞춰 텍스트를 '신고번호: REP-...' 형태로 전달
+            child: buildListRow('신고번호: $reportId', displayStatus),
+          );
+        }),
+      );
+    },
   );
 }
