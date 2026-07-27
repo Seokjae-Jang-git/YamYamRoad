@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../services/auth_service.dart';
 import '../services/point_service.dart';
 import 'models/point_model.dart';
+import 'models/mock_ad_data.dart';
 import 'widgets/point_status_card.dart';
 import 'widgets/ad_tab_bar.dart';
 import 'widgets/ad_reward_card.dart';
-import 'in_house_ad_player_page.dart'; // 🆕 신규 동영상 플레이어 화면 임포트
+import 'in_house_ad_player_page.dart';
 
 class AdStationPage extends StatefulWidget {
   const AdStationPage({super.key});
@@ -17,7 +19,128 @@ class AdStationPage extends StatefulWidget {
 class _AdStationPageState extends State<AdStationPage> {
   final PointService _pointService = PointService();
 
-  // 자체 광고 시청 처리 및 Firestore 포인트 적립 연동 함수
+  RewardedAd? _rewardedAd;
+  bool _isAdLoading = false;
+
+  // Google AdMob 테스트용 리워드 비디오 광고 단위 ID (안드로이드/iOS 공용 테스트 ID)
+  final String _adUnitId = 'ca-app-pub-3940256099942544/5224354917';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRewardedAd();
+  }
+
+  @override
+  void dispose() {
+    _rewardedAd?.dispose();
+    super.dispose();
+  }
+
+  /// 🎬 Google AdMob 리워드 광고 미리 로드
+  void _loadRewardedAd() {
+    setState(() {
+      _isAdLoading = true;
+    });
+
+    RewardedAd.load(
+      adUnitId: _adUnitId,
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) {
+          if (!mounted) return;
+          setState(() {
+            _rewardedAd = ad;
+            _isAdLoading = false;
+          });
+          debugPrint('✅ AdMob 리워드 광고 로드 완료');
+        },
+        onAdFailedToLoad: (error) {
+          if (!mounted) return;
+          setState(() {
+            _rewardedAd = null;
+            _isAdLoading = false;
+          });
+          debugPrint('❌ AdMob 리워드 광고 로드 실패: $error');
+        },
+      ),
+    );
+  }
+
+  /// 🎬 Google AdMob 광고 시청 및 정산 호출
+  void _showAdMobRewardAd(String uid, int rewardPoints) {
+    if (_rewardedAd == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isAdLoading ? '광고를 불러오는 중입니다. 잠시 후 시도해주세요.' : '광고 준비에 실패했습니다. 다시 시도합니다.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _loadRewardedAd();
+      return;
+    }
+
+    _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (ad) {
+        ad.dispose();
+        _loadRewardedAd(); // 다음 시청을 위한 재로드
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        ad.dispose();
+        _loadRewardedAd();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('광고 재생 중 오류가 발생했습니다.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      },
+    );
+
+    _rewardedAd!.show(
+      onUserEarnedReward: (AdWithoutView ad, RewardItem reward) async {
+        // Firestore DB에 AdMob 시청 무료 포인트 적립 트랜잭션 수행
+        final bool success = await _pointService.earnAdMobReward(
+          uid: uid,
+          rewardAmount: rewardPoints,
+        );
+
+        if (!mounted) return;
+
+        if (success) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              title: const Row(
+                children: [
+                  Icon(Icons.monetization_on, color: Colors.amber),
+                  SizedBox(width: 8),
+                  Text('AdMob 포인트 적립 완료!'),
+                ],
+              ),
+              content: Text('구글 광고 시청 보상으로\n$rewardPoints P가 성공적으로 적립되었습니다.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('확인', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('포인트 적립 실패: 오류가 발생했습니다.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  /// 자체 광고 시청 처리 및 Firestore 포인트 적립 연동 함수
   Future<void> _playInHouseAd({
     required String uid,
     required String adId,
@@ -46,7 +169,7 @@ class _AdStationPageState extends State<AdStationPage> {
     debugPrint('지급 적립 포인트: $rewardPoints P');
     debugPrint('==================================================');
 
-    // 2. 2안 몰입형 광고 비디오 재생 화면 호출 및 결과 수신 대기
+    // 2. 광고 비디오 재생 화면 호출 및 결과 수신 대기
     final bool? isCompleted = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -71,7 +194,7 @@ class _AdStationPageState extends State<AdStationPage> {
         ),
       );
 
-      // Firestore 포인트 증가 + 시청 기록 + 히스토리 저장
+      // Firestore 포인트 증가 + ad_view 로그 생성
       final bool success = await _pointService.claimAdReward(
         uid: uid,
         adId: adId,
@@ -83,7 +206,6 @@ class _AdStationPageState extends State<AdStationPage> {
       Navigator.of(context, rootNavigator: true).pop(); // 로딩 닫기
 
       if (success) {
-        // 성공 축하 다이얼로그 팝업 안내
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
@@ -131,7 +253,7 @@ class _AdStationPageState extends State<AdStationPage> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
-              Navigator.pop(context); // 뒤로가기 동작
+              Navigator.pop(context);
             },
           ),
           backgroundColor: Colors.white,
@@ -150,7 +272,7 @@ class _AdStationPageState extends State<AdStationPage> {
             style: TextStyle(fontSize: 16, color: Colors.grey),
           ),
         )
-            : StreamBuilder<PointModel?>(
+            : StreamBuilder<PointModel>(
           stream: _pointService.getPointStream(uid),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -167,7 +289,7 @@ class _AdStationPageState extends State<AdStationPage> {
 
             return Column(
               children: [
-                // 1. 내 현재 포인트 잔액 표시 카드 (Firestore 실시간 데이터 연동)
+                // 1. 내 현재 포인트 잔액 표시 카드
                 PointStatusCard(points: pointModel.points),
 
                 // 2. 세련된 세그먼트형 알약 탭바
@@ -179,7 +301,7 @@ class _AdStationPageState extends State<AdStationPage> {
                 Expanded(
                   child: TabBarView(
                     children: [
-                      _buildAdMobTab(context),
+                      _buildAdMobTab(context, uid),
                       _buildInHouseTab(context, uid, pointModel),
                     ],
                   ),
@@ -192,8 +314,8 @@ class _AdStationPageState extends State<AdStationPage> {
     );
   }
 
-  // [탭 1] 구글 애드몹 (Phase 1) 뷰 영역
-  Widget _buildAdMobTab(BuildContext context) {
+  // [탭 1] 구글 애드몹 뷰 영역 (실제 AdMob 시청 연동 완료)
+  Widget _buildAdMobTab(BuildContext context, String uid) {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
@@ -221,55 +343,29 @@ class _AdStationPageState extends State<AdStationPage> {
 
         AdRewardCard(
           title: '⚡ 보상형 전면 광고',
-          specs: '특징: 광고 시작 5초 후 바로 스킵 가능!',
+          specs: _isAdLoading ? '광고 로딩 중...' : '특징: 광고 시청 시 즉시 보상 지급!',
           reward: '10 P',
           isSponsor: false,
-          onTap: () {
-            debugPrint('================= ADMOB EVENT =================');
-            debugPrint('[AdMob SDK] 보상형 전면 광고(Interstitial) 요청 발생');
-            debugPrint('예상 리워드 지급액: 10 P');
-            debugPrint('================================================');
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('구글 AdMob 보상형 전면 테스트 광고판을 실행합니다.'),
-                backgroundColor: Colors.blue,
-              ),
-            );
-          },
+          onTap: () => _showAdMobRewardAd(uid, 10),
         ),
 
         AdRewardCard(
           title: '🎬 보상형 영상 광고',
-          specs: '특징: 15초~30초 끝까지 시청 시 보상 지급',
+          specs: _isAdLoading ? '광고 로딩 중...' : '특징: 15초~30초 시청 시 큰 보상 지급',
           reward: '30 P',
           isSponsor: false,
-          onTap: () {
-            debugPrint('================= ADMOB EVENT =================');
-            debugPrint('[AdMob SDK] 보상형 비디오(Rewarded Video) 요청 발생');
-            debugPrint('예상 리워드 지급액: 30 P');
-            debugPrint('================================================');
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('구글 AdMob 비디오 테스트 광고판을 실행합니다.'),
-                backgroundColor: Colors.blue,
-              ),
-            );
-          },
+          onTap: () => _showAdMobRewardAd(uid, 30),
         ),
       ],
     );
   }
 
-  // [탭 2] 자체 제휴 (Phase 2) 뷰 영역 (실제 광고 시청 및 Firestore 정산 연결 완료)
+  // [탭 2] 자체 제휴 뷰 영역 (Mock 데이터 동적 바인딩)
   Widget _buildInHouseTab(
       BuildContext context,
       String uid,
       PointModel pointModel,
       ) {
-    final bool isBakeryWatched = pointModel.hasWatchedToday('inhouse_bakery');
-    final bool isAmericanoWatched = pointModel.hasWatchedToday('inhouse_americano');
-    final bool isDonutWatched = pointModel.hasWatchedToday('inhouse_donut');
-
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
@@ -295,56 +391,25 @@ class _AdStationPageState extends State<AdStationPage> {
         ),
         const SizedBox(height: 16),
 
-        AdRewardCard(
-          title: '🍰 [제휴] 얌얌 베이커리 신메뉴 홍보',
-          specs: isBakeryWatched
-              ? '오늘 시청 완료 (내일 다시 참여 가능)'
-              : '보상: 30 P (영상 길이: 10초로 단축 테스트)',
-          reward: isBakeryWatched ? '완료' : '30 P',
-          isSponsor: true,
-          onTap: () => _playInHouseAd(
-            uid: uid,
-            adId: 'inhouse_bakery',
-            brandName: '얌얌 베이커리',
-            durationSeconds: 10,
-            rewardPoints: 30,
-            pointModel: pointModel,
-          ),
-        ),
-
-        AdRewardCard(
-          title: '☕ [제휴] 카페 아메리카노 감성 CF',
-          specs: isAmericanoWatched
-              ? '오늘 시청 완료 (내일 다시 참여 가능)'
-              : '보상: 20 P (영상 길이: 7초로 단축 테스트)',
-          reward: isAmericanoWatched ? '완료' : '20 P',
-          isSponsor: true,
-          onTap: () => _playInHouseAd(
-            uid: uid,
-            adId: 'inhouse_americano',
-            brandName: '카페 아메리카노',
-            durationSeconds: 7,
-            rewardPoints: 20,
-            pointModel: pointModel,
-          ),
-        ),
-
-        AdRewardCard(
-          title: '🍩 [제휴] 도넛홀릭 브랜드 스토리',
-          specs: isDonutWatched
-              ? '오늘 시청 완료 (내일 다시 참여 가능)'
-              : '보상: 40 P (영상 길이: 15초로 단축 테스트)',
-          reward: isDonutWatched ? '완료' : '40 P',
-          isSponsor: true,
-          onTap: () => _playInHouseAd(
-            uid: uid,
-            adId: 'inhouse_donut',
-            brandName: '도넛홀릭',
-            durationSeconds: 15,
-            rewardPoints: 40,
-            pointModel: pointModel,
-          ),
-        ),
+        ...mockInHouseAds.map((ad) {
+          final bool isWatched = pointModel.hasWatchedToday(ad.adId);
+          return AdRewardCard(
+            title: ad.title,
+            specs: isWatched
+                ? '오늘 시청 완료 (내일 다시 참여 가능)'
+                : '보상: ${ad.rewardPoints} P (영상 길이: ${ad.durationSeconds}초)',
+            reward: isWatched ? '완료' : '${ad.rewardPoints} P',
+            isSponsor: true,
+            onTap: () => _playInHouseAd(
+              uid: uid,
+              adId: ad.adId,
+              brandName: ad.brandName,
+              durationSeconds: ad.durationSeconds,
+              rewardPoints: ad.rewardPoints,
+              pointModel: pointModel,
+            ),
+          );
+        }),
       ],
     );
   }

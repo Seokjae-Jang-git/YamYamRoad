@@ -45,8 +45,7 @@ class PointService {
     return pointData.hasWatchedToday(adId);
   }
 
-  /// 4. 광고 시청 완료 후 포인트 안전 적립 (Firestore 트랜잭션 적용)
-  /// - 성공 시 true, 실패 또는 오늘 이미 수령했으면 false 반환
+  /// 4. 제휴 광고 시청 완료 후 무료 포인트 안전 적립 + DB 명세서 로그 기록 (ad_view)
   Future<bool> claimAdReward({
     required String uid,
     required String adId,
@@ -59,6 +58,8 @@ class PointService {
     }
 
     final userDocRef = _firestore.collection('users').doc(uid);
+    final transactionDocRef = _firestore.collection('users_point_transaction').doc();
+    final adViewDocRef = _firestore.collection('ad_view').doc();
 
     try {
       final bool isSuccess = await _firestore.runTransaction<bool>((transaction) async {
@@ -71,48 +72,125 @@ class PointService {
 
         final pointModel = PointModel.fromMap(userData);
 
-        // 1일 1회 중복 지급 방지 검증 (트랜잭션 격리 단계에서 다시 한번 체크)
+        // 1일 1회 중복 지급 방지 검증
         if (pointModel.hasWatchedToday(adId)) {
           debugPrint('⚠️ 이미 오늘 시청 보상을 받은 광고입니다: $adId');
           return false;
         }
 
-        // 포인트 증가 및 시청 시각 기록 업데이트
         final now = DateTime.now();
-        final currentPoints = pointModel.points;
-        final updatedPoints = currentPoints + rewardAmount;
+        final updatedFreeBalance = pointModel.freePointBalance + rewardAmount;
 
         final updatedWatchHistory = Map<String, DateTime>.from(pointModel.adWatchHistory);
         updatedWatchHistory[adId] = now;
 
         final updatedModel = pointModel.copyWith(
-          points: updatedPoints,
+          freePointBalance: updatedFreeBalance,
           adWatchHistory: updatedWatchHistory,
         );
 
-        // Firestore 유저 문서 업데이트
+        // 1) users 문서 업데이트
         transaction.set(userDocRef, updatedModel.toMap(), SetOptions(merge: true));
 
-        // 포인트 적립 세부 내역 로그 생성
-        final historyDocRef = userDocRef.collection('point_history').doc();
-        transaction.set(historyDocRef, {
-          'type': 'AD_REWARD',
-          'adId': adId,
-          'adTitle': adTitle,
+        // 2) users_point_transaction 원장 기록 생성
+        transaction.set(transactionDocRef, {
+          'uid': uid,
+          'transactionType': 'AD_REWARD',
+          'pointType': 'FREE',
           'amount': rewardAmount,
+          'balanceAfter': updatedFreeBalance,
+          'adId': adId,
+          'description': '$adTitle 시청 보상',
           'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        // 3) ad_view 시청 상세 로그 기록 생성
+        transaction.set(adViewDocRef, {
+          'userId': uid,
+          'adId': adId,
+          'viewedAt': FieldValue.serverTimestamp(),
+          'rewarded': true,
+          'pointTransactionId': transactionDocRef.id,
         });
 
         return true;
       });
 
       if (isSuccess) {
-        debugPrint('✅ 포인트 적립 성공: +${rewardAmount}P ($adTitle)');
+        debugPrint('✅ 무료 포인트 적립 및 ad_view 기록 완료: +${rewardAmount}P ($adTitle)');
       }
 
       return isSuccess;
     } catch (e) {
-      debugPrint('❌ 포인트 적립 트랜잭션 오류: $e');
+      debugPrint('❌ 제휴 광고 포인트 적립 트랜잭션 오류: $e');
+      return false;
+    }
+  }
+
+  /// 5. Google AdMob 광고 시청 완료 후 무료 포인트 적립 + admob_reward_log 기록
+  Future<bool> earnAdMobReward({
+    required String uid,
+    required int rewardAmount,
+    String rewardType = 'FREE_POINT',
+  }) async {
+    if (uid.isEmpty) {
+      debugPrint('❌ AdMob 포인트 적립 실패: UID가 비어있습니다.');
+      return false;
+    }
+
+    final userDocRef = _firestore.collection('users').doc(uid);
+    final transactionDocRef = _firestore.collection('users_point_transaction').doc();
+    final admobLogDocRef = _firestore.collection('admob_reward_log').doc();
+
+    try {
+      final bool isSuccess = await _firestore.runTransaction<bool>((transaction) async {
+        final snapshot = await transaction.get(userDocRef);
+
+        Map<String, dynamic> userData = {};
+        if (snapshot.exists && snapshot.data() != null) {
+          userData = Map<String, dynamic>.from(snapshot.data()!);
+        }
+
+        final pointModel = PointModel.fromMap(userData);
+        final updatedFreeBalance = pointModel.freePointBalance + rewardAmount;
+
+        final updatedModel = pointModel.copyWith(
+          freePointBalance: updatedFreeBalance,
+        );
+
+        // 1) users 문서 업데이트
+        transaction.set(userDocRef, updatedModel.toMap(), SetOptions(merge: true));
+
+        // 2) users_point_transaction 원장 기록 생성
+        transaction.set(transactionDocRef, {
+          'uid': uid,
+          'transactionType': 'ADMOB_REWARD',
+          'pointType': 'FREE',
+          'amount': rewardAmount,
+          'balanceAfter': updatedFreeBalance,
+          'description': '구글 애드몹 광고 시청 보상',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        // 3) admob_reward_log 로그 기록 생성
+        transaction.set(admobLogDocRef, {
+          'userId': uid,
+          'rewardType': rewardType,
+          'rewardAmount': rewardAmount,
+          'createdAt': FieldValue.serverTimestamp(),
+          'pointTransactionId': transactionDocRef.id,
+        });
+
+        return true;
+      });
+
+      if (isSuccess) {
+        debugPrint('✅ AdMob 무료 포인트 적립 및 admob_reward_log 기록 완료: +${rewardAmount}P');
+      }
+
+      return isSuccess;
+    } catch (e) {
+      debugPrint('❌ AdMob 포인트 적립 트랜잭션 오류: $e');
       return false;
     }
   }
