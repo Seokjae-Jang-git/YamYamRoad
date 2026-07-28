@@ -45,7 +45,7 @@ class PointService {
     return pointData.hasWatchedToday(adId);
   }
 
-  /// 4. 제휴 광고 시청 완료 후 무료 포인트 안전 적립 + DB 명세서 로그 기록 (ad_view)
+  /// 4. 제휴(인하우스) 광고 시청 완료 후 무료 포인트 안전 적립 + DB 명세 규격 반영 (users/{uid}/users_point_transaction)
   Future<bool> claimAdReward({
     required String uid,
     required String adId,
@@ -58,7 +58,8 @@ class PointService {
     }
 
     final userDocRef = _firestore.collection('users').doc(uid);
-    final transactionDocRef = _firestore.collection('users_point_transaction').doc();
+    // DB 설계서 규격 반영: users 하위 컬렉션 경로 (users/{uid}/users_point_transaction)
+    final transactionDocRef = userDocRef.collection('users_point_transaction').doc();
     final adViewDocRef = _firestore.collection('ad_view').doc();
 
     try {
@@ -89,18 +90,21 @@ class PointService {
           adWatchHistory: updatedWatchHistory,
         );
 
-        // 1) users 문서 업데이트
+        // 1) users 문서 업데이트 (잔액 및 시청 내역)
         transaction.set(userDocRef, updatedModel.toMap(), SetOptions(merge: true));
 
-        // 2) users_point_transaction 원장 기록 생성
+        // 2) users/{uid}/users_point_transaction 원장 기록 생성 (DB 설계서 필드명 100% 일치)
         transaction.set(transactionDocRef, {
-          'uid': uid,
-          'transactionType': 'AD_REWARD',
-          'pointType': 'FREE',
+          'type': 'earn',
+          'source': 'ad',
           'amount': rewardAmount,
-          'balanceAfter': updatedFreeBalance,
-          'adId': adId,
-          'description': '$adTitle 시청 보상',
+          'pointType': 'free',
+          'refType': 'ad',
+          'refId': adId,
+          'usedFreePoint': 0,
+          'usedPaidPoint': 0,
+          'freePointBalanceAfter': updatedFreeBalance,
+          'paidPointBalanceAfter': 0,
           'createdAt': FieldValue.serverTimestamp(),
         });
 
@@ -117,7 +121,7 @@ class PointService {
       });
 
       if (isSuccess) {
-        debugPrint('✅ 무료 포인트 적립 및 ad_view 기록 완료: +${rewardAmount}P ($adTitle)');
+        debugPrint('✅ 인하우스 광고 포인트 적립 및 하위 거래내역 기록 완료: +${rewardAmount}P ($adTitle)');
       }
 
       return isSuccess;
@@ -127,7 +131,7 @@ class PointService {
     }
   }
 
-  /// 5. Google AdMob 광고 시청 완료 후 무료 포인트 적립 + admob_reward_log 기록 (1일 1회 검증 반영)
+  /// 5. Google AdMob 광고 시청 완료 후 무료 포인트 적립 + DB 명세 규격 반영 (users/{uid}/users_point_transaction)
   Future<bool> earnAdMobReward({
     required String uid,
     required String adId,
@@ -140,7 +144,8 @@ class PointService {
     }
 
     final userDocRef = _firestore.collection('users').doc(uid);
-    final transactionDocRef = _firestore.collection('users_point_transaction').doc();
+    // DB 설계서 규격 반영: users 하위 컬렉션 경로 (users/{uid}/users_point_transaction)
+    final transactionDocRef = userDocRef.collection('users_point_transaction').doc();
     final admobLogDocRef = _firestore.collection('admob_reward_log').doc();
 
     try {
@@ -174,15 +179,18 @@ class PointService {
         // 1) users 문서 업데이트 (시청 기록 및 포인트 변동)
         transaction.set(userDocRef, updatedModel.toMap(), SetOptions(merge: true));
 
-        // 2) users_point_transaction 원장 기록 생성
+        // 2) users/{uid}/users_point_transaction 원장 기록 생성 (DB 설계서 필드명 100% 일치)
         transaction.set(transactionDocRef, {
-          'uid': uid,
-          'transactionType': 'ADMOB_REWARD',
-          'pointType': 'FREE',
+          'type': 'earn',
+          'source': 'ad',
           'amount': rewardAmount,
-          'balanceAfter': updatedFreeBalance,
-          'adId': adId,
-          'description': '구글 애드몹 광고 시청 보상',
+          'pointType': 'free',
+          'refType': 'ad',
+          'refId': adId,
+          'usedFreePoint': 0,
+          'usedPaidPoint': 0,
+          'freePointBalanceAfter': updatedFreeBalance,
+          'paidPointBalanceAfter': 0,
           'createdAt': FieldValue.serverTimestamp(),
         });
 
@@ -200,7 +208,7 @@ class PointService {
       });
 
       if (isSuccess) {
-        debugPrint('✅ AdMob 무료 포인트 적립 및 admob_reward_log 기록 완료: +${rewardAmount}P ($adId)');
+        debugPrint('✅ AdMob 무료 포인트 적립 및 하위 거래내역 기록 완료: +${rewardAmount}P ($adId)');
       }
 
       return isSuccess;
