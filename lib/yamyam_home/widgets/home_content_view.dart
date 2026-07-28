@@ -9,6 +9,7 @@ import 'ad_banner.dart';
 import '../../ad/ad_station_page.dart';
 import '../../road/models/place_model.dart'; // 🆕 진짜 PlaceModel로 타입 임포트 변경
 import '../../providers/user_location_provider.dart';
+import '../../stamp/logic/stamp_verification_navigator.dart';
 
 class HomeContentView extends StatelessWidget {
   final ValueChanged<int> onTabChanged;
@@ -52,20 +53,12 @@ class HomeContentView extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: HomeStampDashboard(
               verifiablePlaces: stampVerifiablePlaces,
-              onPlaceSelected: (selectedPlace) {
-                // 🌟 placeId -> id (Firestore 문서 고유 ID)로 수정 완료
-                debugPrint('================================================');
-                debugPrint('부모 화면 수신 데이터 [Selected Place ID]: ${selectedPlace.id}');
-                debugPrint('================================================');
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      '선택 완료: [${selectedPlace.name}] (ID: ${selectedPlace.id})\n콘솔 로그에 ID가 기록되었습니다.',
-                    ),
-                    backgroundColor: Colors.blue[800],
-                    duration: const Duration(seconds: 3),
-                  ),
+              onPlaceSelected: (selectedPlace) async {
+                Navigator.of(context).pop();
+                await StampVerificationNavigator.open(
+                  context: context,
+                  placeId: selectedPlace.id,
+                  placeName: selectedPlace.name,
                 );
               },
             ),
