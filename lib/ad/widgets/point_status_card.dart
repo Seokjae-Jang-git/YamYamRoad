@@ -26,7 +26,7 @@ class PointStatusCard extends StatelessWidget {
               Icon(Icons.monetization_on, color: Colors.amber, size: 24),
               SizedBox(width: 8),
               Text(
-                '내 현재 포인트',
+                '내 현재 무료 포인트',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
