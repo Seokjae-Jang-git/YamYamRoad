@@ -7,7 +7,7 @@ import '../../services/auth_service.dart';
 import '../services/after_stamp_service.dart';
 import 'diary/diary.dart';
 import 'community_my/community_my.dart';
-import '../inquiry/inquiry_list_screen.dart';
+import 'inquiry/inquiry_list_screen.dart';
 import 'stamp/stamp_main_screen.dart';
 import 'badge/badge_main_screen.dart';
 import 'point/point_main_screen.dart';

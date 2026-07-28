@@ -363,14 +363,76 @@ Widget buildPointContent(BuildContext context) {
   );
 }
 
-// 6. 문의 콘텐츠
+// 🌟 문의 DB 상태값을 화면용 한글로 변환하는 함수
+String _getInquiryDisplayStatus(String status) {
+  switch (status.trim().toLowerCase()) {
+    case 'pending':
+      return '답변 대기';
+    case 'answered':
+      return '답변 완료';
+    case 'closed':
+      return '종료';
+    default:
+      return status;
+  }
+}
+
+// 6. 문의 콘텐츠 (실시간 데이터 연동)
 Widget buildInquiryContent() {
-  return Column(
-    children: [
-      buildListRow('문의 글 내용.... 오늘은 카페 라떼를....', '답변 대기 중'),
-      const SizedBox(height: 8),
-      buildListRow('문의 글 내용.... 오늘은 성수동에 유명한....', '답변 완료'),
-    ],
+  final String currentUserId = AuthService.currentUser?.uid ?? UserData.uid ?? '';
+
+  if (currentUserId.isEmpty) {
+    return const SizedBox.shrink();
+  }
+
+  return StreamBuilder<QuerySnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('inquiry') // 🌟 문의 컬렉션 (단수형)
+        .where('userId', isEqualTo: currentUserId)
+        .orderBy('createdAt', descending: true) // 최신순 정렬
+        .limit(2) // 🌟 최근 2건만 가져오기
+        .snapshots(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: 20),
+          child: Center(child: CircularProgressIndicator(color: Colors.black)),
+        );
+      }
+
+      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: 20),
+          child: Center(
+            child: Text(
+              '최근 접수된 문의 내역이 없습니다.',
+              style: TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+          ),
+        );
+      }
+
+      final docs = snapshot.data!.docs;
+
+      return Column(
+        children: List.generate(docs.length, (index) {
+          final data = docs[index].data() as Map<String, dynamic>;
+          // 문의 문서의 ID 자체가 'INQ-YYYYMMDD-XXXX' 형태이므로 doc.id를 사용합니다.
+          final String inquiryId = docs[index].id;
+          final String rawStatus = data['status'] ?? 'pending';
+
+          // 🌟 상태값 한글 변환
+          final String displayStatus = _getInquiryDisplayStatus(rawStatus);
+
+          return Padding(
+            // 마지막 항목은 하단 여백 제거
+            padding: EdgeInsets.only(bottom: index == docs.length - 1 ? 0 : 8.0),
+            // 🌟 설계안에 맞춰 텍스트를 '문의번호: INQ-...' 형태로 전달
+            child: buildListRow('문의번호: $inquiryId', displayStatus),
+          );
+        }),
+      );
+    },
   );
 }
 
