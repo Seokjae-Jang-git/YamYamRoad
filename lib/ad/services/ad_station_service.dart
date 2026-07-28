@@ -1,6 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:yamyam_road/services/point_service.dart';
+import '../models/in_house_ad_model.dart';
 import '../models/point_model.dart';
 import '../ad_mob_manager.dart';
 import '../in_house_ad_player_page.dart';
@@ -9,6 +11,7 @@ import '../widgets/ad_dialogs.dart';
 class AdStationService {
   final PointService _pointService = PointService();
   final AdMobManager adMobManager = AdMobManager();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   /// AdMob 초기화 및 광고 미리 로드
   void initAdMob({required VoidCallback onUpdate}) {
@@ -21,6 +24,18 @@ class AdStationService {
   /// 리소스 해제
   void dispose() {
     adMobManager.dispose();
+  }
+
+  /// Firestore 'ads' 컬렉션에서 활성화된 제휴 광고 목록 실시간 스트림 반환
+  Stream<List<InHouseAdModel>> getInHouseAdsStream() {
+    return _firestore
+        .collection('ads')
+        .where('type', isEqualTo: 'reward')
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+        .map((doc) => InHouseAdModel.fromFirestore(doc))
+        .toList());
   }
 
   /// Google AdMob 광고 시청 및 정산 프로세스 제어
@@ -68,13 +83,10 @@ class AdStationService {
   Future<void> handleInHouseAd({
     required BuildContext context,
     required String uid,
-    required String adId,
-    required String brandName,
-    required int durationSeconds,
-    required int rewardPoints,
+    required InHouseAdModel ad,
     required PointModel pointModel,
   }) async {
-    if (pointModel.hasWatchedToday(adId)) {
+    if (pointModel.hasWatchedToday(ad.id)) {
       AdDialogs.showSnackBar(context, '오늘 이미 시청 보상을 받은 광고입니다. 내일 다시 참여해주세요!');
       return;
     }
@@ -83,9 +95,9 @@ class AdStationService {
       context,
       MaterialPageRoute(
         builder: (context) => InHouseAdPlayerPage(
-          brandName: brandName,
-          duration: durationSeconds,
-          reward: rewardPoints,
+          brandName: ad.title,
+          duration: ad.videoDuration,
+          reward: ad.rewardPoint,
         ),
       ),
     );
@@ -97,9 +109,9 @@ class AdStationService {
 
       final bool success = await _pointService.claimAdReward(
         uid: uid,
-        adId: adId,
-        rewardAmount: rewardPoints,
-        adTitle: '[$brandName] 광고 시청',
+        adId: ad.id,
+        rewardAmount: ad.rewardPoint,
+        adTitle: '${ad.title} 시청',
       );
 
       if (!context.mounted) return;
@@ -109,7 +121,7 @@ class AdStationService {
         AdDialogs.showRewardSuccessDialog(
           context,
           title: '포인트 적립 완료!',
-          message: '[$brandName] 광고 시청 보상으로\n$rewardPoints P가 성공적으로 적립되었습니다.',
+          message: '${ad.title} 시청 보상으로\n${ad.rewardPoint} P가 성공적으로 적립되었습니다.',
         );
       } else {
         AdDialogs.showSnackBar(context, '포인트 적립 실패: 오늘 이미 보상을 받았거나 오류가 발생했습니다.');

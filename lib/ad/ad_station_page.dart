@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:yamyam_road/services/auth_service.dart';
 import 'package:yamyam_road/services/point_service.dart';
 import 'models/point_model.dart';
+import 'models/in_house_ad_model.dart';
 import 'widgets/point_status_card.dart';
 import 'widgets/ad_tab_bar.dart';
 import 'widgets/admob_tab_view.dart';
@@ -43,7 +44,10 @@ class _AdStationPageState extends State<AdStationPage> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('무료 포인트 충전소', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          title: const Text(
+            '무료 포인트 충전소',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
           centerTitle: true,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
@@ -59,7 +63,12 @@ class _AdStationPageState extends State<AdStationPage> {
         ),
         backgroundColor: Colors.white,
         body: uid == null
-            ? const Center(child: Text('로그인이 필요한 서비스입니다.', style: TextStyle(fontSize: 16, color: Colors.grey)))
+            ? const Center(
+          child: Text(
+            '로그인이 필요한 서비스입니다.',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+        )
             : StreamBuilder<PointModel>(
           stream: _pointService.getPointStream(uid),
           builder: (context, snapshot) {
@@ -67,7 +76,9 @@ class _AdStationPageState extends State<AdStationPage> {
               return const Center(child: CircularProgressIndicator());
             }
             if (snapshot.hasError) {
-              return Center(child: Text('데이터를 불러오는데 실패했습니다: ${snapshot.error}'));
+              return Center(
+                child: Text('데이터를 불러오는데 실패했습니다: ${snapshot.error}'),
+              );
             }
 
             final pointModel = snapshot.data ?? PointModel.initial();
@@ -81,32 +92,27 @@ class _AdStationPageState extends State<AdStationPage> {
                   child: TabBarView(
                     children: [
                       AdmobTabView(
-                        isAdLoading: _adStationService.adMobManager.isAdLoading,
+                        isAdLoading:
+                        _adStationService.adMobManager.isAdLoading,
                         pointModel: pointModel,
-                        onWatchAdMobAd: (adId, rewardPoints) => _adStationService.handleAdMobAd(
-                          context: context,
-                          uid: uid,
-                          adId: adId,
-                          rewardPoints: rewardPoints,
-                          pointModel: pointModel,
-                        ),
+                        onWatchAdMobAd: (adId, rewardPoints) =>
+                            _adStationService.handleAdMobAd(
+                              context: context,
+                              uid: uid,
+                              adId: adId,
+                              rewardPoints: rewardPoints,
+                              pointModel: pointModel,
+                            ),
                       ),
                       InHouseTabView(
                         pointModel: pointModel,
-                        onPlayInHouseAd: ({
-                          required String adId,
-                          required String brandName,
-                          required int durationSeconds,
-                          required int rewardPoints,
-                        }) => _adStationService.handleInHouseAd(
-                          context: context,
-                          uid: uid,
-                          adId: adId,
-                          brandName: brandName,
-                          durationSeconds: durationSeconds,
-                          rewardPoints: rewardPoints,
-                          pointModel: pointModel,
-                        ),
+                        onPlayInHouseAd: (ad) =>
+                            _adStationService.handleInHouseAd(
+                              context: context,
+                              uid: uid,
+                              ad: ad,
+                              pointModel: pointModel,
+                            ),
                       ),
                     ],
                   ),
