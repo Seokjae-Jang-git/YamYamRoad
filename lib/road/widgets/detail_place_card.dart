@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/place_model.dart';
 import '../../common/utils/map_launcher.dart';
+import '../../stamp/logic/stamp_verification_navigator.dart';
 
 class DetailPlaceCard extends StatelessWidget {
   final int index;
@@ -184,28 +185,11 @@ class DetailPlaceCard extends StatelessWidget {
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                   ),
-                  onPressed: () {
-                    debugPrint('==================================================');
-                    debugPrint('[얌얌로드 코스 상세 인증 트리거] Selected Place ID: ${place.id}');
-                    debugPrint('==================================================');
-
-                    showDialog(
+                  onPressed: () async {
+                    await StampVerificationNavigator.open(
                       context: context,
-                      builder: (context) {
-                        return AlertDialog(
-                          title: const Text('스탬프 인증 요청'),
-                          content: Text(
-                            '선택한 가게: [${place.name}]\n전송 데이터(ID): ${place.id}\n\n스탬프 엔진에 해당 고유 아이디가 성공적으로 매칭 전송되었습니다! 🍒',
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('확인'),
-                            ),
-                          ],
-                        );
-                      },
+                      placeId: place.id,
+                      placeName: place.name,
                     );
                   },
                   icon: const Icon(Icons.qr_code_scanner, size: 14),

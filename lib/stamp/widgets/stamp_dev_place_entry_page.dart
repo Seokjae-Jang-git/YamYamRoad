@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 
 import '../logic/mlkit_receipt_text_recognizer.dart';
 import '../logic/receipt_ocr_checker.dart';
+import '../logic/safe_device_integrity_probe.dart';
+import '../logic/stamp_integrity_checker.dart';
+import '../logic/stamp_location_evidence_collector.dart';
 import '../logic/stamp_receipt_verification_service.dart';
 import '../logic/stamp_verification_api_client.dart';
-import '../models/stamp_verification_models.dart';
 import '../stamp_verification_page.dart';
 
 class StampDevPlaceEntryPage extends StatefulWidget {
@@ -18,6 +20,11 @@ class StampDevPlaceEntryPage extends StatefulWidget {
 class _StampDevPlaceEntryPageState extends State<StampDevPlaceEntryPage> {
   final TextEditingController _placeIdController = TextEditingController();
   final StampVerificationApiClient _apiClient = StampVerificationApiClient();
+  final StampIntegrityChecker _integrityChecker = const StampIntegrityChecker(
+    probe: SafeDeviceIntegrityProbe(),
+  );
+  final StampLocationEvidenceCollector _locationCollector =
+      const StampLocationEvidenceCollector();
   bool _isLoading = false;
 
   Future<void> _issueDevStamp() async {
@@ -111,13 +118,6 @@ class _StampDevPlaceEntryPageState extends State<StampDevPlaceEntryPage> {
         _showMessage('해당 업체 문서에 name 값이 없습니다.');
         return;
       }
-      final placeLat = _asDouble(placeSnapshot.data()?['lat']);
-      final placeLng = _asDouble(placeSnapshot.data()?['lng']);
-      if (placeLat == null || placeLng == null) {
-        _showMessage('해당 업체 문서에 lat/lng 값이 없습니다.');
-        return;
-      }
-
       if (!mounted) return;
 
       final verificationService = StampReceiptVerificationService(
@@ -126,11 +126,13 @@ class _StampDevPlaceEntryPageState extends State<StampDevPlaceEntryPage> {
           recognizer: MlKitReceiptTextRecognizer(),
         ),
         onApproved: ({required request, required ocrResult}) async {
+          final location = await _locationCollector.collect();
           return _apiClient.issueStamp(
             verificationRequest: request,
             ocrResult: ocrResult,
-            userLat: placeLat,
-            userLng: placeLng,
+            userLat: location.latitude,
+            userLng: location.longitude,
+            isMockLocation: location.isMockLocation,
           );
         },
       );
@@ -140,7 +142,7 @@ class _StampDevPlaceEntryPageState extends State<StampDevPlaceEntryPage> {
           builder: (_) => StampVerificationPage(
             placeId: placeId,
             placeName: placeName,
-            runEntryCheck: () async => const StampEntryCheckResult.allowed(),
+            runEntryCheck: _integrityChecker.call,
             submitVerification: verificationService.call,
             allowGallerySelection: true,
           ),
@@ -164,10 +166,6 @@ class _StampDevPlaceEntryPageState extends State<StampDevPlaceEntryPage> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  double? _asDouble(Object? value) {
-    return value is num ? value.toDouble() : double.tryParse('$value');
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -185,8 +183,8 @@ class _StampDevPlaceEntryPageState extends State<StampDevPlaceEntryPage> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
-                  '개발 전용 화면입니다. 기기 무결성 검사를 건너뛰며, '
-                  'GPS 대신 업체 좌표를 사용합니다. OCR과 서버 검증이 성공하면 '
+                  '개발 전용 화면입니다. 실제 기기 무결성과 현재 GPS를 확인하며, '
+                  'OCR과 서버 검증이 성공하면 '
                   'verification·stamp·별점이 실제 DB에 저장됩니다.\n\n'
                   '아래 즉시 발행 버튼은 서버의 개발용 우회 설정이 켜진 경우에만 '
                   '동작하며 OCR·GPS 검사를 모두 생략합니다.',

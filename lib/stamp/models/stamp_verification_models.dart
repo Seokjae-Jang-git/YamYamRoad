@@ -1,8 +1,4 @@
-enum StampEntryBlockReason {
-  rootedDevice,
-  riskyBackgroundApp,
-  integrityCheckFailed,
-}
+enum StampEntryBlockReason { rootedDevice, mockLocation, integrityCheckFailed }
 
 class StampEntryCheckResult {
   final bool isAllowed;
