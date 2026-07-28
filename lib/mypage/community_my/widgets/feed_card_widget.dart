@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../common/user_data.dart';
 import '../repository/community_my_repository.dart';
 
@@ -8,14 +9,67 @@ class FeedCardWidget extends StatelessWidget {
 
   const FeedCardWidget({Key? key, required this.feed}) : super(key: key);
 
-  final String _dummyImageUrl =
-      'https://firebasestorage.googleapis.com/v0/b/yamyamroad.firebasestorage.app/o/post_img%2F%E1%84%8F%E1%85%A1%E1%84%9Play%E1%84%85%E1%85%A1%E1%84%84%E1%85%A6_01.png?alt=media&token=9d42af77-26f8-4eb4-be0b-b3451a897972';
+  // 🌟 이모티콘 텍스트 파싱 및 렌더링 함수
+  Widget _buildParsedContent(String content) {
+    final RegExp emojiRegex = RegExp(r'\[emoji:(.*?)\]');
+    final Iterable<RegExpMatch> matches = emojiRegex.allMatches(content);
+
+    if (matches.isEmpty) {
+      return Text('• $content', style: const TextStyle(fontSize: 14, height: 1.4));
+    }
+
+    List<InlineSpan> spans = [];
+    int currentIndex = 0;
+
+    for (final match in matches) {
+      if (match.start > currentIndex) {
+        spans.add(TextSpan(text: content.substring(currentIndex, match.start)));
+      }
+
+      final String rawEmojiPath = match.group(1) ?? '';
+
+      String cleanPath = rawEmojiPath.replaceAll(':', '/');
+      cleanPath = cleanPath.replaceAll('emo_character_test', 'character');
+      cleanPath = cleanPath.replaceAll('emo_emoji_test', 'emoji');
+      cleanPath = cleanPath.replaceAll('emo_penguin_test', 'penguin');
+      cleanPath = cleanPath.replaceAll('emo_meme_test', 'meme');
+      cleanPath = cleanPath.replaceAll('emo_cloud_test', 'cloud');
+
+      spans.add(
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 1.0),
+            child: SvgPicture.asset(
+              'assets/emoticons/$cleanPath',
+              width: 22,
+              height: 22,
+            ),
+          ),
+        ),
+      );
+
+      currentIndex = match.end;
+    }
+
+    if (currentIndex < content.length) {
+      spans.add(TextSpan(text: content.substring(currentIndex)));
+    }
+
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(fontSize: 14, height: 1.4, color: Colors.black),
+        children: [
+          const TextSpan(text: '• '),
+          ...spans,
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     List<dynamic> imageUrls = feed['imageUrls'] ?? [];
-    String displayImage = imageUrls.isNotEmpty ? imageUrls[0] : _dummyImageUrl;
-
     final String authorUid = feed['userId'] ?? '';
     final bool isMyPost = authorUid == UserData.uid;
 
@@ -47,7 +101,6 @@ class FeedCardWidget extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // 1. 프로필 이미지
                   CircleAvatar(
                     radius: 20,
                     backgroundColor: const Color(0xFFF5F5F5),
@@ -64,8 +117,6 @@ class FeedCardWidget extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-
-                  // 2. 닉네임 + 작성 시간
                   Flexible(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -84,18 +135,18 @@ class FeedCardWidget extends StatelessWidget {
                       ],
                     ),
                   ),
-
                   const SizedBox(width: 8),
-
-                  // 🌟 3. 획득한 뱃지 아이콘 영역 (최대 3개 및 +N 지원)
                   _buildBadgeList(authorUid),
                 ],
               ),
               const SizedBox(height: 16),
-              Text('• ${feed['content'] ?? ''}', style: const TextStyle(fontSize: 14, height: 1.4)),
+
+              // 이모티콘 파싱 위젯 적용
+              _buildParsedContent(feed['content'] ?? ''),
+
               const SizedBox(height: 16),
 
-              // 이미지 스와이프 영역
+              // 🌟 수정된 부분: 이미지가 있을 때만 스와이프 영역 렌더링, 없으면 아예 아무것도 안 그림
               if (imageUrls.isNotEmpty) ...[
                 LayoutBuilder(
                   builder: (context, constraints) {
@@ -155,15 +206,8 @@ class FeedCardWidget extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 16),
-              ] else ...[
-                Container(
-                  width: double.infinity,
-                  height: 200,
-                  decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300)),
-                  child: Image.network(_dummyImageUrl, fit: BoxFit.cover),
-                ),
-                const SizedBox(height: 16),
               ],
+
               Row(
                 children: [
                   Text('좋아요 ${feed['likeCount'] ?? 0}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
@@ -180,7 +224,7 @@ class FeedCardWidget extends StatelessWidget {
     );
   }
 
-  // 🌟 뱃지 목록 렌더링 (뱃지 아이콘 3개 노출 + 초과분 +N 표시)
+  // 뱃지 목록 렌더링
   Widget _buildBadgeList(String userId) {
     if (userId.isEmpty) return const SizedBox.shrink();
 
@@ -193,29 +237,21 @@ class FeedCardWidget extends StatelessWidget {
 
         final List<Map<String, dynamic>> allBadges = badgeSnapshot.data!;
         final int totalCount = allBadges.length;
-
-        // 💡 하드코딩 대신 최대 노출 개수를 변수로 관리!
         const int maxDisplayCount = 3;
 
-        // 아이콘은 무조건 설정한 개수(3개)만큼 화면에 잘라서 보여줍니다.
         final List<Map<String, dynamic>> displayBadges = allBadges.take(maxDisplayCount).toList();
-
-        // 전체 개수가 maxDisplayCount(3개)보다 많을 때만 +N 태그 생성
         final bool hasMore = totalCount > maxDisplayCount;
-        final int extraCount = totalCount - maxDisplayCount; // 5 - 3 = 2 (+2)
+        final int extraCount = totalCount - maxDisplayCount;
 
         return Row(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // 1. 뱃지 아이콘 3개 렌더링
             ...displayBadges.asMap().entries.map((entry) {
               final int index = entry.key;
               final badgeData = entry.value;
               return _buildBadgeIconItem(context, badgeData, allBadges, initialIndex: index);
             }),
-
-            // 2. 3개 초과 시 뒤에 +2 버튼 추가
             if (hasMore) ...[
               const SizedBox(width: 2),
               _buildPlusMoreButton(context, allBadges, extraCount: extraCount, startIndex: maxDisplayCount),
@@ -226,8 +262,6 @@ class FeedCardWidget extends StatelessWidget {
     );
   }
 
-  // 🌟 대표 뱃지(isSelected: true)를 displayOrder 순(1->2->3)으로 우선 배치하고,
-  // 나머지 획득한 뱃지들을 뒤에 이어서 붙여 전체 뱃지 목록을 생성합니다.
   Future<List<Map<String, dynamic>>> _fetchAllUserBadges(String userId) async {
     final userBadgeSnap = await FirebaseFirestore.instance
         .collection('users')
@@ -237,7 +271,6 @@ class FeedCardWidget extends StatelessWidget {
 
     if (userBadgeSnap.docs.isEmpty) return [];
 
-    // 1. isSelected == true 인 대표 뱃지들을 추출 및 displayOrder 순 정렬
     var selectedDocs = userBadgeSnap.docs
         .where((d) => d.data()['isSelected'] == true)
         .toList();
@@ -248,12 +281,10 @@ class FeedCardWidget extends StatelessWidget {
       return orderA.compareTo(orderB);
     });
 
-    // 2. 대표 뱃지로 선택되지 않은 나머지 획득 뱃지들 추출
     var unselectedDocs = userBadgeSnap.docs
         .where((d) => d.data()['isSelected'] != true)
         .toList();
 
-    // 3. 대표 뱃지 + 나머지 뱃지를 순서대로 합침 (총 N개)
     final allDocs = [...selectedDocs, ...unselectedDocs];
     final badgeIds = allDocs.map((d) => d.data()['badgeId'] as String).toList();
 
@@ -275,7 +306,6 @@ class FeedCardWidget extends StatelessWidget {
     return badgeDetails;
   }
 
-  // 개별 뱃지 아이콘 위젯 (터치 시 해당 위치부터 시작하는 슬라이더 바텀시트 호출)
   Widget _buildBadgeIconItem(
       BuildContext context,
       Map<String, dynamic> badgeData,
@@ -303,7 +333,6 @@ class FeedCardWidget extends StatelessWidget {
     );
   }
 
-  // 🌟 +N (예: +3) 더보기 버튼 위젯
   Widget _buildPlusMoreButton(
       BuildContext context,
       List<Map<String, dynamic>> allBadges, {
@@ -336,7 +365,6 @@ class FeedCardWidget extends StatelessWidget {
     );
   }
 
-  // 🌟 좌우 스와이프 가능한 슬라이드형 뱃지 전체보기 바텀 시트
   void _showBadgeSliderBottomSheet(
       BuildContext context,
       List<Map<String, dynamic>> allBadges, {
@@ -360,7 +388,6 @@ class FeedCardWidget extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 상단 드래그 손잡이
                   Container(
                     width: 40,
                     height: 4,
@@ -370,14 +397,10 @@ class FeedCardWidget extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // 뱃지 개수 표시
                   Text(
                     '보유한 뱃지 (${currentPage + 1}/${allBadges.length})',
                     style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
                   ),
-
-                  // 🌟 좌우 슬라이드 PageView 영역
                   SizedBox(
                     height: 190,
                     child: PageView.builder(
@@ -429,15 +452,13 @@ class FeedCardWidget extends StatelessWidget {
                       },
                     ),
                   ),
-
-                  // 🌟 하단 인디케이터 Dot (뱃지가 2개 이상일 때)
                   if (allBadges.length > 1) ...[
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(allBadges.length, (dotIndex) {
                         return Container(
                           margin: const EdgeInsets.symmetric(horizontal: 3),
-                          width: currentPage == dotIndex ? 16 : 6, // 현재 페이지 강조
+                          width: currentPage == dotIndex ? 16 : 6,
                           height: 6,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(3),
@@ -448,8 +469,6 @@ class FeedCardWidget extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                   ],
-
-                  // 닫기 버튼
                   SizedBox(
                     width: double.infinity,
                     height: 48,

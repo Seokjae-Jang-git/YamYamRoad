@@ -187,12 +187,54 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   }
 
   Future<void> _toggleScrap(CommunityPost post) async {
-    final ref = FirebaseFirestore.instance.collection('posts').doc(post.id);
+    final db = FirebaseFirestore.instance;
+
+    // 1. 참조할 문서 경로 정의
+    final postRef = db.collection('posts').doc(post.id);
+    final postScrapRef = postRef.collection('post_scrap').doc(_currentUserId);
+    final userMyScrapRef = db.collection('users').doc(_currentUserId).collection('users_myscrap').doc(post.id);
+
     final scrapped = post.scrappedBy.contains(_currentUserId);
-    await ref.update({
-      'scrappedBy': scrapped ? FieldValue.arrayRemove([_currentUserId]) : FieldValue.arrayUnion([_currentUserId]),
-      'scrapCount': FieldValue.increment(scrapped ? -1 : 1),
-    });
+
+    // 🌟 일괄 처리(Batch)를 사용하여 중간에 실패하더라도 데이터 무결성 유지
+    final batch = db.batch();
+
+    if (scrapped) {
+      // ❌ 스크랩 취소 시: 3곳의 데이터 일괄 삭제 및 감소
+      batch.update(postRef, {
+        'scrappedBy': FieldValue.arrayRemove([_currentUserId]),
+        'scrapCount': FieldValue.increment(-1),
+      });
+      batch.delete(postScrapRef);
+      batch.delete(userMyScrapRef);
+    } else {
+      // ⭕️ 스크랩 추가 시: 3곳의 데이터 일괄 생성 및 증가
+      batch.update(postRef, {
+        'scrappedBy': FieldValue.arrayUnion([_currentUserId]),
+        'scrapCount': FieldValue.increment(1),
+      });
+
+      // post 컬렉션의 하위 컬렉션 (문서 ID: 스크랩한 사용자 ID)
+      batch.set(postScrapRef, {
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // users 컬렉션의 하위 컬렉션 (문서 ID: 피드 ID)
+      batch.set(userMyScrapRef, {
+        'postAuthorId': post.userId,
+        'scrapedAt': FieldValue.serverTimestamp(),
+      });
+    }
+
+    try {
+      await batch.commit(); // Batch 실행
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('스크랩 처리 중 문제가 발생했습니다.')),
+        );
+      }
+    }
   }
 
   Future<void> _submitComment() async {

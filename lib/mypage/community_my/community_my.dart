@@ -4,6 +4,9 @@ import '../../../common/user_data.dart';
 import 'repository/community_my_repository.dart';
 import 'widgets/feed_card_widget.dart';
 
+// 🌟 디렉토리 구조에 맞춰 상세 화면 import 추가
+import '../../community/community_detail.dart';
+
 class CommunityMyScreen extends StatefulWidget {
   const CommunityMyScreen({Key? key}) : super(key: key);
 
@@ -50,7 +53,7 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
                   .collection('users')
                   .doc(UserData.uid)
                   .collection('users_myscrap')
-                  .orderBy('scrapedAt', descending: true) // 🌟 scrapedAt 으로 맞춤
+                  .orderBy('scrapedAt', descending: true)
                   .snapshots(),
               builder: (context, scrapSnapshot) {
                 if (scrapSnapshot.hasError) {
@@ -94,7 +97,10 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
                             future: FirebaseFirestore.instance.collection('posts').doc(targetPostId).get(),
                             builder: (context, postSnapshot) {
                               if (postSnapshot.connectionState == ConnectionState.waiting) {
-                                return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator(color: Colors.black, strokeWidth: 1.5)));
+                                return const SizedBox(
+                                    height: 100,
+                                    child: Center(child: CircularProgressIndicator(color: Colors.black, strokeWidth: 1.5))
+                                );
                               }
 
                               if (!postSnapshot.hasData || !postSnapshot.data!.exists) {
@@ -104,7 +110,18 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
                               final originFeed = postSnapshot.data!.data() as Map<String, dynamic>;
                               originFeed['postId'] = postSnapshot.data!.id;
 
-                              return FeedCardWidget(feed: originFeed);
+                              // 🌟 스크랩 목록: 카드 탭 시 상세 화면으로 이동
+                              return GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => CommunityDetailScreen(postId: targetPostId),
+                                    ),
+                                  );
+                                },
+                                child: FeedCardWidget(feed: originFeed),
+                              );
                             },
                           );
                         },
@@ -144,7 +161,26 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
                           : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         itemCount: processedFeeds.length,
-                        itemBuilder: (context, index) => FeedCardWidget(feed: processedFeeds[index]),
+                        itemBuilder: (context, index) {
+                          final feed = processedFeeds[index];
+
+                          // 🌟 전체/내 피드 목록: 카드 탭 시 상세 화면으로 이동
+                          return GestureDetector(
+                            onTap: () {
+                              // processedFeeds 안의 문서 ID를 추출 (postId 또는 id)
+                              final String postId = feed['postId'] ?? feed['id'] ?? '';
+                              if (postId.isNotEmpty) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => CommunityDetailScreen(postId: postId),
+                                  ),
+                                );
+                              }
+                            },
+                            child: FeedCardWidget(feed: feed),
+                          );
+                        },
                       ),
                     ),
                   ],
