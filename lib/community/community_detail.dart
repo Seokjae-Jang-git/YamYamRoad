@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
+import '../common/data/temp_user_session.dart';
 import '../common/user_data.dart';
 import '../features/emoticon/emoticon_text_controller.dart';
 import '../services/auth_service.dart';
@@ -95,7 +96,31 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     return reportId;
   }
 
-  Future<void> _reportPost() async {
+  Future<String?> _askReportDetail() async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('신고 상세 사유'),
+        content: TextField(
+          controller: controller,
+          maxLines: 3,
+          decoration: const InputDecoration(hintText: '구체적인 사유를 입력해주세요'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text('확인')),
+        ],
+      ),
+    );
+  }
+
+  // 🌟 게시글/댓글 신고 공통 로직 - targetType/targetId만 다르게 넘겨서 재사용합니다.
+  Future<void> _submitReport({
+    required String targetType,
+    required String targetId,
+    required Future<void> Function() onIncrementCount,
+  }) async {
     final reasons = ['부적절한 내용', '스팸/광고', '욕설/비방', '허위 정보', '기타'];
     final selected = await showModalBottomSheet<String>(
       context: context,
@@ -126,13 +151,13 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
 
     final existing = await FirebaseFirestore.instance
         .collection('reports')
-        .where('targetId', isEqualTo: widget.postId)
+        .where('targetId', isEqualTo: targetId)
         .where('userId', isEqualTo: _currentUserId)
         .limit(1)
         .get();
 
     if (existing.docs.isNotEmpty) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('이미 신고한 게시글이에요.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('이미 신고했어요.')));
       return;
     }
 
@@ -141,8 +166,8 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
 
       await FirebaseFirestore.instance.collection('reports').doc(reportId).set({
         'reportId': reportId,
-        'targetType': 'post',
-        'targetId': widget.postId,
+        'targetType': targetType,
+        'targetId': targetId,
         'userId': _currentUserId,
         'reason': selected,
         'reasonDetail': detail ?? '',
@@ -150,7 +175,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      await FirebaseFirestore.instance.collection('posts').doc(widget.postId).update({'reportCount': FieldValue.increment(1)});
+      await onIncrementCount();
 
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('신고가 접수되었습니다.')));
     } catch (e) {
@@ -158,24 +183,26 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     }
   }
 
-  Future<String?> _askReportDetail() async {
-    final controller = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('신고 상세 사유'),
-        content: TextField(
-          controller: controller,
-          maxLines: 3,
-          decoration: const InputDecoration(hintText: '구체적인 사유를 입력해주세요'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
-          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text('확인')),
-        ],
-      ),
-    );
-  }
+  Future<void> _reportPost() => _submitReport(
+    targetType: 'post',
+    targetId: widget.postId,
+    onIncrementCount: () => FirebaseFirestore.instance
+        .collection('posts')
+        .doc(widget.postId)
+        .update({'reportCount': FieldValue.increment(1)}),
+  );
+
+  // 🌟 댓글 신고
+  Future<void> _reportComment(CommunityComment comment) => _submitReport(
+    targetType: 'comment',
+    targetId: comment.id,
+    onIncrementCount: () => FirebaseFirestore.instance
+        .collection('posts')
+        .doc(widget.postId)
+        .collection('comments')
+        .doc(comment.id)
+        .update({'reportCount': FieldValue.increment(1)}),
+  );
 
   Future<void> _toggleLike(CommunityPost post) async {
     final ref = FirebaseFirestore.instance.collection('posts').doc(post.id);
@@ -234,6 +261,49 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
           const SnackBar(content: Text('스크랩 처리 중 문제가 발생했습니다.')),
         );
       }
+    }
+  }
+
+  // 🌟 댓글 좋아요
+  // 🌟 댓글 좋아요
+  Future<void> _handleCommentLike(CommunityComment comment) async {
+    final uid = _currentUserId; // ✅ currentUserId → _currentUserId
+    final commentRef = FirebaseFirestore.instance
+        .collection('posts').doc(widget.postId)   // ✅ postId → widget.postId
+        .collection('comments').doc(comment.id);
+    final likeRef = commentRef.collection('comment_like').doc(uid);
+
+    try {
+      await FirebaseFirestore.instance.runTransaction((tx) async {
+        final likeSnap = await tx.get(likeRef);
+
+        if (likeSnap.exists) {
+          tx.delete(likeRef);
+          tx.update(commentRef, {'likeCount': FieldValue.increment(-1)});
+        } else {
+          tx.set(likeRef, {'likedAt': FieldValue.serverTimestamp()});
+          tx.update(commentRef, {'likeCount': FieldValue.increment(1)});
+        }
+      });
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('처리에 실패했어요.')));
+    }
+  }
+
+  // 🌟 댓글 수정
+  Future<void> _editComment(CommunityComment comment, String newContent) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('posts')
+          .doc(widget.postId)
+          .collection('comments')
+          .doc(comment.id)
+          .update({
+        'content': newContent,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('댓글 수정에 실패했어요.')));
     }
   }
 
@@ -358,6 +428,9 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                         currentUserId: _currentUserId,
                         onStartReply: _startReply,
                         onDeleteComment: _deleteComment,
+                        onLikeToggle: _handleCommentLike,
+                        onReport: _reportComment,
+                        onEditSubmit: _editComment,
                       ),
                     ],
                   ),
