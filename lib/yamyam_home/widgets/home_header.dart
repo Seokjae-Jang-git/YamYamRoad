@@ -16,6 +16,9 @@ class HomeHeader extends StatefulWidget {
 }
 
 class _HomeHeaderState extends State<HomeHeader> {
+  // 새로운 알림 유무 상태 (기본값: true / 탭 시 해제 예시)
+  bool _hasUnreadNotification = true;
+
   @override
   void initState() {
     super.initState();
@@ -144,18 +147,23 @@ class _HomeHeaderState extends State<HomeHeader> {
               ),
             ],
           ),
-          // 우측 상단 버튼 (알림, 프로필)
+          // 우측 상단 버튼 영역 (알림 종 아이콘, 프로필 아바타)
           Row(
             children: [
-              _TopCircleButton(
-                text: '알림',
+              // 디자인 고도화된 원형 알림 버튼 (38x38 규격)
+              _NotificationIconButton(
+                hasNotification: _hasUnreadNotification,
                 onTap: () {
+                  setState(() {
+                    _hasUnreadNotification = false; // 알림 클릭 시 레드닷 해제
+                  });
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('새로운 알림이 없습니다.')),
                   );
                 },
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
+              // 프로필 메뉴 버튼
               GestureDetector(
                 onTapDown: (details) => _showProfileMenu(context, details),
                 child: Container(
@@ -169,7 +177,7 @@ class _HomeHeaderState extends State<HomeHeader> {
                     radius: 18,
                     backgroundColor: const Color(0xFFF5F5F5),
                     child: UserData.isDefaultProfileImage || UserData.profileImagePath == null
-                        ? const Icon(Icons.person_outline, size: 24, color: Colors.grey)
+                        ? const Icon(Icons.person_outline, size: 22, color: Color(0xFF504D46))
                         : ClipOval(
                       child: Image.network(
                         UserData.profileImagePath!,
@@ -177,7 +185,7 @@ class _HomeHeaderState extends State<HomeHeader> {
                         height: 38,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
-                          return const Icon(Icons.person_outline, size: 24, color: Colors.grey);
+                          return const Icon(Icons.person_outline, size: 22, color: Color(0xFF504D46));
                         },
                       ),
                     ),
@@ -192,14 +200,14 @@ class _HomeHeaderState extends State<HomeHeader> {
   }
 }
 
-/// 흡수 통합된 상단 원형 버튼 위젯 (기존 top_circle_button.dart 대체)
-class _TopCircleButton extends StatelessWidget {
-  final String text;
-  final VoidCallback? onTap;
+/// 고도화된 상단 원형 알림 버튼 위젯
+class _NotificationIconButton extends StatelessWidget {
+  final bool hasNotification;
+  final VoidCallback onTap;
 
-  const _TopCircleButton({
-    required this.text,
-    this.onTap,
+  const _NotificationIconButton({
+    required this.hasNotification,
+    required this.onTap,
   });
 
   @override
@@ -207,17 +215,36 @@ class _TopCircleButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 50,
-        height: 50,
+        width: 38,
+        height: 38,
         decoration: BoxDecoration(
+          color: const Color(0xFFFAF6F0), // 따뜻한 베이지 배경
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.grey),
+          border: Border.all(color: Colors.grey.shade300, width: 1),
         ),
-        alignment: Alignment.center,
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 10, height: 1.2),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            const Icon(
+              Icons.notifications_none_rounded,
+              size: 20,
+              color: Color(0xFF504D46),
+            ),
+            // 안 읽은 알림이 있을 경우 우측 상단 붉은색 인디케이터 표시
+            if (hasNotification)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  width: 7,
+                  height: 7,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFF5252), // 포인트 레드
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
