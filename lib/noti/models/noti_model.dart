@@ -1,7 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'noti_reference.dart';
+
 enum NotiType {
   like,
+  comment,
   scrap,
   stamp,
   badge,
@@ -11,6 +14,7 @@ enum NotiType {
   static NotiType fromValue(Object? value) {
     return switch (value?.toString().toLowerCase()) {
       'like' => NotiType.like,
+      'comment' => NotiType.comment,
       'scrap' => NotiType.scrap,
       'stamp' => NotiType.stamp,
       'badge' => NotiType.badge,
@@ -29,6 +33,7 @@ class NotiItem {
     required this.isRead,
     this.refType,
     this.refId,
+    this.thumbnailUrl,
     this.createdAt,
   });
 
@@ -38,8 +43,11 @@ class NotiItem {
   final String body;
   final String? refType;
   final String? refId;
+  final String? thumbnailUrl;
   final bool isRead;
   final DateTime? createdAt;
+
+  NotiReferenceType? get referenceType => NotiReferenceType.fromValue(refType);
 
   factory NotiItem.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> document,
@@ -53,6 +61,7 @@ class NotiItem {
       body: data['body']?.toString() ?? '',
       refType: _nullableString(data['refType']),
       refId: _nullableString(data['refId']),
+      thumbnailUrl: _nullableString(data['thumbnailUrl'] ?? data['imageUrl']),
       isRead: data['isRead'] == true,
       createdAt: _asDateTime(data['createdAt']),
     );

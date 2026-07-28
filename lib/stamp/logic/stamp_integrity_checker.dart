@@ -3,7 +3,7 @@ import '../models/stamp_verification_models.dart';
 abstract interface class StampIntegrityProbe {
   Future<bool> isDeviceRooted();
 
-  Future<bool> hasRiskyBackgroundApp();
+  Future<bool> isMockLocation();
 }
 
 class StampIntegrityChecker {
@@ -21,11 +21,11 @@ class StampIntegrityChecker {
         );
       }
 
-      final hasRiskyApp = await probe.hasRiskyBackgroundApp();
-      if (hasRiskyApp) {
+      final isMockLocation = await probe.isMockLocation();
+      if (isMockLocation) {
         return const StampEntryCheckResult.blocked(
-          reason: StampEntryBlockReason.riskyBackgroundApp,
-          message: '인증을 방해할 수 있는 앱을 종료한 후 다시 시도해 주세요.',
+          reason: StampEntryBlockReason.mockLocation,
+          message: '위치 조작이 감지되어 스탬프 인증을 진행할 수 없습니다.',
         );
       }
 
