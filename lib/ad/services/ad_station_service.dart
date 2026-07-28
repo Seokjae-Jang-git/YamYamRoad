@@ -95,9 +95,7 @@ class AdStationService {
       context,
       MaterialPageRoute(
         builder: (context) => InHouseAdPlayerPage(
-          brandName: ad.title,
-          duration: ad.videoDuration,
-          reward: ad.rewardPoint,
+          ad: ad,
         ),
       ),
     );
