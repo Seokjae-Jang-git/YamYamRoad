@@ -4,11 +4,14 @@ import 'community_post.dart';
 import 'community_detail.dart';
 
 // 🌟 커뮤니티 검색 화면
-// - 내용/닉네임/지역/카테고리에 검색어가 포함된 글을 찾아줍니다.
+// - 내용/닉네임/태그에 검색어가 포함된 글을 찾아줍니다.
 // - Firestore는 부분 문자열 검색을 기본 지원하지 않기 때문에,
 //   최근 글들을 불러온 뒤 클라이언트에서 필터링하는 방식으로 구현했습니다.
 class CommunitySearchScreen extends StatefulWidget {
-  const CommunitySearchScreen({Key? key}) : super(key: key);
+  // 🌟 게시글의 태그를 눌러서 들어올 때 검색어를 미리 채워줍니다. (예: '#빵')
+  final String? initialQuery;
+
+  const CommunitySearchScreen({Key? key, this.initialQuery}) : super(key: key);
 
   @override
   State<CommunitySearchScreen> createState() => _CommunitySearchScreenState();
@@ -19,6 +22,15 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
   String _query = '';
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.initialQuery != null && widget.initialQuery!.trim().isNotEmpty) {
+      _query = widget.initialQuery!.trim();
+      _searchController.text = _query;
+    }
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -27,10 +39,16 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
   bool _matches(CommunityPost post, String query) {
     if (query.isEmpty) return false;
     final q = query.toLowerCase();
+    // 🌟 '#'을 붙여 검색하면 태그만 정확히 매칭합니다. (예: #빵)
+    if (q.startsWith('#')) {
+      final tagQuery = q.substring(1);
+      if (tagQuery.isEmpty) return false;
+      return post.tags.any((tag) => tag.toLowerCase().contains(tagQuery));
+    }
+
     return post.content.toLowerCase().contains(q) ||
         (post.nickname ?? '').toLowerCase().contains(q) ||
-        post.region.toLowerCase().contains(q) ||
-        post.category.toLowerCase().contains(q);
+        post.tags.any((tag) => tag.toLowerCase().contains(q));
   }
 
   void _openDetail(CommunityPost post) {
@@ -56,7 +74,7 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
           autofocus: true,
           onChanged: (value) => setState(() => _query = value.trim()),
           decoration: InputDecoration(
-            hintText: '내용, 닉네임, 지역, 카테고리로 검색',
+            hintText: '내용, 닉네임, #태그로 검색',
             hintStyle: const TextStyle(fontSize: 14, color: Colors.grey),
             filled: true,
             fillColor: const Color(0xFFF5F5F5),
@@ -79,7 +97,7 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
       ),
       body: _query.isEmpty
           ? const Center(
-        child: Text('검색어를 입력해주세요.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+        child: Text('검색어를 입력해주세요. (예: #빵)', style: TextStyle(color: Colors.grey, fontSize: 13)),
       )
           : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
@@ -145,9 +163,16 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
                   children: [
                     Text(post.nickname ?? '익명',
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    const SizedBox(width: 6),
-                    Text('${post.region} · ${post.category}',
-                        style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                    if (post.tags.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          post.tags.map((t) => '#$t').join(' '),
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 4),

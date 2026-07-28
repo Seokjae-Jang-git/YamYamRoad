@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:intl/intl.dart';
 
 import 'logic/point_purchase_service.dart';
@@ -199,7 +198,7 @@ class _PointMainScreenState extends State<PointMainScreen> {
                   gifticon: gifticon,
                   onTap: gifticon.isSoldOut
                       ? null
-                      : () => _purchaseGifticon(gifticon),
+                      : () => _openGifticonDetail(gifticon),
                 );
               },
             );
@@ -267,9 +266,7 @@ class _PointMainScreenState extends State<PointMainScreen> {
 
   Future<void> _openStampDevPage() {
     return Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const StampDevPlaceEntryPage(),
-      ),
+      MaterialPageRoute<void>(builder: (_) => const StampDevPlaceEntryPage()),
     );
   }
 

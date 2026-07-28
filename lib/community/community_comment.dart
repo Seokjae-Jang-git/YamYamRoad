@@ -9,6 +9,9 @@ class CommunityComment {
   final String? parentId;
   final String? replyToNickname;
   final DateTime? createdAt;
+  final DateTime? updatedAt;   // 🌟 추가 - 수정 시각
+  final int likeCount;        // 🌟 추가
+  final int reportCount;      // 🌟 추가
 
   CommunityComment({
     required this.id,
@@ -19,7 +22,22 @@ class CommunityComment {
     this.parentId,
     this.replyToNickname,
     this.createdAt,
+    this.updatedAt,
+    this.likeCount = 0,
+    this.reportCount = 0,
   });
+
+  static List<String> _toStringList(dynamic value) {
+    if (value == null) return [];
+    if (value is List) return value.map((e) => e.toString()).toList();
+    return [];
+  }
+
+  static int _toInt(dynamic value, {int defaultValue = 0}) {
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    return defaultValue;
+  }
 
   factory CommunityComment.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
@@ -36,6 +54,11 @@ class CommunityComment {
       createdAt: (data['createdAt'] is Timestamp)
           ? (data['createdAt'] as Timestamp).toDate()
           : null,
+      updatedAt: (data['updatedAt'] is Timestamp)
+          ? (data['updatedAt'] as Timestamp).toDate()
+          : null,
+      likeCount: _toInt(data['likeCount']),
+      reportCount: _toInt(data['reportCount']),
     );
   }
 
@@ -48,6 +71,8 @@ class CommunityComment {
       'parentId': parentId,
       'replyToNickname': replyToNickname,
       'createdAt': FieldValue.serverTimestamp(),
+      'likeCount': likeCount,
+      'reportCount': reportCount,
     };
   }
 }

@@ -49,3 +49,6 @@ app.*.map.json
 
 scripts/serviceAccountKey.json
 scripts/node_modules/
+
+# Local Codex repository guidance
+AGENTS.md
