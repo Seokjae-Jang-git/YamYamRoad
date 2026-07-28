@@ -3,11 +3,11 @@ import '../../common/utils/region_mapper.dart';
 import 'widgets/category_tabs.dart';
 import 'widgets/sub_filter_chips.dart';
 import 'widgets/sorting_bar.dart';
-import 'widgets/course_list_card.dart';
 import 'widgets/region_select_page.dart';
 import 'course_detail_screen.dart';
 import 'models/road.dart';
 import 'repositories/road_repository.dart';
+import 'utils/road_ad_helper.dart';
 
 class RoadMainScreen extends StatefulWidget {
   const RoadMainScreen({super.key});
@@ -114,58 +114,6 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
     }
   }
 
-  // 피드형 광고 동적 배치 알고리즘 (기존 구조 유지)
-  List<Widget> _buildListWithAds(List<Road> listToShow) {
-    List<Widget> items = [];
-
-    if (listToShow.isEmpty) {
-      items.add(
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 64.0),
-          child: Center(
-            child: Text(
-              '해당 조건에 맞는 코스가 존재하지 않습니다.',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
-            ),
-          ),
-        ),
-      );
-      items.add(_buildAdBanner());
-      return items;
-    }
-
-    // 카드 수가 2개 이하인 경우 바로 밑에 노출
-    if (listToShow.length <= 2) {
-      for (var road in listToShow) {
-        items.add(
-          CourseListCard(
-            road: road,
-            onTap: () => _onCardPressed(road),
-          ),
-        );
-      }
-      items.add(_buildAdBanner());
-    }
-    // 카드 수가 3개 이상인 경우 3개 카드 마다 광고 획득 배치
-    else {
-      for (int i = 0; i < listToShow.length; i++) {
-        final road = listToShow[i];
-        items.add(
-          CourseListCard(
-            road: road,
-            onTap: () => _onCardPressed(road),
-          ),
-        );
-
-        if ((i + 1) % 3 == 0) {
-          items.add(_buildAdBanner());
-        }
-      }
-    }
-
-    return items;
-  }
-
   void _onCardPressed(Road road) {
     Navigator.push(
       context,
@@ -263,7 +211,10 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
       );
     }
 
-    final uiItems = _buildListWithAds(_roads);
+    final uiItems = RoadAdHelper.buildListWithAds(
+      listToShow: _roads,
+      onCardPressed: _onCardPressed,
+    );
 
     return RefreshIndicator(
       onRefresh: _fetchRoadsFromFirestore,
@@ -272,28 +223,6 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
         itemBuilder: (context, index) {
           return uiItems[index];
         },
-      ),
-    );
-  }
-
-  Widget _buildAdBanner() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      padding: const EdgeInsets.symmetric(vertical: 24.0),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[200]!, width: 1.5),
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(4.0),
-      ),
-      alignment: Alignment.center,
-      child: const Text(
-        '배너 광고',
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          color: Colors.black54,
-          letterSpacing: 2.0,
-        ),
       ),
     );
   }

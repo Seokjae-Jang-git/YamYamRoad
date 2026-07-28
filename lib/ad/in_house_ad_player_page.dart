@@ -1,16 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
+import 'models/in_house_ad_model.dart';
 
 class InHouseAdPlayerPage extends StatefulWidget {
-  final String brandName;
-  final int duration; // 초 단위 재생 시간
-  final int reward; // 보상 포인트액
+  final InHouseAdModel ad;
 
   const InHouseAdPlayerPage({
     super.key,
-    required this.brandName,
-    required this.duration,
-    required this.reward,
+    required this.ad,
   });
 
   @override
@@ -18,32 +16,77 @@ class InHouseAdPlayerPage extends StatefulWidget {
 }
 
 class _InHouseAdPlayerPageState extends State<InHouseAdPlayerPage> {
+  VideoPlayerController? _controller;
   Timer? _timer;
   late int _secondsRemaining;
   bool _isFinished = false;
+  bool _hasError = false;
   double _playbackProgress = 0.0;
 
   @override
   void initState() {
     super.initState();
-    _secondsRemaining = widget.duration;
-    _startAdTimer();
+    // videoDuration이 0 이하로 입력될 경우 0 나누기 오류 방지를 위해 최소 1초 보정
+    _secondsRemaining = widget.ad.videoDuration <= 0 ? 1 : widget.ad.videoDuration;
+    _initializeVideoPlayer();
+  }
+
+  // 🎥 정석 Dart Null-Safety 타입을 활용한 비디오 초기화
+  Future<void> _initializeVideoPlayer() async {
+    // 1) 지역 변수에 할당하여 Dart Type Promotion(타입 승격) 유도
+    final videoUrl = widget.ad.videoUrl;
+
+    // 2) videoUrl이 null이거나 빈 문자열인 경우 예외 정석 처리
+    if (videoUrl == null || videoUrl.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _hasError = true;
+      });
+      _startAdTimer();
+      return;
+    }
+
+    try {
+      // 3) videoUrl이 String으로 타입 승격되었으므로 안전하게 Uri.parse 전달
+      final uri = Uri.parse(videoUrl);
+      _controller = VideoPlayerController.networkUrl(uri);
+      await _controller!.initialize();
+
+      if (!mounted) return;
+
+      setState(() {});
+
+      // 비디오 재생 시작
+      _controller!.play();
+      _startAdTimer();
+    } catch (e) {
+      debugPrint('비디오 로드 실패: $e');
+      if (!mounted) return;
+      setState(() {
+        _hasError = true;
+      });
+      // 네트워크 예외 발생 시에도 유저 보상 타이머는 정상 작동하도록 처리
+      _startAdTimer();
+    }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _controller?.dispose();
     super.dispose();
   }
 
   // 1초 단위로 흐르는 광고 타이머 구동
   void _startAdTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
       setState(() {
+        final totalDuration = widget.ad.videoDuration <= 0 ? 1 : widget.ad.videoDuration;
         if (_secondsRemaining > 1) {
           _secondsRemaining--;
           // 비디오 진행 상태 바 계산 (0.0 ~ 1.0)
-          _playbackProgress = 1.0 - (_secondsRemaining / widget.duration);
+          _playbackProgress = 1.0 - (_secondsRemaining / totalDuration);
         } else {
           _secondsRemaining = 0;
           _playbackProgress = 1.0;
@@ -58,7 +101,7 @@ class _InHouseAdPlayerPageState extends State<InHouseAdPlayerPage> {
   void _handleBackAttempt() {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('광고를 끝까지 시청하셔야 ${widget.reward}P를 받을 수 있습니다!'),
+        content: Text('광고를 끝까지 시청하셔야 ${widget.ad.rewardPoint}P를 받을 수 있습니다!'),
         duration: const Duration(seconds: 1),
         backgroundColor: Colors.redAccent,
       ),
@@ -67,7 +110,7 @@ class _InHouseAdPlayerPageState extends State<InHouseAdPlayerPage> {
 
   @override
   Widget build(BuildContext context) {
-    // PopScope를 사용하여 광고 시청 중 시스템 뒤로가기 버튼 차단 (Abuse 방지)
+    // PopScope를 사용하여 광고 시청 중 시스템 뒤로가기 버튼 차단
     return PopScope(
       canPop: _isFinished,
       onPopInvokedWithResult: (didPop, result) {
@@ -76,14 +119,16 @@ class _InHouseAdPlayerPageState extends State<InHouseAdPlayerPage> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.black, // 몰입도 극대화를 위한 풀 블랙 배경
+        backgroundColor: Colors.black,
         body: SafeArea(
           child: Stack(
             children: [
-              // 🎥 [시뮬레이션] 비디오 플레이어 영역
+              // 🎥 비디오 플레이어 영역
               Center(
                 child: AspectRatio(
-                  aspectRatio: 16 / 9, // 영화 및 일반 비디오 표준 비율
+                  aspectRatio: (_controller != null && _controller!.value.isInitialized)
+                      ? _controller!.value.aspectRatio
+                      : 16 / 9,
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
@@ -91,50 +136,70 @@ class _InHouseAdPlayerPageState extends State<InHouseAdPlayerPage> {
                       border: Border.all(color: Colors.grey[800]!, width: 2),
                       borderRadius: BorderRadius.circular(8),
                     ),
+                    clipBehavior: Clip.antiAlias,
                     alignment: Alignment.center,
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        // 가상 비디오 재생 애니메이션 모방
-                        if (!_isFinished)
-                          const CircularProgressIndicator(
-                            color: Colors.orange,
-                            strokeWidth: 2,
+                        // 1) 비디오 로드 완료 및 정상 재생
+                        if (_controller != null && _controller!.value.isInitialized)
+                          VideoPlayer(_controller!)
+                        // 2) 비디오 로드 실패 또는 URL이 없는 경우
+                        else if (_hasError)
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.warning_amber_rounded,
+                                color: Colors.amber,
+                                size: 48,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                '[ ${widget.ad.title} ]',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '영상을 불러올 수 없어 기본 시청으로 전환됩니다.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          )
+                        // 3) 비디오 네트워크 데이터 수신 중
+                        else
+                          const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircularProgressIndicator(
+                                color: Colors.orange,
+                                strokeWidth: 2,
+                              ),
+                              SizedBox(height: 12),
+                              Text(
+                                '광고 비디오 스트리밍 데이터 수신 중...',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ),
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              _isFinished ? Icons.check_circle : Icons.play_circle_fill,
-                              color: _isFinished ? Colors.green : Colors.orange.withOpacity(0.8),
-                              size: 48,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              '[ ${widget.brandName} ] 광고 시청 중',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _isFinished ? '시청이 완료되었습니다!' : '비디오 스트리밍 데이터를 수신하고 있습니다.',
-                              style: TextStyle(
-                                color: Colors.grey[400],
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
                       ],
                     ),
                   ),
                 ),
               ),
 
-              // ⏱️ [플로팅] 상단 제어 바 (타이머 & 닫기 버튼)
+              // ⏱️ 상단 제어 바
               Positioned(
                 top: 16,
                 left: 16,
@@ -142,9 +207,9 @@ class _InHouseAdPlayerPageState extends State<InHouseAdPlayerPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // 좌측 상단: 타이머 안내 반투명 칩
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.6),
                         borderRadius: BorderRadius.circular(20),
@@ -153,8 +218,12 @@ class _InHouseAdPlayerPageState extends State<InHouseAdPlayerPage> {
                       child: Row(
                         children: [
                           Icon(
-                            _isFinished ? Icons.celebration : Icons.timer_outlined,
-                            color: _isFinished ? Colors.greenAccent : Colors.orangeAccent,
+                            _isFinished
+                                ? Icons.celebration
+                                : Icons.timer_outlined,
+                            color: _isFinished
+                                ? Colors.greenAccent
+                                : Colors.orangeAccent,
                             size: 16,
                           ),
                           const SizedBox(width: 6),
@@ -170,11 +239,9 @@ class _InHouseAdPlayerPageState extends State<InHouseAdPlayerPage> {
                       ),
                     ),
 
-                    // 우측 상단: 닫기 (X) 버튼 (시청 끝나기 전엔 비활성화 피드백)
                     GestureDetector(
                       onTap: () {
                         if (_isFinished) {
-                          // 시청 성공 완료 신호(true)를 안고 부모 화면으로 복귀
                           Navigator.pop(context, true);
                         } else {
                           _handleBackAttempt();
@@ -199,14 +266,13 @@ class _InHouseAdPlayerPageState extends State<InHouseAdPlayerPage> {
                 ),
               ),
 
-              // 📊 [플로팅] 하단 정보 제공 바 (진행 트랙바 & 안내 텍스트)
+              // 📊 하단 정보 제공 바
               Positioned(
                 bottom: 24,
                 left: 16,
                 right: 16,
                 child: Column(
                   children: [
-                    // 실시간 광고 트랙바 게이지
                     ClipRRect(
                       borderRadius: BorderRadius.circular(2),
                       child: LinearProgressIndicator(
@@ -222,11 +288,13 @@ class _InHouseAdPlayerPageState extends State<InHouseAdPlayerPage> {
                     Text(
                       _isFinished
                           ? '🎉 상단 우측의 X 버튼을 누르고 포인트를 적립 받으세요!'
-                          : '📢 영상을 끝까지 시청하시면 ${widget.reward}P가 즉시 적립됩니다.',
+                          : '📢 영상을 끝까지 시청하시면 ${widget.ad.rewardPoint}P가 즉시 적립됩니다.',
                       style: TextStyle(
-                        color: _isFinished ? Colors.greenAccent : Colors.white70,
+                        color:
+                        _isFinished ? Colors.greenAccent : Colors.white70,
                         fontSize: 12,
-                        fontWeight: _isFinished ? FontWeight.bold : FontWeight.normal,
+                        fontWeight:
+                        _isFinished ? FontWeight.bold : FontWeight.normal,
                       ),
                       textAlign: TextAlign.center,
                     ),

@@ -1,19 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// 💰 유저 포인트 잔액 및 광고 시청 기록을 관리하는 모델 클래스
+/// 💰 무료 포인트 잔액 및 광고 시청 기록을 관리하는 모델 클래스
 class PointModel {
-  final int points;
+  final int freePointBalance; // 무료 포인트 잔액
   final Map<String, DateTime> adWatchHistory; // [adId : 마지막 시청 시각]
 
   PointModel({
-    required this.points,
+    required this.freePointBalance,
     required this.adWatchHistory,
   });
+
+  /// 💡 기존 UI 하위 호환용 총 포인트 게터
+  int get points => freePointBalance;
 
   /// 기본 초기값 생성자
   factory PointModel.initial() {
     return PointModel(
-      points: 0,
+      freePointBalance: 0,
       adWatchHistory: {},
     );
   }
@@ -36,8 +39,12 @@ class PointModel {
       }
     });
 
+    // 구버전 'points' 필드와의 이전 호환성 보장
+    final legacyPoints = (map['points'] as num?)?.toInt();
+    final freeBalance = (map['freePointBalance'] as num?)?.toInt() ?? legacyPoints ?? 0;
+
     return PointModel(
-      points: (map['points'] as num?)?.toInt() ?? 0,
+      freePointBalance: freeBalance,
       adWatchHistory: convertedHistory,
     );
   }
@@ -50,7 +57,7 @@ class PointModel {
     });
 
     return {
-      'points': points,
+      'freePointBalance': freePointBalance,
       'adWatchHistory': convertedHistory,
     };
   }
@@ -69,11 +76,11 @@ class PointModel {
 
   /// 불변 객체 복사 (copyWith)
   PointModel copyWith({
-    int? points,
+    int? freePointBalance,
     Map<String, DateTime>? adWatchHistory,
   }) {
     return PointModel(
-      points: points ?? this.points,
+      freePointBalance: freePointBalance ?? this.freePointBalance,
       adWatchHistory: adWatchHistory ?? this.adWatchHistory,
     );
   }

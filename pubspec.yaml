@@ -30,6 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  video_player: ^2.8.2
   # Google AdMob SDK 패키지 추가
   google_mobile_ads: ^5.1.0
   url_launcher: ^6.3.0  # 👈 외부 딥링크 주소를 실행해 주는 핵심 패키지 추가
