@@ -16,6 +16,12 @@ class HomeHeader extends StatefulWidget {
 }
 
 class _HomeHeaderState extends State<HomeHeader> {
+  // 브랜드 컬러 상수 정의
+  static const Color coralRed = Color(0xFFFF6B57);
+  static const Color strawberryPink = Color(0xFFFFA09B);
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+
   // 새로운 알림 유무 상태 (기본값: true / 탭 시 해제 예시)
   bool _hasUnreadNotification = true;
 
@@ -44,15 +50,25 @@ class _HomeHeaderState extends State<HomeHeader> {
     showMenu<String>(
       context: context,
       position: position,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: creamyIvory,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFE8E2D9), width: 1),
+      ),
       items: [
         const PopupMenuItem<String>(
           value: 'mypage',
           child: Row(
             children: [
-              Icon(Icons.person_outline, size: 18, color: Colors.black87),
+              Icon(Icons.person_outline, size: 18, color: deepChocolate),
               SizedBox(width: 10),
-              Text('마이페이지'),
+              Text(
+                '마이페이지',
+                style: TextStyle(
+                  color: deepChocolate,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
@@ -61,9 +77,15 @@ class _HomeHeaderState extends State<HomeHeader> {
           value: 'logout',
           child: Row(
             children: [
-              Icon(Icons.logout, size: 18, color: Colors.redAccent),
+              Icon(Icons.logout, size: 18, color: coralRed),
               SizedBox(width: 10),
-              Text('로그아웃', style: TextStyle(color: Colors.redAccent)),
+              Text(
+                '로그아웃',
+                style: TextStyle(
+                  color: coralRed,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
@@ -81,19 +103,41 @@ class _HomeHeaderState extends State<HomeHeader> {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('로그아웃'),
-        content: const Text('정말 로그아웃하시겠습니까?'),
+        backgroundColor: creamyIvory,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          '로그아웃',
+          style: TextStyle(
+            color: deepChocolate,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: const Text(
+          '정말 로그아웃하시겠습니까?',
+          style: TextStyle(color: deepChocolate),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('취소'),
+            child: const Text(
+              '취소',
+              style: TextStyle(color: deepChocolate),
+            ),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(dialogContext);
               _handleLogout();
             },
-            child: const Text('로그아웃', style: TextStyle(color: Colors.red)),
+            child: const Text(
+              '로그아웃',
+              style: TextStyle(
+                color: coralRed,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -141,7 +185,7 @@ class _HomeHeaderState extends State<HomeHeader> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF504D46),
+                  color: deepChocolate,
                   letterSpacing: -0.5,
                 ),
               ),
@@ -171,13 +215,13 @@ class _HomeHeaderState extends State<HomeHeader> {
                   height: 38,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.grey.shade300, width: 1),
+                    border: Border.all(color: const Color(0xFFE8E2D9), width: 1),
                   ),
                   child: CircleAvatar(
                     radius: 18,
-                    backgroundColor: const Color(0xFFF5F5F5),
+                    backgroundColor: strawberryPink,
                     child: UserData.isDefaultProfileImage || UserData.profileImagePath == null
-                        ? const Icon(Icons.person_outline, size: 22, color: Color(0xFF504D46))
+                        ? const Icon(Icons.person_outline, size: 22, color: deepChocolate)
                         : ClipOval(
                       child: Image.network(
                         UserData.profileImagePath!,
@@ -185,7 +229,7 @@ class _HomeHeaderState extends State<HomeHeader> {
                         height: 38,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
-                          return const Icon(Icons.person_outline, size: 22, color: Color(0xFF504D46));
+                          return const Icon(Icons.person_outline, size: 22, color: deepChocolate);
                         },
                       ),
                     ),
@@ -205,6 +249,10 @@ class _NotificationIconButton extends StatelessWidget {
   final bool hasNotification;
   final VoidCallback onTap;
 
+  static const Color coralRed = Color(0xFFFF6B57);
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+
   const _NotificationIconButton({
     required this.hasNotification,
     required this.onTap,
@@ -218,9 +266,9 @@ class _NotificationIconButton extends StatelessWidget {
         width: 38,
         height: 38,
         decoration: BoxDecoration(
-          color: const Color(0xFFFAF6F0), // 따뜻한 베이지 배경
+          color: creamyIvory, // 따뜻한 크림 아이보리 배경
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.grey.shade300, width: 1),
+          border: Border.all(color: const Color(0xFFE8E2D9), width: 1),
         ),
         child: Stack(
           alignment: Alignment.center,
@@ -228,9 +276,9 @@ class _NotificationIconButton extends StatelessWidget {
             const Icon(
               Icons.notifications_none_rounded,
               size: 20,
-              color: Color(0xFF504D46),
+              color: deepChocolate,
             ),
-            // 안 읽은 알림이 있을 경우 우측 상단 붉은색 인디케이터 표시
+            // 안 읽은 알림이 있을 경우 우측 상단 코랄 레드 인디케이터 표시
             if (hasNotification)
               Positioned(
                 top: 8,
@@ -239,7 +287,7 @@ class _NotificationIconButton extends StatelessWidget {
                   width: 7,
                   height: 7,
                   decoration: const BoxDecoration(
-                    color: Color(0xFFFF5252), // 포인트 레드
+                    color: coralRed,
                     shape: BoxShape.circle,
                   ),
                 ),

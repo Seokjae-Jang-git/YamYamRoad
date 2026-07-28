@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../road/models/place_model.dart'; // 🆕 진짜 PlaceModel로 타입 교체!
+import '../../road/models/place_model.dart';
 import '../../road/repositories/place_repository.dart';
 import '../../providers/user_location_provider.dart';
 import 'stamp_verification_dialog.dart';
 
 class HomeStampDashboard extends StatelessWidget {
-  final List<PlaceModel> verifiablePlaces; // 🆕 진짜 PlaceModel 목록 규격 적용
+  final List<PlaceModel> verifiablePlaces;
   final ValueChanged<PlaceModel> onPlaceSelected;
 
   const HomeStampDashboard({
@@ -14,6 +14,14 @@ class HomeStampDashboard extends StatelessWidget {
     required this.verifiablePlaces,
     required this.onPlaceSelected,
   });
+
+  // 브랜드 공식 컬러 상수 정의
+  static const Color coralRed = Color(0xFFFF6B57);
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color softPink = Color(0xFFFFF2F0);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+  static const Color borderPink = Color(0xFFFFE3DE);
+  static const Color subTextColor = Color(0xFF7A6B63);
 
   /// [14-2단계] 인증하기 버튼 클릭 시 위치 기반 근처 가게 Top 10 조회 후 팝업 출력
   void _handleStampAuth(BuildContext context) async {
@@ -66,20 +74,20 @@ class HomeStampDashboard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18.0),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue[50]!, Colors.white],
+        gradient: const LinearGradient(
+          colors: [softPink, creamyIvory],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withOpacity(0.08),
+            color: coralRed.withOpacity(0.08),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: Colors.blue[100]!, width: 1.2),
+        border: Border.all(color: borderPink, width: 1.2),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -92,22 +100,25 @@ class HomeStampDashboard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blue,
+                  color: deepChocolate,
                 ),
               ),
               SizedBox(height: 4),
               Text(
                 '근처 제휴 업체 스탬프 인증하기',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: subTextColor,
+                ),
               ),
             ],
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue[600],
+              backgroundColor: coralRed,
               foregroundColor: Colors.white,
               elevation: 2,
-              shadowColor: Colors.blue.withOpacity(0.3),
+              shadowColor: coralRed.withOpacity(0.3),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -116,7 +127,10 @@ class HomeStampDashboard extends StatelessWidget {
             onPressed: () => _handleStampAuth(context),
             child: const Text(
               '인증하기',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
             ),
           ),
         ],

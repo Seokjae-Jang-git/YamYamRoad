@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // 🌟 로그아웃을 위한 Firebase Auth 추가
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../common/user_data.dart';
 import '../../login/login_screen.dart';
 import '../setting/myinfo.dart';
 
 class ProfileSection extends StatelessWidget {
   final VoidCallback onRefresh;
+
+  // YamYamRoad 브랜드 공식 컬러 상수 정의
+  static const Color coralRed = Color(0xFFFF6B57);
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color subTextColor = Color(0xFF7A6B63);
+  static const Color buttonBorderColor = Color(0xFFD0C4B8);
 
   const ProfileSection({Key? key, required this.onRefresh}) : super(key: key);
 
@@ -15,13 +21,24 @@ class ProfileSection extends StatelessWidget {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          title: const Text('로그아웃', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          content: const Text('정말 로그아웃 하시겠습니까?'),
+          backgroundColor: const Color(0xFFFFFBF8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text(
+            '로그아웃',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: deepChocolate,
+            ),
+          ),
+          content: const Text(
+            '정말 로그아웃 하시겠습니까?',
+            style: TextStyle(color: subTextColor, fontSize: 14),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext), // 취소
-              child: const Text('취소', style: TextStyle(color: Colors.grey)),
+              child: const Text('취소', style: TextStyle(color: subTextColor)),
             ),
             TextButton(
               onPressed: () async {
@@ -30,7 +47,7 @@ class ProfileSection extends StatelessWidget {
                 // 파이어베이스 로그아웃 처리
                 await FirebaseAuth.instance.signOut();
 
-                // 🌟 LoginScreen() 위젯을 직접 호출하여 이동 (이전 화면 스택 모두 삭제)
+                // LoginScreen() 위젯을 직접 호출하여 이동 (이전 화면 스택 모두 삭제)
                 if (context.mounted) {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -38,7 +55,10 @@ class ProfileSection extends StatelessWidget {
                   );
                 }
               },
-              child: const Text('로그아웃', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              child: const Text(
+                '로그아웃',
+                style: TextStyle(color: coralRed, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         );
@@ -51,21 +71,28 @@ class ProfileSection extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // 1. 프로필 이미지
-        CircleAvatar(
-          radius: 30,
-          backgroundColor: const Color(0xFFF5F5F5),
-          child: UserData.isDefaultProfileImage || UserData.profileImagePath == null
-              ? const Icon(Icons.person_outline, size: 35, color: Colors.grey)
-              : ClipOval(
-            child: Image.network(
-              UserData.profileImagePath!,
-              width: 60,
-              height: 60,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(Icons.person_outline, size: 35, color: Colors.grey);
-              },
+        // 1. 프로필 이미지 (브랜드 포인트 컬러 테두리)
+        Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: coralRed.withOpacity(0.35), width: 2),
+          ),
+          padding: const EdgeInsets.all(2),
+          child: CircleAvatar(
+            radius: 30,
+            backgroundColor: const Color(0xFFFFF4F2),
+            child: UserData.isDefaultProfileImage || UserData.profileImagePath == null
+                ? const Icon(Icons.person_outline, size: 34, color: subTextColor)
+                : ClipOval(
+              child: Image.network(
+                UserData.profileImagePath!,
+                width: 60,
+                height: 60,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Icon(Icons.person_outline, size: 34, color: subTextColor);
+                },
+              ),
             ),
           ),
         ),
@@ -78,26 +105,35 @@ class ProfileSection extends StatelessWidget {
             children: [
               Text(
                 UserData.nickname ?? '로딩중...',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: deepChocolate,
+                  letterSpacing: -0.3,
+                ),
               ),
-              const SizedBox(height: 6), // 닉네임과 좋아요 사이 간격
+              const SizedBox(height: 4), // 닉네임과 좋아요 사이 간격
               const Text(
                 '좋아요 0   스크랩 0',
-                style: TextStyle(color: Colors.black87, fontSize: 13),
+                style: TextStyle(
+                  color: subTextColor,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
         ),
         const SizedBox(width: 12),
 
-        // 3. 🌟 수정 & 로그아웃 버튼 (Column으로 세로 배치)
+        // 3. 수정 & 로그아웃 버튼 (Column으로 세로 배치)
         Column(
-          mainAxisSize: MainAxisSize.min, // 최소한의 세로 공간만 차지
+          mainAxisSize: MainAxisSize.min,
           children: [
             // 수정 버튼
             SizedBox(
               height: 32,
-              width: 68, // 두 버튼의 너비 통일
+              width: 72,
               child: OutlinedButton(
                 onPressed: () {
                   Navigator.push(
@@ -106,29 +142,44 @@ class ProfileSection extends StatelessWidget {
                   ).then((_) => onRefresh());
                 },
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.black,
-                  padding: EdgeInsets.zero, // 텍스트 짤림 방지
-                  side: const BorderSide(color: Colors.grey),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  foregroundColor: deepChocolate,
+                  padding: EdgeInsets.zero,
+                  side: const BorderSide(color: buttonBorderColor),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  backgroundColor: Colors.white,
                 ),
-                child: const Text('수정', style: TextStyle(fontSize: 12)),
+                child: const Text(
+                  '수정',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: deepChocolate,
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 6), // 간격
+            const SizedBox(height: 6),
 
             // 로그아웃 버튼
             SizedBox(
               height: 32,
-              width: 68,
+              width: 72,
               child: OutlinedButton(
                 onPressed: () => _showLogoutDialog(context),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.grey.shade700,
+                  foregroundColor: subTextColor,
                   padding: EdgeInsets.zero,
-                  side: BorderSide(color: Colors.grey.shade400),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  side: BorderSide(color: buttonBorderColor.withOpacity(0.6)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  backgroundColor: const Color(0xFFFAF7F5),
                 ),
-                child: const Text('로그아웃', style: TextStyle(fontSize: 11)),
+                child: const Text(
+                  '로그아웃',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: subTextColor,
+                  ),
+                ),
               ),
             ),
           ],
