@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../features/emoticon/emoticon_span_builder.dart';
 import '../community_post.dart';
+import '../community_search.dart';
 import 'author_badge_row.dart';
 
 class PostContentWidget extends StatelessWidget {
@@ -29,6 +30,16 @@ class PostContentWidget extends StatelessWidget {
     required this.onScrapToggle,
   }) : super(key: key);
 
+  // 🌟 태그를 누르면 바로 검색 화면으로 이동해서 그 태그로 검색된 결과를 보여줍니다.
+  void _openTagSearch(BuildContext context, String tag) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CommunitySearchScreen(initialQuery: '#$tag'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -44,23 +55,16 @@ class PostContentWidget extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Flexible(
-                        child: Text(post.nickname ?? '익명',
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                      ),
-                      const SizedBox(width: 6),
-                      AuthorBadgeRow(userId: post.userId),
-                    ],
+                  Flexible(
+                    child: Text(post.nickname ?? '익명',
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                   ),
-                  Text('${post.region} · ${post.category}',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(width: 6),
+                  AuthorBadgeRow(userId: post.userId),
                 ],
               ),
             ),
@@ -90,6 +94,27 @@ class PostContentWidget extends StatelessWidget {
           content: post.content,
           style: const TextStyle(fontSize: 14, color: Colors.black),
         ),
+        // 🌟 태그 표시 - 누르면 해당 태그로 검색 화면 이동
+        if (post.tags.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: post.tags.map((tag) {
+              return GestureDetector(
+                onTap: () => _openTagSearch(context, tag),
+                child: Text(
+                  '#$tag',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFFFF8A3D),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
         if (post.imageUrls.isNotEmpty) ...[
           const SizedBox(height: 12),
           ClipRRect(
