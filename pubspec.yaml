@@ -53,6 +53,7 @@ dependencies:
   in_app_purchase: ^3.3.0
   flutter_svg: ^2.3.0
   extended_text_field: ^16.0.0
+  shared_preferences: ^2.2.2
 
 
   image_picker: ^1.2.3

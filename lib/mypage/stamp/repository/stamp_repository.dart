@@ -159,8 +159,6 @@ class StampRepository {
       for (var item in items) {
         regions.add(item['name'] as String);
       }
-
-      print('🌟 불러온 지역 목록 (${regions.length}개): $regions'); // 디버깅용 콘솔 로그
       return regions;
     } catch (e) {
       print('❌ 지역 목록 불러오기 실패: $e');

@@ -21,26 +21,20 @@ class CommunityWriteScreen extends StatefulWidget {
 }
 
 class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
-  // 🌟 사진+영상 합쳐서 최대 5개까지만 첨부 가능
   static const int _maxMedia = 5;
   static const int _maxTags = 5;
   static const int _maxTagLength = 10;
 
-  // 🌟 용량 제한: 사진 10MB / 영상 50MB
   static const int _maxImageBytes = 10 * 1024 * 1024;
   static const int _maxVideoBytes = 50 * 1024 * 1024;
 
-  // 🌟 이모티콘 토큰을 실제 이미지로 인라인 렌더링하는 컨트롤러
   final EmoticonTextEditingController _contentController =
   EmoticonTextEditingController();
 
-  // 🌟 태그 입력용 컨트롤러
   final TextEditingController _tagInputController = TextEditingController();
 
-  // 🌟 이미 업로드되어 있는 미디어 (수정 모드에서 넘어온 기존 URL)
   final List<String> _existingImageUrls = [];
   final List<String> _existingVideoUrls = [];
-  // 🌟 이번에 새로 선택했지만 아직 업로드하지 않은 로컬 미디어
   final List<XFile> _newImages = [];
   final List<XFile> _newVideos = [];
 
@@ -60,8 +54,6 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
     super.initState();
     if (_isEditMode) {
       final post = widget.existingPost!;
-      // 🌟 저장돼 있던 원문(토큰 포함)을 편집용 플레이스홀더 텍스트로 변환하고,
-      // 이모티콘 이미지도 함께 조회해서 채워줍니다.
       _contentController.loadStoredContent(post.content).then((_) {
         if (mounted) setState(() {});
       });
@@ -78,7 +70,6 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
     super.dispose();
   }
 
-  // 🌟 이모티콘 피커에서 고른 토큰을 커서 위치에 삽입
   void _insertEmoticon(String token, String imageUrl) {
     _contentController.insertEmoticon(token, imageUrl);
   }
@@ -87,8 +78,6 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
-
-  // -------------------- 태그 --------------------
 
   void _addTag(String raw) {
     final value = raw.trim();
@@ -115,8 +104,6 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
     setState(() => _tags.remove(tag));
   }
 
-  // -------------------- 사진 + 영상 (같은 입력창) --------------------
-
   static const Set<String> _videoExtensions = {
     '.mp4', '.mov', '.avi', '.mkv', '.webm', '.3gp', '.m4v',
   };
@@ -135,7 +122,6 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
 
     try {
       final picker = ImagePicker();
-      // 🌟 사진과 영상을 하나의 입력창(갤러리)에서 함께 선택합니다.
       final picked = await picker.pickMultipleMedia(imageQuality: 85, limit: remaining);
       if (picked.isEmpty) return;
 
@@ -187,7 +173,6 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
     setState(() => _newVideos.removeAt(index));
   }
 
-  // 🌟 새로 선택한 이미지들을 Firebase Storage에 업로드하고 다운로드 URL 리스트를 반환합니다.
   Future<List<String>> _uploadNewImages() async {
     final urls = <String>[];
     for (var i = 0; i < _newImages.length; i++) {
@@ -206,7 +191,6 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
     return urls;
   }
 
-  // 🌟 새로 선택한 영상들을 Firebase Storage에 업로드하고 다운로드 URL 리스트를 반환합니다.
   Future<List<String>> _uploadNewVideos() async {
     final urls = <String>[];
     for (var i = 0; i < _newVideos.length; i++) {
@@ -231,6 +215,13 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
       return;
     }
 
+    // 🌟 태그 입력창에 글자를 써놓고 Enter를 안 누른 채 바로 등록/수정을 누르는
+    // 경우가 많아서, 제출 직전에 남아있는 텍스트를 태그로 자동 커밋합니다.
+    final pendingTag = _tagInputController.text.trim();
+    if (pendingTag.isNotEmpty) {
+      _addTag(pendingTag);
+    }
+
     setState(() => _isSubmitting = true);
 
     try {
@@ -238,11 +229,9 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
       final uploadedVideoUrls = await _uploadNewVideos();
       final finalImageUrls = [..._existingImageUrls, ...uploadedImageUrls];
       final finalVideoUrls = [..._existingVideoUrls, ...uploadedVideoUrls];
-      // 🌟 저장은 항상 플레이스홀더가 아니라 실제 토큰 문자열로 변환해서 씁니다.
       final storageContent = _contentController.toStorageText().trim();
 
       if (_isEditMode) {
-        // 🌟 기존 글 수정
         await FirebaseFirestore.instance
             .collection('posts')
             .doc(widget.existingPost!.id)
@@ -254,9 +243,6 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
           'updatedAt': FieldValue.serverTimestamp(),
         });
       } else {
-        // 🌟 새 글 등록
-        // 🌟 region/category는 더 이상 입력받지 않지만, 모델/다른 화면과의 호환을
-        // 위해 기본값('전체')으로 채워둡니다.
         final post = CommunityPost(
           id: '',
           userId: _currentUid,
@@ -326,7 +312,6 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
                   style: const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
                 const SizedBox(height: 16),
-                // 🌟 이모티콘 토큰이 실제 이미지로 바로 보이는 입력창
                 TextField(
                   controller: _contentController,
                   maxLines: 5,
@@ -337,7 +322,6 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                // 🌟 이모티콘 삽입 버튼 + 태그 입력(# )을 같은 줄에 배치
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -394,7 +378,6 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
     );
   }
 
-  // 🌟 이모티콘 아이콘 옆에 붙는 인라인 태그 입력창 ("#" 접두어로 표시)
   Widget _buildTagInput() {
     final bool reachedLimit = _tags.length >= _maxTags;
     return TextField(
@@ -440,33 +423,28 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
-          // 🌟 이미 업로드된 이미지 (수정 모드)
           for (var i = 0; i < _existingImageUrls.length; i++)
             _buildImageThumb(
               key: ValueKey('existing_img_$i'),
               image: Image.network(_existingImageUrls[i], fit: BoxFit.cover),
               onRemove: () => _removeExistingImage(i),
             ),
-          // 🌟 새로 선택했지만 아직 업로드되지 않은 이미지
           for (var i = 0; i < _newImages.length; i++)
             _buildImageThumb(
               key: ValueKey('new_img_${_newImages[i].path}'),
               image: Image.file(File(_newImages[i].path), fit: BoxFit.cover),
               onRemove: () => _removeNewImage(i),
             ),
-          // 🌟 이미 업로드된 영상 (수정 모드)
           for (var i = 0; i < _existingVideoUrls.length; i++)
             _buildVideoThumb(
               key: ValueKey('existing_video_$i'),
               onRemove: () => _removeExistingVideo(i),
             ),
-          // 🌟 새로 선택했지만 아직 업로드되지 않은 영상
           for (var i = 0; i < _newVideos.length; i++)
             _buildVideoThumb(
               key: ValueKey('new_video_${_newVideos[i].path}'),
               onRemove: () => _removeNewVideo(i),
             ),
-          // 🌟 사진/영상을 한 번에 고르는 단일 입력 버튼
           if (_totalMediaCount < _maxMedia)
             GestureDetector(
               onTap: _isSubmitting ? null : _pickMedia,
@@ -527,7 +505,6 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
     );
   }
 
-  // 🌟 영상은 썸네일 프레임 대신 재생 아이콘이 있는 플레이스홀더로 표시합니다.
   Widget _buildVideoThumb({
     required Key key,
     required VoidCallback onRemove,
