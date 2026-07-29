@@ -5,6 +5,7 @@ import '../../common/user_data.dart';
 import '../../services/auth_service.dart';
 import '../repository/mypage_repository.dart';
 import '../stamp/repository/stamp_repository.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 // 헬퍼 공통 가로 행 위젯
 Widget buildListRow(String leftText, String rightText) {
@@ -21,6 +22,73 @@ Widget buildListRow(String leftText, String rightText) {
       ),
       Text(rightText, style: const TextStyle(fontSize: 13, color: Colors.black87)),
     ],
+  );
+}
+
+Widget _buildYamyambookPreviewText(String content) {
+  final RegExp emojiRegex = RegExp(r'\[emoji:(.*?)\]');
+  final Iterable<RegExpMatch> matches = emojiRegex.allMatches(content);
+
+  // 이모티콘이 없으면 일반 텍스트 반환
+  if (matches.isEmpty) {
+    return Text(
+      '• $content',
+      style: const TextStyle(fontSize: 14, color: Colors.black87),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
+  List<InlineSpan> spans = [];
+  int currentIndex = 0;
+
+  for (final match in matches) {
+    if (match.start > currentIndex) {
+      spans.add(TextSpan(text: content.substring(currentIndex, match.start)));
+    }
+
+    final String rawEmojiPath = match.group(1) ?? '';
+
+    // 🌟 FeedCardWidget과 동일한 경로 치환 로직 적용
+    String cleanPath = rawEmojiPath.replaceAll(':', '/');
+    cleanPath = cleanPath.replaceAll('emo_character_test', 'character');
+    cleanPath = cleanPath.replaceAll('emo_emoji_test', 'emoji');
+    cleanPath = cleanPath.replaceAll('emo_penguin_test', 'penguin');
+    cleanPath = cleanPath.replaceAll('emo_meme_test', 'meme');
+    cleanPath = cleanPath.replaceAll('emo_cloud_test', 'cloud');
+
+    spans.add(
+      WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 1.0),
+          child: SvgPicture.asset(
+            'assets/emoticons/$cleanPath',
+            width: 16, // 미리보기 사이즈에 맞게 축소
+            height: 16,
+          ),
+        ),
+      ),
+    );
+
+    currentIndex = match.end;
+  }
+
+  if (currentIndex < content.length) {
+    spans.add(TextSpan(text: content.substring(currentIndex)));
+  }
+
+  // 🌟 1줄 제한 및 말줄임표 적용된 RichText 반환
+  return RichText(
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+    text: TextSpan(
+      style: const TextStyle(fontSize: 14, color: Colors.black87),
+      children: [
+        const TextSpan(text: '• '),
+        ...spans,
+      ],
+    ),
   );
 }
 
@@ -61,27 +129,32 @@ Widget buildYamyamBookContent() {
     stream: MypageRepository.getLatestYamyamBookStream(),
     builder: (context, snapshot) {
       if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Center(child: Padding(padding: EdgeInsets.all(8.0), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))));
+        return const Center(
+            child: Padding(
+                padding: EdgeInsets.all(8.0),
+                child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
+            )
+        );
       }
       if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
         return const Text('작성된 얌얌북 피드가 없습니다.', style: TextStyle(color: Colors.grey, fontSize: 13));
       }
+
       final feeds = snapshot.data!;
+
       return Column(
         children: feeds.map((feed) {
           int index = feeds.indexOf(feed);
+          final String rawContent = feed['content']?.toString() ?? '';
+
           return Column(
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                    child: Text(
-                      '• ${feed['content']}',
-                      style: const TextStyle(fontSize: 14, color: Colors.black87),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    // 🌟 수정된 부분: 파싱 헬퍼 함수 사용
+                    child: _buildYamyambookPreviewText(rawContent),
                   ),
                 ],
               ),

@@ -231,8 +231,6 @@ class _ReportListScreenState extends State<ReportListScreen> {
 
   // 상태 영문 -> 한글 변환 (공백 제거 및 디버그 프린트 추가)
   String _getDisplayStatus(String status) {
-    // 🌟 1. DB에서 넘어온 원본 값을 콘솔에 출력해서 확인합니다.
-    debugPrint('📢 DB 원본 status 값: [$status]');
 
     // 🌟 2. 양옆 공백을 완전히 제거(.trim())한 후 소문자로 비교합니다.
     switch (status.trim().toLowerCase()) {

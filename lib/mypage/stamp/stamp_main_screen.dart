@@ -4,8 +4,7 @@ import 'package:intl/intl.dart'; // 날짜 포맷용
 import 'repository/stamp_repository.dart';
 import 'widgets/sub_filter_chips.dart';
 import 'widgets/sorting_bar.dart';
-import 'widgets/region_select_page.dart';
-
+import '../../../../road/widgets/region_select_page.dart';
 class StampMainScreen extends StatefulWidget {
   const StampMainScreen({super.key});
 
@@ -104,85 +103,21 @@ class _StampMainScreenState extends State<StampMainScreen> {
   }
 
   // 2. 🌟 지역 더보기 팝업 모달
-  void _openRegionSelectModal() async {
-    final List<String> regionOptions = _dbRegionFilters;
-
-    final String? selected = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+  // 🌟 기존 모달창을 띄우던 코드를 지우고, RegionSelectPage 호출로 변경
+  Future<void> _openRegionSelectModal() async {
+    // 1. 지역 선택 페이지로 이동
+    final selectedRegion = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const RegionSelectPage(),
       ),
-      builder: (context) {
-        return Container(
-          height: 340,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('지역 선택', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const Divider(),
-              const SizedBox(height: 12),
-              Expanded(
-                child: GridView.builder(
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 5,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 10,
-                    childAspectRatio: 1.8,
-                  ),
-                  itemCount: regionOptions.length,
-                  itemBuilder: (context, index) {
-                    final region = regionOptions[index];
-                    final bool isSelected = region == _selectedFilter;
-
-                    return ChoiceChip(
-                      showCheckmark: false,
-                      label: Center(
-                        child: Text(
-                          region,
-                          style: TextStyle(
-                            color: isSelected ? Colors.orange[800] : Colors.black87,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      padding: EdgeInsets.zero,
-                      labelPadding: EdgeInsets.zero,
-                      selected: isSelected,
-                      selectedColor: Colors.orange[50],
-                      backgroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        side: BorderSide(
-                          color: isSelected ? Colors.orange : Colors.grey[300]!,
-                          width: 1.0,
-                        ),
-                      ),
-                      onSelected: (_) => Navigator.pop(context, region),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
 
-    if (selected != null) {
-      setState(() => _selectedFilter = selected);
+    // 2. 사용자가 지역을 선택하고 돌아왔다면(뒤로가기 취소가 아니라면) 필터 상태 업데이트
+    if (selectedRegion != null && selectedRegion is String) {
+      setState(() {
+        _selectedFilter = selectedRegion;
+      });
     }
   }
 
@@ -416,7 +351,6 @@ class _StampMainScreenState extends State<StampMainScreen> {
               selectedTab: _selectedTab,
               selectedFilter: _selectedFilter,
               menuFilters: _dbMenuFilters,
-              regionFilters: _dbRegionFilters, // 🌟 DB 지역 전달
               onFilterSelected: (filter) => setState(() => _selectedFilter = filter),
               onMorePressed: _selectedTab == '지역별' ? _openRegionSelectModal : _openMenuSelectModal,
             ),
