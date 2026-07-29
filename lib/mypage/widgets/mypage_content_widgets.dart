@@ -7,6 +7,14 @@ import '../repository/mypage_repository.dart';
 import '../stamp/repository/stamp_repository.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+// YamYamRoad 브랜드 공식 컬러 상수
+const Color deepChocolate = Color(0xFF4A3225);
+const Color subTextColor = Color(0xFF7A6B63);
+const Color cardBorderColor = Color(0xFFEFE8E0);
+const Color coralRed = Color(0xFFFF5B45);
+const Color lightBgColor = Color(0xFFFFF4F2);
+const Color emptySlotColor = Color(0xFFFFFBF8);
+
 // 헬퍼 공통 가로 행 위젯
 Widget buildListRow(String leftText, String rightText) {
   return Row(
@@ -17,10 +25,21 @@ Widget buildListRow(String leftText, String rightText) {
           '• $leftText',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 13),
+          style: const TextStyle(
+            fontSize: 13,
+            color: deepChocolate,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
-      Text(rightText, style: const TextStyle(fontSize: 13, color: Colors.black87)),
+      Text(
+        rightText,
+        style: const TextStyle(
+          fontSize: 13,
+          color: subTextColor,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     ],
   );
 }
@@ -98,10 +117,19 @@ Widget buildDiaryContent() {
     stream: MypageRepository.getLatestDiaryStream(),
     builder: (context, snapshot) {
       if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Center(child: Padding(padding: EdgeInsets.all(8.0), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))));
+        return const Center(
+          child: Padding(
+            padding: EdgeInsets.all(8.0),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(color: deepChocolate, strokeWidth: 2),
+            ),
+          ),
+        );
       }
       if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-        return const Text('작성된 다이어리가 없습니다.', style: TextStyle(color: Colors.grey, fontSize: 13));
+        return const Text('작성된 다이어리가 없습니다.', style: TextStyle(color: subTextColor, fontSize: 13));
       }
       final entries = snapshot.data!;
       return Column(
@@ -109,7 +137,6 @@ Widget buildDiaryContent() {
           int index = entries.indexOf(entry);
           return Column(
             children: [
-              // 🌟 [핵심 수정] 없는 필드인 'title' 대신 'storeName'을 사용하고 null 처리를 합니다!
               buildListRow(
                 entry['storeName'] ?? '가게명 없음',
                 entry['note'] ?? '내용 없음',
@@ -137,7 +164,7 @@ Widget buildYamyamBookContent() {
         );
       }
       if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-        return const Text('작성된 얌얌북 피드가 없습니다.', style: TextStyle(color: Colors.grey, fontSize: 13));
+        return const Text('작성된 얌얌북 피드가 없습니다.', style: TextStyle(color: subTextColor, fontSize: 13));
       }
 
       final feeds = snapshot.data!;
@@ -175,7 +202,7 @@ Widget buildStampContent() {
       if (snapshot.connectionState == ConnectionState.waiting) {
         return const SizedBox(
           height: 55,
-          child: Center(child: CircularProgressIndicator(color: Colors.orange, strokeWidth: 2)),
+          child: Center(child: CircularProgressIndicator(color: coralRed, strokeWidth: 2)),
         );
       }
 
@@ -184,7 +211,6 @@ Widget buildStampContent() {
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: List.generate(5, (index) {
-          // 수집한 스탬프 데이터가 존재하면 도장 표시, 없으면 빈 슬롯 표시
           if (index < fetchedStamps.length) {
             final stamp = fetchedStamps[index];
             final String storeName = stamp['storeName'] ?? '매장';
@@ -195,16 +221,16 @@ Widget buildStampContent() {
               dateStr = DateFormat('yy.MM.dd').format(dt);
             }
 
-            // 🌟 획득한 스탬프 (빨간 도장 스타일)
+            // 획득한 스탬프 (브랜드 코랄 레드 도장 스타일)
             return Transform.rotate(
-              angle: -0.1, // 비스듬하게 찍힌 도장 느낌
+              angle: -0.1,
               child: Container(
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.red.shade700, width: 1.8),
-                  color: Colors.red.shade50.withOpacity(0.3),
+                  border: Border.all(color: coralRed, width: 2.0),
+                  color: lightBgColor,
                 ),
                 padding: const EdgeInsets.all(2),
                 alignment: Alignment.center,
@@ -215,8 +241,8 @@ Widget buildStampContent() {
                       storeName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.red.shade700,
+                      style: const TextStyle(
+                        color: coralRed,
                         fontWeight: FontWeight.bold,
                         fontSize: 9,
                       ),
@@ -225,7 +251,7 @@ Widget buildStampContent() {
                     Text(
                       dateStr,
                       style: TextStyle(
-                        color: Colors.red.shade700,
+                        color: coralRed.withOpacity(0.85),
                         fontSize: 7.5,
                       ),
                     ),
@@ -234,17 +260,17 @@ Widget buildStampContent() {
               ),
             );
           } else {
-            // 🌟 아직 미수집된 빈 스탬프 슬롯
+            // 미수집된 빈 스탬프 슬롯
             return Container(
               width: 52,
               height: 52,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.grey.shade300, width: 1.2),
-                color: Colors.grey.shade50,
+                border: Border.all(color: cardBorderColor, width: 1.2),
+                color: emptySlotColor,
               ),
               alignment: Alignment.center,
-              child: Icon(Icons.add, size: 18, color: Colors.grey.shade400),
+              child: const Icon(Icons.add, size: 18, color: subTextColor),
             );
           }
         }),
@@ -261,14 +287,14 @@ Widget buildBadgeContent() {
       if (badgeIdsSnapshot.connectionState == ConnectionState.waiting) {
         return const SizedBox(
           height: 52,
-          child: Center(child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2)),
+          child: Center(child: CircularProgressIndicator(color: deepChocolate, strokeWidth: 2)),
         );
       }
 
       final badgeIds = badgeIdsSnapshot.data ?? [];
 
       if (badgeIds.isEmpty) {
-        return const Text('획득한 뱃지가 없습니다.', style: TextStyle(color: Colors.grey, fontSize: 13));
+        return const Text('획득한 뱃지가 없습니다.', style: TextStyle(color: subTextColor, fontSize: 13));
       }
 
       return FutureBuilder<List<Map<String, dynamic>>>(
@@ -277,13 +303,12 @@ Widget buildBadgeContent() {
           if (badgeSnapshot.connectionState == ConnectionState.waiting) {
             return const SizedBox(
               height: 52,
-              child: Center(child: CircularProgressIndicator(color: Colors.black, strokeWidth: 1.5)),
+              child: Center(child: CircularProgressIndicator(color: deepChocolate, strokeWidth: 1.5)),
             );
           }
 
           final badges = badgeSnapshot.data ?? [];
 
-          // 🌟 5개 항목을 공간에 맞춰 균등 배치 (스탬프와 동일한 스타일)
           return Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(5, (index) {
@@ -296,21 +321,20 @@ Widget buildBadgeContent() {
                     badge['imageUrl'],
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) =>
-                    const Icon(Icons.broken_image, color: Colors.grey, size: 30),
+                    const Icon(Icons.broken_image, color: subTextColor, size: 30),
                   ),
                 );
               } else {
-                // 획득한 뱃지가 5개 미만일 때의 빈 슬롯
                 return Container(
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300, width: 1.2),
-                    borderRadius: BorderRadius.circular(8),
-                    color: Colors.grey.shade50,
+                    border: Border.all(color: cardBorderColor, width: 1.2),
+                    borderRadius: BorderRadius.circular(10),
+                    color: emptySlotColor,
                   ),
                   alignment: Alignment.center,
-                  child: Icon(Icons.workspace_premium, size: 20, color: Colors.grey.shade300),
+                  child: const Icon(Icons.workspace_premium, size: 20, color: subTextColor),
                 );
               }
             }),
@@ -342,7 +366,7 @@ Widget buildPointContent(BuildContext context) {
   final String uid = UserData.uid ?? '';
 
   if (uid.isEmpty) {
-    return const Text('로그인 정보가 없습니다.', style: TextStyle(color: Colors.grey, fontSize: 13));
+    return const Text('로그인 정보가 없습니다.', style: TextStyle(color: subTextColor, fontSize: 13));
   }
 
   final numberFormat = NumberFormat('#,###');
@@ -357,31 +381,31 @@ Widget buildPointContent(BuildContext context) {
   Widget buildPointBox(String title, String point) {
     return Expanded(
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        margin: const EdgeInsets.symmetric(horizontal: 3),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(4),
+          color: emptySlotColor,
+          border: Border.all(color: cardBorderColor, width: 1.0),
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
           children: [
-            Text(title, style: const TextStyle(fontSize: 12, color: Colors.black54)),
-            const SizedBox(height: 8),
-            Text(point, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            Text(title, style: const TextStyle(fontSize: 11, color: subTextColor, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 6),
+            Text(point, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: deepChocolate)),
           ],
         ),
       ),
     );
   }
 
-  // 1. 현재 보유 포인트 (users 문서 실시간 읽기)
   return StreamBuilder<DocumentSnapshot>(
     stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
     builder: (context, userSnapshot) {
       if (userSnapshot.connectionState == ConnectionState.waiting) {
         return const SizedBox(
           height: 60,
-          child: Center(child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2)),
+          child: Center(child: CircularProgressIndicator(color: deepChocolate, strokeWidth: 2)),
         );
       }
 
@@ -394,9 +418,8 @@ Widget buildPointContent(BuildContext context) {
         freePoint = parseToNum(userData['freePointBalance']);
       }
 
-      final num totalBalance = paidPoint + freePoint; // 보유 포인트
+      final num totalBalance = paidPoint + freePoint;
 
-      // 2. 누적 충전/사용 포인트 (users_point_transaction 서브 컬렉션 실시간 집계)
       return StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('users')
@@ -404,8 +427,8 @@ Widget buildPointContent(BuildContext context) {
             .collection('users_point_transaction')
             .snapshots(),
         builder: (context, txSnapshot) {
-          num totalChargedPoint = 0; // 누적 충전 포인트 (amount > 0)
-          num totalUsedPoint = 0;    // 누적 사용 포인트 (amount < 0)
+          num totalChargedPoint = 0;
+          num totalUsedPoint = 0;
 
           if (txSnapshot.hasData && txSnapshot.data!.docs.isNotEmpty) {
             for (var doc in txSnapshot.data!.docs) {
@@ -413,10 +436,8 @@ Widget buildPointContent(BuildContext context) {
               final num amount = parseToNum(txData['amount']);
 
               if (amount > 0) {
-                // 유료 결제 + 무상 획득(스탬프/광고) 합산
                 totalChargedPoint += amount;
               } else if (amount < 0) {
-                // 사용 내역 (절대값으로 합산)
                 totalUsedPoint += amount.abs();
               }
             }
@@ -425,9 +446,9 @@ Widget buildPointContent(BuildContext context) {
           return Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              buildPointBox('보유 포인트', '${numberFormat.format(totalBalance)} Point'),
-              buildPointBox('충전 포인트', '${numberFormat.format(totalChargedPoint)} Point'),
-              buildPointBox('사용 포인트', '${numberFormat.format(totalUsedPoint)} Point'),
+              buildPointBox('보유 포인트', '${numberFormat.format(totalBalance)} P'),
+              buildPointBox('충전 포인트', '${numberFormat.format(totalChargedPoint)} P'),
+              buildPointBox('사용 포인트', '${numberFormat.format(totalUsedPoint)} P'),
             ],
           );
         },
@@ -436,7 +457,7 @@ Widget buildPointContent(BuildContext context) {
   );
 }
 
-// 🌟 문의 DB 상태값을 화면용 한글로 변환하는 함수
+// 문의 DB 상태값을 화면용 한글로 변환하는 함수
 String _getInquiryDisplayStatus(String status) {
   switch (status.trim().toLowerCase()) {
     case 'pending':
@@ -460,16 +481,16 @@ Widget buildInquiryContent() {
 
   return StreamBuilder<QuerySnapshot>(
     stream: FirebaseFirestore.instance
-        .collection('inquiry') // 🌟 문의 컬렉션 (단수형)
+        .collection('inquiry')
         .where('userId', isEqualTo: currentUserId)
-        .orderBy('createdAt', descending: true) // 최신순 정렬
-        .limit(2) // 🌟 최근 2건만 가져오기
+        .orderBy('createdAt', descending: true)
+        .limit(2)
         .snapshots(),
     builder: (context, snapshot) {
       if (snapshot.connectionState == ConnectionState.waiting) {
         return const Padding(
           padding: EdgeInsets.symmetric(vertical: 20),
-          child: Center(child: CircularProgressIndicator(color: Colors.black)),
+          child: Center(child: CircularProgressIndicator(color: deepChocolate)),
         );
       }
 
@@ -479,7 +500,7 @@ Widget buildInquiryContent() {
           child: Center(
             child: Text(
               '최근 접수된 문의 내역이 없습니다.',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
+              style: TextStyle(color: subTextColor, fontSize: 13),
             ),
           ),
         );
@@ -490,17 +511,13 @@ Widget buildInquiryContent() {
       return Column(
         children: List.generate(docs.length, (index) {
           final data = docs[index].data() as Map<String, dynamic>;
-          // 문의 문서의 ID 자체가 'INQ-YYYYMMDD-XXXX' 형태이므로 doc.id를 사용합니다.
           final String inquiryId = docs[index].id;
           final String rawStatus = data['status'] ?? 'pending';
 
-          // 🌟 상태값 한글 변환
           final String displayStatus = _getInquiryDisplayStatus(rawStatus);
 
           return Padding(
-            // 마지막 항목은 하단 여백 제거
             padding: EdgeInsets.only(bottom: index == docs.length - 1 ? 0 : 8.0),
-            // 🌟 설계안에 맞춰 텍스트를 '문의번호: INQ-...' 형태로 전달
             child: buildListRow('문의번호: $inquiryId', displayStatus),
           );
         }),
@@ -509,7 +526,7 @@ Widget buildInquiryContent() {
   );
 }
 
-// 🌟 DB 상태값을 화면용 한글로 변환하는 함수 (클래스 내부에 추가)
+// DB 상태값을 화면용 한글로 변환하는 함수
 String _getDisplayStatus(String status) {
   switch (status.trim().toLowerCase()) {
     case 'pending':
@@ -525,7 +542,6 @@ String _getDisplayStatus(String status) {
 
 // 7. 신고 콘텐츠 (실시간 데이터 연동)
 Widget buildReportContent() {
-  // 현재 로그인한 유저 ID 가져오기
   final String currentUserId = AuthService.currentUser?.uid ?? UserData.uid ?? '';
 
   if (currentUserId.isEmpty) {
@@ -536,14 +552,14 @@ Widget buildReportContent() {
     stream: FirebaseFirestore.instance
         .collection('reports')
         .where('userId', isEqualTo: currentUserId)
-        .orderBy('createdAt', descending: true) // 최신순 정렬
-        .limit(2) // 🌟 최근 2건만 가져오기
+        .orderBy('createdAt', descending: true)
+        .limit(2)
         .snapshots(),
     builder: (context, snapshot) {
       if (snapshot.connectionState == ConnectionState.waiting) {
         return const Padding(
           padding: EdgeInsets.symmetric(vertical: 20),
-          child: Center(child: CircularProgressIndicator(color: Colors.black)),
+          child: Center(child: CircularProgressIndicator(color: deepChocolate)),
         );
       }
 
@@ -553,7 +569,7 @@ Widget buildReportContent() {
           child: Center(
             child: Text(
               '최근 접수된 신고 내역이 없습니다.',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
+              style: TextStyle(color: subTextColor, fontSize: 13),
             ),
           ),
         );
@@ -567,13 +583,10 @@ Widget buildReportContent() {
           final String reportId = data['reportId'] ?? docs[index].id;
           final String rawStatus = data['status'] ?? 'pending';
 
-          // 🌟 상태값 한글 변환
           final String displayStatus = _getDisplayStatus(rawStatus);
 
           return Padding(
-            // 마지막 항목은 하단 여백 제거
             padding: EdgeInsets.only(bottom: index == docs.length - 1 ? 0 : 8.0),
-            // 🌟 설계안에 맞춰 텍스트를 '신고번호: REP-...' 형태로 전달
             child: buildListRow('신고번호: $reportId', displayStatus),
           );
         }),

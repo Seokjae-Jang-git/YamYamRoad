@@ -14,6 +14,11 @@ class HomeRecommendedRoadsSection extends StatelessWidget {
     required this.userLng,
   });
 
+  // 브랜드 공식 컬러 상수 정의
+  static const Color coralRed = Color(0xFFFF6B57);
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color subTextColor = Color(0xFF7A6B63);
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -28,7 +33,7 @@ class HomeRecommendedRoadsSection extends StatelessWidget {
                 width: 4,
                 height: 18,
                 decoration: BoxDecoration(
-                  color: Colors.orange[400],
+                  color: coralRed,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -38,7 +43,7 @@ class HomeRecommendedRoadsSection extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: deepChocolate,
                   letterSpacing: -0.3,
                 ),
               ),
@@ -59,7 +64,7 @@ class HomeRecommendedRoadsSection extends StatelessWidget {
               return const SizedBox(
                 height: 220,
                 child: Center(
-                  child: CircularProgressIndicator(color: Colors.orange),
+                  child: CircularProgressIndicator(color: coralRed),
                 ),
               );
             }
@@ -67,7 +72,15 @@ class HomeRecommendedRoadsSection extends StatelessWidget {
             if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
               return const SizedBox(
                 height: 220,
-                child: Center(child: Text('추천 코스 데이터를 불러올 수 없습니다.')),
+                child: Center(
+                  child: Text(
+                    '추천 코스 데이터를 불러올 수 없습니다.',
+                    style: TextStyle(
+                      color: subTextColor,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
               );
             }
 

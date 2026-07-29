@@ -5,6 +5,12 @@ import '../../providers/user_location_provider.dart';
 class LocationBar extends StatelessWidget {
   const LocationBar({super.key});
 
+  // 브랜드 공식 컬러 상수 정의
+  static const Color coralRed = Color(0xFFFF6B57);
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+  static const Color borderColor = Color(0xFFE8E2D9);
+
   @override
   Widget build(BuildContext context) {
     final locationProvider = context.watch<UserLocationProvider>();
@@ -12,10 +18,10 @@ class LocationBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: creamyIvory,
         borderRadius: BorderRadius.circular(12.0),
         border: Border.all(
-          color: Colors.grey[300]!,
+          color: borderColor,
           width: 1.0,
         ),
       ),
@@ -23,7 +29,7 @@ class LocationBar extends StatelessWidget {
         children: [
           const Icon(
             Icons.location_on,
-            color: Colors.redAccent,
+            color: coralRed,
             size: 20,
           ),
           const SizedBox(width: 8),
@@ -32,10 +38,10 @@ class LocationBar extends StatelessWidget {
               locationProvider.isLoading
                   ? '위치 정보를 가져오는 중...'
                   : locationProvider.currentAddress,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey[800],
+                color: deepChocolate,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -58,13 +64,13 @@ class LocationBar extends StatelessWidget {
                 height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.0,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+                  valueColor: AlwaysStoppedAnimation<Color>(coralRed),
                 ),
               )
-                  : Icon(
+                  : const Icon(
                 Icons.refresh,
                 size: 20,
-                color: Colors.grey[600],
+                color: deepChocolate,
               ),
             ),
           ),

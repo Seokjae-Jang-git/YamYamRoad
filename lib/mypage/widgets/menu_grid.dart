@@ -12,6 +12,12 @@ class MenuGrid extends StatelessWidget {
   final VoidCallback openReport;
   final VoidCallback openSetting;
 
+  // YamYamRoad 브랜드 공식 컬러 상수 정의
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color subTextColor = Color(0xFF7A6B63);
+  static const Color cardBorderColor = Color(0xFFEFE8E0);
+  static const Color iconBgColor = Color(0xFFFFF4F2);
+
   const MenuGrid({
     Key? key,
     required this.openDiary,
@@ -67,20 +73,32 @@ class MenuGrid extends StatelessWidget {
               );
             }
           },
+          behavior: HitTestBehavior.opaque,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade400),
-                  borderRadius: BorderRadius.circular(8),
+                  color: iconBgColor,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(item['icon'], color: Colors.grey.shade700),
+                child: Icon(
+                  item['icon'],
+                  color: deepChocolate,
+                  size: 22,
+                ),
               ),
-              const SizedBox(height: 4),
-              Text(label, style: const TextStyle(fontSize: 12)),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: deepChocolate,
+                ),
+              ),
             ],
           ),
         ),
@@ -88,10 +106,18 @@ class MenuGrid extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
+        color: Colors.white,
+        border: Border.all(color: cardBorderColor, width: 1.2),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -99,7 +125,7 @@ class MenuGrid extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: row1Items.map((item) => buildMenuItem(context, item)).toList(),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: row2Items.map((item) => buildMenuItem(context, item)).toList(),

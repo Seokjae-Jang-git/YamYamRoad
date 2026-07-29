@@ -21,6 +21,10 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   int _currentTabIndex = 0;
   bool _checkingWithdrawal = true;
 
+  // 브랜드 컬러 상수 정의
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+  static const Color coralRed = Color(0xFFFF6B57);
+
   @override
   void initState() {
     super.initState();
@@ -105,14 +109,18 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 🌟 탈퇴 체크가 끝나기 전까지는 로딩 화면만 보여줍니다.
+    // 🌟 탈퇴 체크가 끝나기 전까지는 로딩 화면만 보여줍니다. (Creamy Ivory 배경 & Coral Red 로딩)
     if (_checkingWithdrawal) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: Colors.black)),
+        backgroundColor: creamyIvory,
+        body: Center(
+          child: CircularProgressIndicator(color: coralRed),
+        ),
       );
     }
 
     return Scaffold(
+      backgroundColor: creamyIvory,
       body: SafeArea(
         child: _buildBody(),
       ),
