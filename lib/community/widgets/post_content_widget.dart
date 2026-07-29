@@ -3,6 +3,7 @@ import '../../features/emoticon/emoticon_span_builder.dart';
 import '../community_post.dart';
 import '../community_search.dart';
 import 'author_badge_row.dart';
+import 'post_image_carousel.dart'; // 🌟 메인/상세 공용 이미지 캐러셀
 
 class PostContentWidget extends StatelessWidget {
   final CommunityPost post;
@@ -115,12 +116,10 @@ class PostContentWidget extends StatelessWidget {
             }).toList(),
           ),
         ],
+        // 🌟 메인 피드와 동일하게, 여러 장이면 좌우로 넘겨볼 수 있는 캐러셀로 표시
         if (post.imageUrls.isNotEmpty) ...[
           const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.network(post.imageUrls.first, fit: BoxFit.cover),
-          ),
+          PostImageCarousel(imageUrls: post.imageUrls),
         ],
         const SizedBox(height: 16),
         Row(

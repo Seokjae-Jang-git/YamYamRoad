@@ -5,8 +5,11 @@ import 'community_post.dart';
 import 'community_write.dart';
 import 'community_detail.dart';
 import 'community_search.dart';
+import 'widgets/post_image_carousel.dart'; // 🌟 메인/상세 공용 이미지 캐러셀
 
 enum SortOption { latest, likes, comments, scrap }
+// 🌟 좋아요순/스크랩순일 때만 의미가 있는 기간 필터. 최신순/댓글순은 항상 all 취급합니다.
+enum SortPeriod { all, daily, weekly }
 
 class CommunityMainScreen extends StatefulWidget {
   const CommunityMainScreen({Key? key}) : super(key: key);
@@ -17,6 +20,59 @@ class CommunityMainScreen extends StatefulWidget {
 
 class _CommunityMainScreenState extends State<CommunityMainScreen> {
   SortOption _sortOption = SortOption.latest;
+  SortPeriod _sortPeriod = SortPeriod.all;
+  final ScrollController _scrollController = ScrollController(); // 🌟 얌얌북 탭 시 맨 위로 스크롤하기 위한 컨트롤러
+
+  // 🌟 일간/주간 정렬은 실시간 스트림이 아니라 필요할 때 다시 계산하는 Future로 관리합니다.
+  late Future<List<CommunityPost>> _postsFuture;
+
+  // 🌟 누적 카운트 기준 상위 몇 개까지를 "최근 인기글" 후보로 볼지. 이 풀 밖의 글은
+  // 최근에 좋아요/스크랩이 아무리 몰려도 후보에 들지 못하는 한계가 있습니다.
+  static const int _candidatePoolSize = 100;
+
+  @override
+  void initState() {
+    super.initState();
+    _postsFuture = _fetchRankedPosts();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose(); // 🌟 여기(메인 화면 State)에서 해제
+    super.dispose();
+  }
+
+  // 🌟 AppBar 타이틀 '얌얌북'을 누르면 리스트 맨 위로 스크롤
+  void _scrollToTop() {
+    if (!_scrollController.hasClients) return;
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _refetch() {
+    setState(() {
+      _postsFuture = _fetchRankedPosts();
+    });
+  }
+
+  void _changeSortOption(SortOption option) {
+    setState(() {
+      _sortOption = option;
+      // 최신순/댓글순으로 바꾸면 기간 필터는 의미가 없으니 초기화
+      if (option != SortOption.likes && option != SortOption.scrap) {
+        _sortPeriod = SortPeriod.all;
+      }
+    });
+    _refetch();
+  }
+
+  void _changeSortPeriod(SortPeriod period) {
+    setState(() => _sortPeriod = period);
+    _refetch();
+  }
 
   String get _sortField {
     switch (_sortOption) {
@@ -37,20 +93,76 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
         .orderBy(_sortField, descending: true);
   }
 
-  void _openWriteScreen() {
-    Navigator.push(
+  // 🌟 실제 정렬 로직.
+  // - 전체 기간(all) 또는 좋아요/스크랩이 아닌 정렬: 기존처럼 누적 카운트/최신순 그대로
+  // - 좋아요/스크랩 + 일간/주간: 누적 상위 후보 풀을 뽑고, 각 글마다 서브컬렉션에
+  //   count() 집계 쿼리를 날려 "최근 기간 내" 개수만 센 뒤 그 값으로 다시 정렬
+  Future<List<CommunityPost>> _fetchRankedPosts() async {
+    final bool isPeriodApplicable =
+        _sortOption == SortOption.likes || _sortOption == SortOption.scrap;
+
+    if (_sortPeriod == SortPeriod.all || !isPeriodApplicable) {
+      final snap = await _buildQuery().get();
+      return snap.docs.map((d) => CommunityPost.fromFirestore(d)).toList();
+    }
+
+    final String subcollection = _sortOption == SortOption.likes ? 'post_like' : 'post_scrap';
+    final String timestampField = _sortOption == SortOption.likes ? 'likedAt' : 'scrappedAt';
+
+    // 1단계: 누적 카운트 기준 상위 N개를 후보로 확보
+    final candidateSnap = await FirebaseFirestore.instance
+        .collection('posts')
+        .orderBy(_sortField, descending: true)
+        .limit(_candidatePoolSize)
+        .get();
+
+    final posts = candidateSnap.docs.map((d) => CommunityPost.fromFirestore(d)).toList();
+    if (posts.isEmpty) return posts;
+
+    final cutoff = Timestamp.fromDate(
+      DateTime.now().subtract(
+        _sortPeriod == SortPeriod.daily ? const Duration(hours: 24) : const Duration(days: 7),
+      ),
+    );
+
+    // 2단계: 각 후보마다 "최근 기간 내" 개수만 count() 집계로 조회 (병렬 실행)
+    final recentCounts = await Future.wait(posts.map((post) async {
+      final agg = await FirebaseFirestore.instance
+          .collection('posts')
+          .doc(post.id)
+          .collection(subcollection)
+          .where(timestampField, isGreaterThanOrEqualTo: cutoff)
+          .count()
+          .get();
+      return agg.count ?? 0;
+    }));
+
+    // 3단계: 최근 기간 내 개수 기준으로 재정렬
+    final indexed = List.generate(posts.length, (i) => MapEntry(posts[i], recentCounts[i]));
+    indexed.sort((a, b) => b.value.compareTo(a.value));
+
+    return indexed.map((e) => e.key).toList();
+  }
+
+  // 🌟 새 글 작성 후 돌아오면 목록을 다시 계산해서 새로고침 없이 바로 반영합니다.
+  Future<void> _openWriteScreen() async {
+    await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const CommunityWriteScreen()),
     );
+    _refetch();
   }
 
-  void _openDetail(CommunityPost post) {
-    Navigator.push(
+  // 🌟 상세 페이지에서 수정/삭제/좋아요 등 무엇을 했든, 돌아오면 목록을 다시 계산해서
+  // 새로고침 없이도 바로 반영되게 합니다.
+  Future<void> _openDetail(CommunityPost post) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CommunityDetailScreen(postId: post.id),
       ),
     );
+    _refetch();
   }
 
   void _openSearch() {
@@ -60,13 +172,24 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
     );
   }
 
+  // 🌟 피드 카드에서 태그를 누르면 그 태그로 검색된 결과 화면으로 이동
+  void _openTagSearch(String tag) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => CommunitySearchScreen(initialQuery: '#$tag')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('얌얌북',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: GestureDetector(
+          onTap: _scrollToTop,
+          child: const Text('얌얌북',
+              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
@@ -92,26 +215,48 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
   }
 
   Widget _buildSortRow() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          _sortTabButton('최신순', SortOption.latest),
-          const SizedBox(width: 8),
-          _sortTabButton('좋아요순', SortOption.likes),
-          const SizedBox(width: 8),
-          _sortTabButton('댓글순', SortOption.comments),
-          const SizedBox(width: 8),
-          _sortTabButton('스크랩순', SortOption.scrap),
-        ],
-      ),
+    final bool showPeriodRow =
+        _sortOption == SortOption.likes || _sortOption == SortOption.scrap;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              _sortTabButton('최신순', SortOption.latest),
+              const SizedBox(width: 8),
+              _sortTabButton('좋아요순', SortOption.likes),
+              const SizedBox(width: 8),
+              _sortTabButton('댓글순', SortOption.comments),
+              const SizedBox(width: 8),
+              _sortTabButton('스크랩순', SortOption.scrap),
+            ],
+          ),
+        ),
+        // 🌟 좋아요순/스크랩순 선택 시에만 전체/일간/주간 기간 필터 노출
+        if (showPeriodRow)
+          Padding(
+            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+            child: Row(
+              children: [
+                _periodChip('전체', SortPeriod.all),
+                const SizedBox(width: 6),
+                _periodChip('일간', SortPeriod.daily),
+                const SizedBox(width: 6),
+                _periodChip('주간', SortPeriod.weekly),
+              ],
+            ),
+          ),
+      ],
     );
   }
 
   Widget _sortTabButton(String label, SortOption option) {
     final bool selected = _sortOption == option;
     return GestureDetector(
-      onTap: () => setState(() => _sortOption = option),
+      onTap: () => _changeSortOption(option),
       child: Text(
         label,
         style: TextStyle(
@@ -123,9 +268,31 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
     );
   }
 
+  Widget _periodChip(String label, SortPeriod period) {
+    final bool selected = _sortPeriod == period;
+    return GestureDetector(
+      onTap: () => _changeSortPeriod(period),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFFF8A3D) : const Color(0xFFF5F5F5),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : Colors.grey.shade700,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPostList() {
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: _buildQuery().snapshots(),
+    return FutureBuilder<List<CommunityPost>>(
+      future: _postsFuture,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return const Center(
@@ -143,8 +310,7 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
           return const Center(child: CircularProgressIndicator(color: Colors.black));
         }
 
-        final docs = snapshot.data!.docs;
-        final posts = docs.map((d) => CommunityPost.fromFirestore(d)).toList();
+        final posts = snapshot.data!;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,11 +323,16 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
             Expanded(
               child: posts.isEmpty
                   ? const Center(child: Text('아직 등록된 글이 없어요.'))
-                  : ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                itemCount: posts.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 16),
-                itemBuilder: (context, index) => _buildPostCard(posts[index]),
+                  : RefreshIndicator(
+                // 🌟 실시간 스트림이 아니라 Future 기반이라, 당겨서 새로고침으로 최신 값을 다시 계산합니다.
+                onRefresh: () async => _refetch(),
+                child: ListView.separated(
+                  controller: _scrollController, // 🌟 여기(메인 화면 리스트)에 연결
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  itemCount: posts.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 16),
+                  itemBuilder: (context, index) => _buildPostCard(posts[index]),
+                ),
               ),
             ),
           ],
@@ -192,9 +363,30 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
               emojiSize: 16,
               style: const TextStyle(fontSize: 13, height: 1.4, color: Colors.black),
             ),
+            // 🌟 태그 표시 - 상세 페이지와 동일하게, 누르면 해당 태그로 검색 화면 이동
+            if (post.tags.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: post.tags.map((tag) {
+                  return GestureDetector(
+                    onTap: () => _openTagSearch(tag),
+                    child: Text(
+                      '#$tag',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFFFF8A3D),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
             if (post.imageUrls.isNotEmpty) ...[
               const SizedBox(height: 10),
-              _PostImageCarousel(imageUrls: post.imageUrls),
+              PostImageCarousel(imageUrls: post.imageUrls),
             ],
             const SizedBox(height: 10),
             Text(
@@ -523,66 +715,5 @@ class _PostHeaderWithBadges extends StatelessWidget {
     if (diff.inHours < 24) return '${diff.inHours}시간 전';
     if (diff.inDays < 7) return '${diff.inDays}일 전';
     return '${time.month}/${time.day}';
-  }
-}
-
-class _PostImageCarousel extends StatefulWidget {
-  final List<String> imageUrls;
-  const _PostImageCarousel({required this.imageUrls});
-
-  @override
-  State<_PostImageCarousel> createState() => _PostImageCarouselState();
-}
-
-class _PostImageCarouselState extends State<_PostImageCarousel> {
-  final _controller = PageController();
-  int _index = 0;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: SizedBox(
-            height: 220,
-            child: PageView.builder(
-              controller: _controller,
-              itemCount: widget.imageUrls.length,
-              onPageChanged: (i) => setState(() => _index = i),
-              itemBuilder: (context, i) => Image.network(
-                widget.imageUrls[i],
-                fit: BoxFit.cover,
-                width: double.infinity,
-              ),
-            ),
-          ),
-        ),
-        if (widget.imageUrls.length > 1) ...[
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(widget.imageUrls.length, (i) {
-              final active = i == _index;
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-                width: active ? 6 : 5,
-                height: active ? 6 : 5,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: active ? const Color(0xFFFF8A3D) : Colors.grey.shade300,
-                ),
-              );
-            }),
-          ),
-        ],
-      ],
-    );
   }
 }

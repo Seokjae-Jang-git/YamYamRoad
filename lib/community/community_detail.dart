@@ -34,6 +34,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
 
   CommunityComment? _replyTarget;
   bool _showEmoticonPicker = false;
+  bool _isDeleting = false; // 🌟 삭제 진행 중에는 화면을 오버레이로 가려서 중간 과정이 안 보이게 함
 
   @override
   void dispose() {
@@ -59,12 +60,56 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     );
 
     if (confirmed == true) {
+      setState(() => _isDeleting = true); // 🌟 즉시 오버레이를 띄워서 이후 과정을 가림
       try {
-        await FirebaseFirestore.instance.collection('posts').doc(widget.postId).delete();
+        await _deletePostWithSubcollections(widget.postId);
         if (mounted) Navigator.pop(context);
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('삭제에 실패했어요.')));
+        if (mounted) {
+          setState(() => _isDeleting = false);
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('삭제에 실패했어요.')));
+        }
       }
+    }
+  }
+
+  // 🌟 Firestore는 부모 문서를 지워도 서브컬렉션(comments, post_like, post_scrap 등)이
+  // 자동으로 같이 삭제되지 않아서, 고아 데이터가 남지 않도록 직접 순회하며 지워줍니다.
+  // (comments 밑의 comment_like까지 2단계로 들어가야 합니다.)
+  Future<void> _deletePostWithSubcollections(String postId) async {
+    final postRef = FirebaseFirestore.instance.collection('posts').doc(postId);
+
+    // 1. 댓글들 + 각 댓글의 comment_like 삭제
+    final commentsSnap = await postRef.collection('comments').get();
+    for (final commentDoc in commentsSnap.docs) {
+      await _deleteAllDocsInSubcollection(commentDoc.reference, 'comment_like');
+    }
+    await _deleteAllDocs(commentsSnap.docs.map((d) => d.reference).toList());
+
+    // 2. 게시글 좋아요/스크랩 서브컬렉션 삭제
+    await _deleteAllDocsInSubcollection(postRef, 'post_like');
+    await _deleteAllDocsInSubcollection(postRef, 'post_scrap');
+
+    // 3. 마지막으로 게시글 본문 삭제
+    await postRef.delete();
+  }
+
+  // 🌟 특정 서브컬렉션의 모든 문서를 조회해서 배치로 삭제
+  Future<void> _deleteAllDocsInSubcollection(DocumentReference parentRef, String subcollectionName) async {
+    final snap = await parentRef.collection(subcollectionName).get();
+    await _deleteAllDocs(snap.docs.map((d) => d.reference).toList());
+  }
+
+  // 🌟 문서 참조 리스트를 배치(최대 500개 단위)로 삭제 (Firestore 배치 쓰기 제한 대응)
+  Future<void> _deleteAllDocs(List<DocumentReference> refs) async {
+    const chunkSize = 400; // 여유 있게 400개씩
+    for (var i = 0; i < refs.length; i += chunkSize) {
+      final chunk = refs.sublist(i, i + chunkSize > refs.length ? refs.length : i + chunkSize);
+      final batch = FirebaseFirestore.instance.batch();
+      for (final ref in chunk) {
+        batch.delete(ref);
+      }
+      await batch.commit();
     }
   }
 
@@ -204,72 +249,53 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
         .update({'reportCount': FieldValue.increment(1)}),
   );
 
+  // 🌟 게시글 좋아요 (post_like 서브컬렉션 + 트랜잭션, 인당 1번 제한 자동 보장)
   Future<void> _toggleLike(CommunityPost post) async {
-    final ref = FirebaseFirestore.instance.collection('posts').doc(post.id);
-    final liked = post.likedBy.contains(_currentUserId);
-    await ref.update({
-      'likedBy': liked ? FieldValue.arrayRemove([_currentUserId]) : FieldValue.arrayUnion([_currentUserId]),
-      'likeCount': FieldValue.increment(liked ? -1 : 1),
-    });
-  }
-
-  Future<void> _toggleScrap(CommunityPost post) async {
-    final db = FirebaseFirestore.instance;
-
-    // 1. 참조할 문서 경로 정의
-    final postRef = db.collection('posts').doc(post.id);
-    final postScrapRef = postRef.collection('post_scrap').doc(_currentUserId);
-    final userMyScrapRef = db.collection('users').doc(_currentUserId).collection('users_myscrap').doc(post.id);
-
-    final scrapped = post.scrappedBy.contains(_currentUserId);
-
-    // 🌟 일괄 처리(Batch)를 사용하여 중간에 실패하더라도 데이터 무결성 유지
-    final batch = db.batch();
-
-    if (scrapped) {
-      // ❌ 스크랩 취소 시: 3곳의 데이터 일괄 삭제 및 감소
-      batch.update(postRef, {
-        'scrappedBy': FieldValue.arrayRemove([_currentUserId]),
-        'scrapCount': FieldValue.increment(-1),
-      });
-      batch.delete(postScrapRef);
-      batch.delete(userMyScrapRef);
-    } else {
-      // ⭕️ 스크랩 추가 시: 3곳의 데이터 일괄 생성 및 증가
-      batch.update(postRef, {
-        'scrappedBy': FieldValue.arrayUnion([_currentUserId]),
-        'scrapCount': FieldValue.increment(1),
-      });
-
-      // post 컬렉션의 하위 컬렉션 (문서 ID: 스크랩한 사용자 ID)
-      batch.set(postScrapRef, {
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      // users 컬렉션의 하위 컬렉션 (문서 ID: 피드 ID)
-      batch.set(userMyScrapRef, {
-        'postAuthorId': post.userId,
-        'scrapedAt': FieldValue.serverTimestamp(),
-      });
-    }
+    final postRef = FirebaseFirestore.instance.collection('posts').doc(post.id);
+    final likeRef = postRef.collection('post_like').doc(_currentUserId);
 
     try {
-      await batch.commit(); // Batch 실행
+      await FirebaseFirestore.instance.runTransaction((tx) async {
+        final likeSnap = await tx.get(likeRef);
+        if (likeSnap.exists) {
+          tx.delete(likeRef);
+          tx.update(postRef, {'likeCount': FieldValue.increment(-1)});
+        } else {
+          tx.set(likeRef, {'likedAt': FieldValue.serverTimestamp()});
+          tx.update(postRef, {'likeCount': FieldValue.increment(1)});
+        }
+      });
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('스크랩 처리 중 문제가 발생했습니다.')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('처리에 실패했어요.')));
+    }
+  }
+
+  // 🌟 게시글 스크랩 (post_scrap 서브컬렉션 + 트랜잭션)
+  Future<void> _toggleScrap(CommunityPost post) async {
+    final postRef = FirebaseFirestore.instance.collection('posts').doc(post.id);
+    final scrapRef = postRef.collection('post_scrap').doc(_currentUserId);
+
+    try {
+      await FirebaseFirestore.instance.runTransaction((tx) async {
+        final scrapSnap = await tx.get(scrapRef);
+        if (scrapSnap.exists) {
+          tx.delete(scrapRef);
+          tx.update(postRef, {'scrapCount': FieldValue.increment(-1)});
+        } else {
+          tx.set(scrapRef, {'scrappedAt': FieldValue.serverTimestamp()});
+          tx.update(postRef, {'scrapCount': FieldValue.increment(1)});
+        }
+      });
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('처리에 실패했어요.')));
     }
   }
 
   // 🌟 댓글 좋아요
-  // 🌟 댓글 좋아요
   Future<void> _handleCommentLike(CommunityComment comment) async {
-    final uid = _currentUserId; // ✅ currentUserId → _currentUserId
+    final uid = _currentUserId;
     final commentRef = FirebaseFirestore.instance
-        .collection('posts').doc(widget.postId)   // ✅ postId → widget.postId
+        .collection('posts').doc(widget.postId)
         .collection('comments').doc(comment.id);
     final likeRef = commentRef.collection('comment_like').doc(uid);
 
@@ -392,67 +418,114 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
         iconTheme: const IconThemeData(color: Colors.black),
         title: const Text('얌얌북', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
       ),
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance.collection('posts').doc(widget.postId).snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator(color: Colors.black));
-          if (!snapshot.data!.exists) return const Center(child: Text('삭제되었거나 존재하지 않는 글이에요.'));
+      // 🌟 1단계: 게시글 문서 자체를 구독 (여기서 post 변수가 만들어집니다)
+      body: Stack(
+        children: [
+          StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance.collection('posts').doc(widget.postId).snapshots(),
+            builder: (context, postSnapshot) {
+              if (!postSnapshot.hasData) {
+                return const Center(child: CircularProgressIndicator(color: Colors.black));
+              }
+              if (!postSnapshot.data!.exists) {
+                return const Center(child: Text('삭제되었거나 존재하지 않는 글이에요.'));
+              }
 
-          final post = CommunityPost.fromFirestore(snapshot.data!);
+              final post = CommunityPost.fromFirestore(postSnapshot.data!);
 
-          return Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 🌟 분리된 위젯 1: 게시글 본문 영역
-                      PostContentWidget(
-                        post: post,
-                        currentUserId: _currentUserId,
-                        isMine: post.userId == _currentUserId,
-                        isLiked: post.likedBy.contains(_currentUserId),
-                        isScrapped: post.scrappedBy.contains(_currentUserId),
-                        onEdit: () => _editPost(post),
-                        onDelete: _deletePost,
-                        onReport: _reportPost,
-                        onLikeToggle: () => _toggleLike(post),
-                        onScrapToggle: () => _toggleScrap(post),
-                      ),
-                      const Divider(height: 32),
-                      // 🌟 분리된 위젯 2: 댓글 리스트 영역
-                      CommentListWidget(
-                        postId: widget.postId,
-                        currentUserId: _currentUserId,
-                        onStartReply: _startReply,
-                        onDeleteComment: _deleteComment,
-                        onLikeToggle: _handleCommentLike,
-                        onReport: _reportComment,
-                        onEditSubmit: _editComment,
-                      ),
-                    ],
-                  ),
+              // 🌟 2단계: 내가 이 글에 좋아요를 눌렀는지 구독
+              return StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('posts').doc(widget.postId)
+                    .collection('post_like').doc(_currentUserId)
+                    .snapshots(),
+                builder: (context, likeSnap) {
+                  final isLiked = likeSnap.data?.exists ?? false;
+
+                  // 🌟 3단계: 내가 이 글을 스크랩했는지 구독
+                  return StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('posts').doc(widget.postId)
+                        .collection('post_scrap').doc(_currentUserId)
+                        .snapshots(),
+                    builder: (context, scrapSnap) {
+                      final isScrapped = scrapSnap.data?.exists ?? false;
+
+                      return Column(
+                        children: [
+                          Expanded(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // 🌟 분리된 위젯 1: 게시글 본문 영역
+                                  PostContentWidget(
+                                    post: post,
+                                    currentUserId: _currentUserId,
+                                    isMine: post.userId == _currentUserId,
+                                    isLiked: isLiked,
+                                    isScrapped: isScrapped,
+                                    onEdit: () => _editPost(post),
+                                    onDelete: _deletePost,
+                                    onReport: _reportPost,
+                                    onLikeToggle: () => _toggleLike(post),
+                                    onScrapToggle: () => _toggleScrap(post),
+                                  ),
+                                  const Divider(height: 32),
+                                  // 🌟 분리된 위젯 2: 댓글 리스트 영역
+                                  CommentListWidget(
+                                    postId: widget.postId,
+                                    currentUserId: _currentUserId,
+                                    onStartReply: _startReply,
+                                    onDeleteComment: _deleteComment,
+                                    onLikeToggle: _handleCommentLike,
+                                    onReport: _reportComment,
+                                    onEditSubmit: _editComment,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          // 🌟 분리된 위젯 3: 댓글 입력창 영역
+                          CommentInputWidget(
+                            controller: _commentController,
+                            focusNode: _commentFocusNode,
+                            replyTarget: _replyTarget,
+                            showEmoticonPicker: _showEmoticonPicker,
+                            currentUserId: _currentUserId,
+                            onCancelReply: () => setState(() => _replyTarget = null),
+                            onToggleEmoticon: _toggleEmoticonPicker,
+                            onFieldTap: () {
+                              if (_showEmoticonPicker) setState(() => _showEmoticonPicker = false);
+                            },
+                            onSubmit: _submitComment,
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
+          // 🌟 삭제 진행 중일 때만 표시되는 불투명 오버레이 - 댓글/좋아요가
+          // 하나씩 사라지는 중간 과정을 사용자에게 보여주지 않기 위함
+          if (_isDeleting)
+            Container(
+              color: Colors.white,
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Color(0xFFFF8A3D)),
+                    SizedBox(height: 12),
+                    Text('삭제 중입니다...', style: TextStyle(color: Colors.black87, fontSize: 13)),
+                  ],
                 ),
               ),
-              // 🌟 분리된 위젯 3: 댓글 입력창 영역
-              CommentInputWidget(
-                controller: _commentController,
-                focusNode: _commentFocusNode,
-                replyTarget: _replyTarget,
-                showEmoticonPicker: _showEmoticonPicker,
-                currentUserId: _currentUserId,
-                onCancelReply: () => setState(() => _replyTarget = null),
-                onToggleEmoticon: _toggleEmoticonPicker,
-                onFieldTap: () {
-                  if (_showEmoticonPicker) setState(() => _showEmoticonPicker = false);
-                },
-                onSubmit: _submitComment,
-              ),
-            ],
-          );
-        },
+            ),
+        ],
       ),
     );
   }
