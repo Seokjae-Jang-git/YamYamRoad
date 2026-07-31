@@ -10,9 +10,9 @@ class CommentListWidget extends StatelessWidget {
   final String currentUserId;
   final Function(CommunityComment) onStartReply;
   final Function(CommunityComment) onDeleteComment;
-  final Function(CommunityComment) onLikeToggle;    // 🌟 추가
-  final Function(CommunityComment) onReport;        // 🌟 추가
-  final Function(CommunityComment, String) onEditSubmit; // 🌟 추가 - (댓글, 수정된 내용)
+  final Function(CommunityComment) onLikeToggle;
+  final Function(CommunityComment) onReport;
+  final Function(CommunityComment, String) onEditSubmit;
 
   const CommentListWidget({
     Key? key,
@@ -91,8 +91,8 @@ class CommentListWidget extends StatelessWidget {
           CircleAvatar(
             radius: isReply ? 14 : 16,
             backgroundColor: const Color(0xFFF5F5F5),
-            backgroundImage: comment.authorProfileImage != null ? NetworkImage(comment.authorProfileImage!) : null,
-            child: comment.authorProfileImage == null
+            backgroundImage: comment.profileImage != null ? NetworkImage(comment.profileImage!) : null,
+            child: comment.profileImage == null
                 ? Icon(Icons.person_outline, size: isReply ? 14 : 16, color: Colors.grey)
                 : null,
           ),
@@ -103,7 +103,7 @@ class CommentListWidget extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(comment.authorNickname, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    Text(comment.nickname, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(width: 6),
                     if (comment.createdAt != null)
                       Text(_formatTime(comment.createdAt!), style: const TextStyle(fontSize: 11, color: Colors.grey)),

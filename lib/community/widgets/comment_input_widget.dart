@@ -46,7 +46,7 @@ class CommentInputWidget extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Row(
                   children: [
-                    Text('${replyTarget!.authorNickname}님에게 답글 남기는 중',
+                    Text('${replyTarget!.nickname}님에게 답글 남기는 중',
                         style: const TextStyle(fontSize: 12, color: Color(0xFFFF8A3D))),
                     const Spacer(),
                     GestureDetector(

@@ -62,7 +62,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     if (confirmed == true) {
       setState(() => _isDeleting = true); // 🌟 즉시 오버레이를 띄워서 이후 과정을 가림
       try {
-        await _deletePostWithSubcollections(widget.postId);
+        await _softDeletePost(widget.postId);
         if (mounted) Navigator.pop(context);
       } catch (e) {
         if (mounted) {
@@ -73,28 +73,19 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     }
   }
 
-  // 🌟 Firestore는 부모 문서를 지워도 서브컬렉션(comments, post_like, post_scrap 등)이
-  // 자동으로 같이 삭제되지 않아서, 고아 데이터가 남지 않도록 직접 순회하며 지워줍니다.
-  // (comments 밑의 comment_like까지 2단계로 들어가야 합니다.)
-  Future<void> _deletePostWithSubcollections(String postId) async {
+  // 🌟 실제 문서/서브컬렉션(comments, post_like, post_scrap 등)은 그대로 두고
+  // status만 'deleted'로 바꾸는 소프트 삭제. 하드 삭제가 필요해질 경우를 대비해
+  // 아래에 배치 삭제 유틸(_deleteAllDocsInSubcollection, _deleteAllDocs)은 남겨둠.
+  Future<void> _softDeletePost(String postId) async {
     final postRef = FirebaseFirestore.instance.collection('posts').doc(postId);
 
-    // 1. 댓글들 + 각 댓글의 comment_like 삭제
-    final commentsSnap = await postRef.collection('comments').get();
-    for (final commentDoc in commentsSnap.docs) {
-      await _deleteAllDocsInSubcollection(commentDoc.reference, 'comment_like');
-    }
-    await _deleteAllDocs(commentsSnap.docs.map((d) => d.reference).toList());
-
-    // 2. 게시글 좋아요/스크랩 서브컬렉션 삭제
-    await _deleteAllDocsInSubcollection(postRef, 'post_like');
-    await _deleteAllDocsInSubcollection(postRef, 'post_scrap');
-
-    // 3. 마지막으로 게시글 본문 삭제
-    await postRef.delete();
+    await postRef.update({
+      'status': 'deleted',
+      'deletedAt': FieldValue.serverTimestamp(),
+    });
   }
 
-  // 🌟 특정 서브컬렉션의 모든 문서를 조회해서 배치로 삭제
+  // 🌟 특정 서브컬렉션의 모든 문서를 조회해서 배치로 삭제 (하드 삭제가 다시 필요할 때 사용)
   Future<void> _deleteAllDocsInSubcollection(DocumentReference parentRef, String subcollectionName) async {
     final snap = await parentRef.collection(subcollectionName).get();
     await _deleteAllDocs(snap.docs.map((d) => d.reference).toList());
@@ -343,11 +334,11 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     final comment = CommunityComment(
       id: '',
       userId: _currentUserId,
-      authorNickname: _currentUserNickname,
-      authorProfileImage: UserData.profileImagePath,
+      nickname: _currentUserNickname,
+      profileImage: UserData.profileImagePath,
       content: text,
       parentId: _replyTarget?.parentId ?? _replyTarget?.id,
-      replyToNickname: _replyTarget?.authorNickname,
+      replyToNickname: _replyTarget?.nickname,
     );
 
     try {
@@ -433,6 +424,11 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
 
               final post = CommunityPost.fromFirestore(postSnapshot.data!);
 
+              // 🌟 소프트 삭제된 글이면(status == 'deleted') 상세 화면에서도 접근 불가 처리
+              if (post.status == 'deleted') {
+                return const Center(child: Text('삭제되었거나 존재하지 않는 글이에요.'));
+              }
+
               // 🌟 2단계: 내가 이 글에 좋아요를 눌렀는지 구독
               return StreamBuilder<DocumentSnapshot>(
                 stream: FirebaseFirestore.instance
@@ -509,8 +505,8 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
               );
             },
           ),
-          // 🌟 삭제 진행 중일 때만 표시되는 불투명 오버레이 - 댓글/좋아요가
-          // 하나씩 사라지는 중간 과정을 사용자에게 보여주지 않기 위함
+          // 🌟 삭제 진행 중일 때만 표시되는 불투명 오버레이 - 상태 변경 요청 중
+          // 화면이 깜빡이는 것을 방지하기 위함
           if (_isDeleting)
             Container(
               color: Colors.white,
