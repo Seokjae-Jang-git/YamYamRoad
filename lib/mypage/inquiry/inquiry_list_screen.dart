@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
-// 🌟 서비스 및 공통 유저 데이터 (프로젝트 경로에 맞게 자동 임포트/확인해주세요)
+// 🌟 서비스 및 공통 유저 데이터
 import '../../services/auth_service.dart';
 import '../../common/user_data.dart';
 
@@ -21,8 +21,8 @@ class InquiryListScreen extends StatefulWidget {
 class _InquiryListScreenState extends State<InquiryListScreen> {
   String get _currentUserId => AuthService.currentUser?.uid ?? UserData.uid ?? 'unknown_uid';
 
-  // 필터 및 정렬 상태
-  String _selectedStatusFilter = 'ALL'; // ALL / pending / answered
+  // 🌟 필터 상태값: ALL / pending / answered / cancelled / closed
+  String _selectedStatusFilter = 'ALL';
   String _selectedSortType = 'CREATED_DESC'; // CREATED_DESC / ANSWERED_DESC
 
   @override
@@ -52,7 +52,6 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
         ),
       ),
-      // 설계안 기준: 둥근 흰색 + 플러스 버튼
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.white,
         shape: CircleBorder(side: BorderSide(color: Colors.grey.shade300)),
@@ -66,24 +65,37 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
       ),
       body: Column(
         children: [
-          // 상단 필터 및 정렬 영역
+          // 🌟 상단 필터 및 정렬 영역 (가로 스크롤 적용 완료)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // 좌측: 상태 필터 (전체 / 답변 대기 / 답변 완료)
-                Row(
-                  children: [
-                    _filterChip('전체', 'ALL'),
-                    const SizedBox(width: 6),
-                    _filterChip('답변 대기', 'pending'),
-                    const SizedBox(width: 6),
-                    _filterChip('답변 완료', 'answered'),
-                  ],
+                // 좌측: 상태 필터 (스크롤 영역)
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    // 우측 패딩을 빼고 바깥쪽에 간격을 줍니다.
+                    child: Row(
+                      children: [
+                        _filterChip('전체', 'ALL'),
+                        const SizedBox(width: 6),
+                        _filterChip('답변 대기', 'pending'),
+                        const SizedBox(width: 6),
+                        _filterChip('답변 완료', 'answered'),
+                        const SizedBox(width: 6),
+                        _filterChip('문의 취소', 'cancelled'),
+                        const SizedBox(width: 6),
+                        _filterChip('문의 종료', 'closed'),
+                      ],
+                    ),
+                  ),
                 ),
 
-                // 우측: 정렬 드롭다운
+                // 🌟 핵심 수정 포인트: 필터 스크롤 영역과 정렬 버튼 사이에 확실한 여백(간격) 추가
+                const SizedBox(width: 12),
+
+                // 우측: 정렬 드롭다운 (고정 영역)
                 _buildSortDropdown(),
               ],
             ),
@@ -153,7 +165,7 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
     );
   }
 
-  // 정렬 드롭다운 (문의 최신순 / 답변 최신순)
+  // 정렬 드롭다운
   Widget _buildSortDropdown() {
     String displayLabel = _selectedSortType == 'CREATED_DESC' ? '문의 최신순' : '답변 최신순';
 
@@ -195,15 +207,25 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
     );
   }
 
-  // 날짜 포맷팅 (설계안: 2026.07.27. 15:59)
   String _formatDate(DateTime? date) {
     if (date == null) return '-';
     return DateFormat('yyyy.MM.dd. HH:mm').format(date);
   }
 
-  // 설계안 2열 카드 레이아웃
-  // 🌟 설계안에 맞춘 최종 카드 레이아웃
+  // 🌟 문의 카드 렌더링
   Widget _buildInquiryCard(InquiryModel r) {
+    // 💡 status 문자열을 한글 표시용 라벨로 변환 (closed 추가)
+    String statusLabel = r.displayStatus;
+    if (r.status == 'cancelled') {
+      statusLabel = '문의 취소';
+    } else if (r.status == 'pending') {
+      statusLabel = '답변 대기';
+    } else if (r.status == 'answered') {
+      statusLabel = '답변 완료';
+    } else if (r.status == 'closed') {
+      statusLabel = '문의 종료'; // 🌟 새로 추가된 상태
+    }
+
     return GestureDetector(
       onTap: () {
         Navigator.of(context).push(
@@ -227,14 +249,14 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
               rightLabel: '문의유형', rightValue: r.displayType,
             ),
 
-            // 2. 문의일시 / 상태
+            // 2. 문의일시 / 상태 (statusLabel 전달)
             _twoItemRow(
               leftLabel: '문의일시', leftValue: _formatDate(r.createdAt),
-              rightLabel: '상태', rightValue: r.displayStatus,
+              rightLabel: '상태', rightValue: statusLabel,
               isRightHighlight: true,
             ),
 
-            // 3. 답변일시 (답변이 있는 경우만)
+            // 3. 답변일시
             if (r.answeredAt != null)
               _singleItemRow('답변일시', _formatDate(r.answeredAt)),
 
@@ -249,10 +271,9 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
     );
   }
 
-  // 한 줄을 다 쓰는 항목 (답변일시, 제목, 내용)
   Widget _singleItemRow(String label, String value, {int? maxLines}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6), // 줄 간격을 살짝 넓혀 편안하게
+      padding: const EdgeInsets.only(bottom: 6),
       child: Text.rich(
         TextSpan(
           children: [
@@ -272,7 +293,7 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
     );
   }
 
-  // 두 개로 나뉘는 항목 (문의번호-유형, 문의일시-상태)
+  // 🌟 두 개 분할 행 (상태별 하이라이트 색상 적용)
   Widget _twoItemRow({
     required String leftLabel,
     required String leftValue,
@@ -280,11 +301,18 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
     required String rightValue,
     bool isRightHighlight = false,
   }) {
+    // 💡 상태별 포인트 컬러 정의
+    Color getStatusColor(String statusText) {
+      if (!isRightHighlight) return Colors.black87;
+      if (statusText == '답변 대기') return Colors.orange;
+      if (statusText == '문의 취소' || statusText == '문의 종료') return Colors.grey.shade600; // 취소나 종료 건은 차분한 회색
+      return Colors.black87; // 답변 완료 등
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
-          // 좌측: 화면의 60%를 차지
           Expanded(
             flex: 6,
             child: Text.rich(
@@ -304,7 +332,6 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          // 우측: 화면의 40%를 차지 (시작점이 60% 지점으로 고정되어 세로줄이 완벽하게 맞음)
           Expanded(
             flex: 4,
             child: Text.rich(
@@ -319,41 +346,13 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: isRightHighlight ? FontWeight.bold : FontWeight.normal,
-                      color: isRightHighlight && rightValue == '답변 대기' ? Colors.orange : Colors.black87,
+                      color: getStatusColor(rightValue),
                     ),
                   ),
                 ],
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _infoRow(String label, String value, {bool isHighlight = false, int? maxLines}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '• $label: ',
-            style: const TextStyle(fontSize: 13, color: Colors.black87, fontWeight: FontWeight.w500),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              maxLines: maxLines,
-              overflow: maxLines != null ? TextOverflow.ellipsis : null,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isHighlight ? FontWeight.bold : FontWeight.normal,
-                color: isHighlight && value == '답변 대기' ? Colors.orange : Colors.black87,
-              ),
-              softWrap: maxLines == null,
             ),
           ),
         ],

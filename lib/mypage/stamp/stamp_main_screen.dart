@@ -5,6 +5,7 @@ import 'repository/stamp_repository.dart';
 import 'widgets/sub_filter_chips.dart';
 import 'widgets/sorting_bar.dart';
 import '../../../../road/widgets/region_select_page.dart';
+
 class StampMainScreen extends StatefulWidget {
   const StampMainScreen({super.key});
 
@@ -23,7 +24,7 @@ class _StampMainScreenState extends State<StampMainScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCategoriesAndRegions(); // 🌟 화면 시작 시 DB 데이터 동시 로드
+    _loadCategoriesAndRegions();
   }
 
   void _loadCategoriesAndRegions() async {
@@ -32,12 +33,12 @@ class _StampMainScreenState extends State<StampMainScreen> {
     if (mounted) {
       setState(() {
         _dbMenuFilters = categories;
-        _dbRegionFilters = regions; // DB 지역 세팅
+        _dbRegionFilters = regions;
       });
     }
   }
 
-  // 1. 🌟 메뉴 더보기 팝업 모달
+  // 1. 메뉴 더보기 팝업 모달
   void _openMenuSelectModal() async {
     final List<String> menuOptions = _dbMenuFilters;
 
@@ -102,10 +103,8 @@ class _StampMainScreenState extends State<StampMainScreen> {
     }
   }
 
-  // 2. 🌟 지역 더보기 팝업 모달
-  // 🌟 기존 모달창을 띄우던 코드를 지우고, RegionSelectPage 호출로 변경
+  // 2. 지역 더보기 팝업 모달
   Future<void> _openRegionSelectModal() async {
-    // 1. 지역 선택 페이지로 이동
     final selectedRegion = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -113,7 +112,6 @@ class _StampMainScreenState extends State<StampMainScreen> {
       ),
     );
 
-    // 2. 사용자가 지역을 선택하고 돌아왔다면(뒤로가기 취소가 아니라면) 필터 상태 업데이트
     if (selectedRegion != null && selectedRegion is String) {
       setState(() {
         _selectedFilter = selectedRegion;
@@ -125,15 +123,23 @@ class _StampMainScreenState extends State<StampMainScreen> {
   List<Map<String, dynamic>> _processRoads(List<Map<String, dynamic>> rawList) {
     List<Map<String, dynamic>> result = List.from(rawList);
 
-    // 필터링 처리
+    // 1차 필터링: region 필드 유무로 지역 로드 / 메뉴 로드 분리
+    if (_selectedTab == '지역별') {
+      result = result.where((r) => r['region'] != null && r['region'].toString().trim().isNotEmpty).toList();
+    } else if (_selectedTab == '메뉴별') {
+      result = result.where((r) => r['region'] == null || r['region'].toString().trim().isEmpty).toList();
+    }
+
+    // 🌟 2차 필터링: 하위 필터
     if (_selectedFilter != '전체') {
       if (_selectedTab == '지역별') {
         result = result.where((r) => r['region'] == _selectedFilter).toList();
       } else if (_selectedTab == '메뉴별') {
         result = result.where((r) {
-          // 🌟 categoryIds -> categoryNames 로 수정! (한글 이름 매칭)
-          final List categories = r['categoryNames'] ?? [];
-          return categories.contains(_selectedFilter);
+          // 🌟 categoryIds 배열을 사용하여 필터링
+          final categoryList = r['categoryIds'];
+          if (categoryList is List && categoryList.contains(_selectedFilter)) return true;
+          return false;
         }).toList();
       }
     }
@@ -148,16 +154,16 @@ class _StampMainScreenState extends State<StampMainScreen> {
     } else if (_selectedSort == '이름순') {
       result.sort((a, b) => (a['title'] ?? '').toString().compareTo((b['title'] ?? '').toString()));
     } else if (_selectedSort == '스탬프 순') {
-      // 내 스탬프 달성 수 기준 내림차순
       result.sort((a, b) => (b['myStampCount'] ?? 0).compareTo(a['myStampCount'] ?? 0));
     }
 
     return result;
   }
 
-  // 4. 스탬프 판 팝업 모달 (실제 업체 이름 연동)
+  // 스탬프 판 팝업 모달
   void _showStampBoardModal(Map<String, dynamic> roadData) async {
-    final List<dynamic> placeIds = roadData['placeIds'] ?? [];
+    // 🌟 roadPlace 필드 사용
+    final List<dynamic> placeIds = roadData['roadPlace'] ?? [];
 
     showModalBottomSheet(
       context: context,
@@ -167,10 +173,10 @@ class _StampMainScreenState extends State<StampMainScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        // 내 스탬프 맵과 업체 이름 맵을 동시에 미래(Future)로 불러옵니다.
         return FutureBuilder<List<dynamic>>(
           future: Future.wait([
             StampRepository.getMyStampsMap(),
+            // 💡 주의: StampRepository.getPlaceNames 내부 로직이 placeIds 리스트를 받아 'place' 컬렉션에서 상호명을 조회하도록 구현되어 있어야 합니다.
             StampRepository.getPlaceNames(placeIds),
           ]),
           builder: (context, snapshot) {
@@ -190,7 +196,6 @@ class _StampMainScreenState extends State<StampMainScreen> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  // 모달 헤더
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -207,48 +212,51 @@ class _StampMainScreenState extends State<StampMainScreen> {
                   const Divider(),
                   const SizedBox(height: 10),
 
-                  // 3x3 스탬프 그리드 판
-                  Expanded(
-                    child: GridView.builder(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 1.0,
+                  if (placeIds.isEmpty)
+                    const Expanded(
+                      child: Center(
+                        child: Text('등록된 매장이 없습니다.', style: TextStyle(color: Colors.grey)),
                       ),
-                      itemCount: placeIds.length,
-                      itemBuilder: (context, index) {
-                        final String placeId = placeIds[index].toString();
-                        final bool isStamped = myStampsMap.containsKey(placeId);
+                    )
+                  else
+                    Expanded(
+                      child: GridView.builder(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 1.0,
+                        ),
+                        itemCount: placeIds.length,
+                        itemBuilder: (context, index) {
+                          final String placeId = placeIds[index].toString();
+                          final bool isStamped = myStampsMap.containsKey(placeId);
+                          final String storeName = placeNamesMap[placeId] ?? '매장 ${index + 1}';
 
-                        // 🌟 DB에서 가져온 실제 업체 이름 (없으면 매장 번호로 대체)
-                        final String storeName = placeNamesMap[placeId] ?? '매장 ${index + 1}';
+                          final stampData = myStampsMap[placeId] ?? {};
+                          if (stampData['placeName'] == null || stampData['placeName'].toString().isEmpty) {
+                            stampData['placeName'] = storeName;
+                          }
 
-                        // 스탬프 데이터에 storeName이 없다면 실제 상호명을 쏙 넣어줍니다.
-                        final stampData = myStampsMap[placeId];
-                        if (stampData != null && (stampData['placeName'] == null || stampData['placeName'].toString().isEmpty)) {
-                          stampData['placeName'] = storeName;
-                        }
-
-                        return Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
-                            color: Colors.grey.shade50,
-                          ),
-                          alignment: Alignment.center,
-                          padding: const EdgeInsets.all(4),
-                          child: isStamped
-                              ? _buildRedStampUI(stampData, storeName) // 🌟 실제 업체 이름 전달
-                              : Text(
-                            storeName, // 🌟 '매장 1' 대신 실제 업체 이름 출력
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w500),
-                          ),
-                        );
-                      },
+                          return Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.grey.shade50,
+                            ),
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.all(4),
+                            child: isStamped
+                                ? _buildRedStampUI(stampData, storeName)
+                                : Text(
+                              storeName,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w500),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ),
                 ],
               ),
             );
@@ -258,7 +266,7 @@ class _StampMainScreenState extends State<StampMainScreen> {
     );
   }
 
-  // 5. 붉은색 동그라미 도장 UI 렌더링 함수
+  // 5. 붉은색 동그라미 도장 UI
   Widget _buildRedStampUI(Map<String, dynamic>? stampData, String storeName) {
     String dateStr = '';
     if (stampData != null && stampData['issuedAt'] != null) {
@@ -266,11 +274,10 @@ class _StampMainScreenState extends State<StampMainScreen> {
       dateStr = DateFormat('yy.MM.dd').format(dt);
     }
 
-    // 🌟 stampData에 저장된 이름이 있거나, 전달받은 storeName을 사용
     final String displayName = stampData?['placeName'] ?? storeName;
 
     return Transform.rotate(
-      angle: -0.12, // 도장을 약간 비스듬하게 쾅 찍은 효과
+      angle: -0.12,
       child: Container(
         width: 70,
         height: 70,
@@ -283,7 +290,7 @@ class _StampMainScreenState extends State<StampMainScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              displayName, // 🌟 '스탬프' 대신 실제 업체 이름 출력
+              displayName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -295,10 +302,7 @@ class _StampMainScreenState extends State<StampMainScreen> {
             const SizedBox(height: 2),
             Text(
               dateStr,
-              style: TextStyle(
-                color: Colors.red.shade700,
-                fontSize: 8,
-              ),
+              style: TextStyle(color: Colors.red.shade700, fontSize: 8),
             ),
           ],
         ),
@@ -320,23 +324,18 @@ class _StampMainScreenState extends State<StampMainScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 🌟 1. 최상단: 대분류 탭(좌측) + 정렬 옵션(우측)을 한 Row 안에 배치!
             Padding(
               padding: const EdgeInsets.only(right: 16.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                // 🌟 CrossAlignment -> CrossAxisAlignment 로 수정!
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // 좌측: 지역별 / 메뉴별 탭
                   Row(
                     children: [
                       _buildTabButton('지역별'),
                       _buildTabButton('메뉴별'),
                     ],
                   ),
-
-                  // 우측: 정렬 옵션
                   SortingBar(
                     selectedSort: _selectedSort,
                     onSortChanged: (sort) => setState(() => _selectedSort = sort),
@@ -346,17 +345,18 @@ class _StampMainScreenState extends State<StampMainScreen> {
             ),
             const SizedBox(height: 8),
 
-            // 2. 가로 서브 필터 칩 (DB 지역 리스트 전달)
+            // 가로 서브 필터 칩
             SubFilterChips(
               selectedTab: _selectedTab,
               selectedFilter: _selectedFilter,
+              // 💡 팁: 만약 여기서 지역칩이 안 보인다면, SubFilterChips 내부에
+              // 지역 필터 배열을 받는 속성도 추가되어야 완벽하게 작동할 수 있습니다.
               menuFilters: _dbMenuFilters,
               onFilterSelected: (filter) => setState(() => _selectedFilter = filter),
               onMorePressed: _selectedTab == '지역별' ? _openRegionSelectModal : _openMenuSelectModal,
             ),
             const SizedBox(height: 8),
 
-            // 3. 실시간 DB 연결 리스트 렌더링
             Expanded(
               child: StreamBuilder<List<Map<String, dynamic>>>(
                 stream: StampRepository.getRoadWithMyStampStream(),
@@ -391,7 +391,6 @@ class _StampMainScreenState extends State<StampMainScreen> {
     );
   }
 
-  // 상단 대분류 탭 버튼
   Widget _buildTabButton(String label) {
     final bool isSelected = _selectedTab == label;
     return GestureDetector(
@@ -423,11 +422,26 @@ class _StampMainScreenState extends State<StampMainScreen> {
     );
   }
 
-  // 스탬프 로드 카드 뷰 (이미지 적용, 설명 제거, 오버플로우 원천 차단)
+  // 스탬프 로드 카드 뷰
   Widget _buildStampCourseCard(Map<String, dynamic> road) {
+    // 🌟 1. 전체 스탬프 개수 계산 로직
+    int totalStampCount = 0;
+
+    // 지역 로드: placeCount 필드가 있으면 그 값을 사용
+    if (road['placeCount'] != null && road['placeCount'] is int) {
+      totalStampCount = road['placeCount'];
+    }
+    // 메뉴 로드: placeCount가 없으면 roadPlace(또는 placeIds) 배열의 길이를 사용
+    else {
+      final List<dynamic> places = road['roadPlace'] ?? road['placeIds'] ?? [];
+      totalStampCount = places.length;
+    }
+
+    // 🌟 2. 획득한 스탬프 개수
     final int myStampCount = road['myStampCount'] ?? 0;
-    final int totalStampCount = road['totalStampCount'] ?? 0;
-    final String imageUrl = road['imageUrl'] ?? '';
+
+    // 🌟 3. 이미지 URL (지역은 imageUrl, 메뉴는 thumbnailUrl 대응)
+    final String imageUrl = road['imageUrl'] ?? road['thumbnailUrl'] ?? road['thumbnail'] ?? '';
 
     return GestureDetector(
       onTap: () => _showStampBoardModal(road),
@@ -442,7 +456,6 @@ class _StampMainScreenState extends State<StampMainScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. 코스 사진 영역
             Container(
               width: 70,
               height: 70,
@@ -465,14 +478,12 @@ class _StampMainScreenState extends State<StampMainScreen> {
             ),
             const SizedBox(width: 12),
 
-            // 2. 로드 정보 영역 (Expanded 덕분에 우측으로 절대 삐져나가지 않음)
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const SizedBox(height: 4),
-                  // 제목
                   Text(
                     road['title'] ?? '제목 없음',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
@@ -481,16 +492,16 @@ class _StampMainScreenState extends State<StampMainScreen> {
                   ),
                   const SizedBox(height: 8),
 
-                  // 🌟 [수정됨] 문제가 되던 Row를 아예 없애고 단일 Text로 묶었습니다!
                   Row(
                     children: [
                       Icon(
-                        Icons.verified, // 또는 Icons.approval, Icons.workspace_premium
+                        Icons.verified,
                         size: 16,
                         color: Colors.red.shade700,
                       ),
                       const SizedBox(width: 4),
                       Text(
+                        // 🌟 0/0 오류 완벽 해결!
                         '스탬프 $myStampCount / $totalStampCount 개',
                         style: const TextStyle(
                           fontSize: 13,

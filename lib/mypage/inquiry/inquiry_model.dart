@@ -55,8 +55,10 @@ class InquiryModel {
         return '답변 대기';
       case 'answered':
         return '답변 완료';
+      case 'cancelled':
+        return '문의 취소';
       case 'closed':
-        return '종료';
+        return '문의 종료';
       default:
         return status;
     }

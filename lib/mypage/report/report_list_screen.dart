@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
 import '../../common/user_data.dart';
+import 'report_detail_screen.dart';
 import 'report_model.dart';
 
 class ReportListScreen extends StatefulWidget {
@@ -89,37 +90,39 @@ class _ReportListScreenState extends State<ReportListScreen> {
       ),
       body: Column(
         children: [
-          // 상단 필터 및 정렬 영역
+          // 상단 필터 및 정렬 영역 (가로 스크롤 적용 및 겹침 방지)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // 좌측: 상태 필터 (🌟 DB 값과 완벽히 매칭되도록 소문자로 변경)
-                  Row(
-                    children: [
-                      _filterChip('전체', 'ALL'),
-                      const SizedBox(width: 6),
-                      _filterChip('접수 완료', 'pending'),
-                      const SizedBox(width: 6),
-                      _filterChip('처리 중', 'in_review'), // 🌟 새로 추가된 탭
-                      const SizedBox(width: 6),
-                      _filterChip('처리 완료', 'completed'),
-                    ],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // 좌측: 상태 필터 (스크롤 영역)
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _filterChip('전체', 'ALL'),
+                        const SizedBox(width: 6),
+                        _filterChip('접수 완료', 'pending'),
+                        const SizedBox(width: 6),
+                        _filterChip('처리 중', 'in_review'),
+                        const SizedBox(width: 6),
+                        _filterChip('처리 완료', 'completed'),
+                        const SizedBox(width: 6),
+                        // 🌟 '신고 취소' 필터 칩 추가
+                        _filterChip('신고 취소', 'canceled'),
+                      ],
+                    ),
                   ),
+                ),
 
-                  const SizedBox(width: 40),
+                // 🌟 스크롤 영역과 정렬 버튼 사이의 안전 여백
+                const SizedBox(width: 12),
 
-                  // 우측: 정렬
-                  Row(
-                    children: [
-                      _buildRecentSortDropdown(),
-                    ],
-                  ),
-                ],
-              ),
+                // 우측: 정렬 드롭다운 (고정 영역)
+                _buildRecentSortDropdown(),
+              ],
             ),
           ),
           const Divider(height: 1),
@@ -229,10 +232,8 @@ class _ReportListScreenState extends State<ReportListScreen> {
     );
   }
 
-  // 상태 영문 -> 한글 변환 (공백 제거 및 디버그 프린트 추가)
+  // 상태 영문 -> 한글 변환
   String _getDisplayStatus(String status) {
-
-    // 🌟 2. 양옆 공백을 완전히 제거(.trim())한 후 소문자로 비교합니다.
     switch (status.trim().toLowerCase()) {
       case 'pending':
         return '접수 완료';
@@ -240,8 +241,9 @@ class _ReportListScreenState extends State<ReportListScreen> {
         return '처리 중';
       case 'completed':
         return '처리 완료';
+      case 'canceled': // 🌟 canceled 상태 추가
+        return '신고 취소';
       default:
-      // 지정되지 않은 값일 경우 원본을 그대로 보여주어 문제 확인이 가능하게 함
         return status;
     }
   }
@@ -267,60 +269,70 @@ class _ReportListScreenState extends State<ReportListScreen> {
     String displayStatus = _getDisplayStatus(r.status);
     String displayResolution = _getDisplayResolution(r.resolution);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 왼쪽 컬럼
-          Expanded(
-            flex: 6,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _infoRow('신고번호', r.id),
-                const SizedBox(height: 4),
-                _infoRow('신고사유', r.reason),
-                const SizedBox(height: 4),
-                _infoRow('신고일시', r.formattedCreatedAt),
-                const SizedBox(height: 4),
-                _infoRow('처리일시', r.formattedResolvedAt),
-              ],
-            ),
+    // 🌟 GestureDetector를 추가하여 터치 시 상세 페이지로 이동하도록 처리
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ReportDetailScreen(reportId: r.id),
           ),
-          const SizedBox(width: 8),
-
-          // 오른쪽 컬럼
-          Expanded(
-            flex: 4,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _infoRow('타입', r.targetTypeLabel),
-                const SizedBox(height: 4),
-
-                FutureBuilder<String>(
-                  future: _getReportedNickname(r.targetType, r.targetId),
-                  builder: (context, snapshot) {
-                    final nickname = snapshot.data ?? '로딩 중...';
-                    return _infoRow('닉네임', nickname);
-                  },
-                ),
-                const SizedBox(height: 4),
-
-                _infoRow('상태', displayStatus, isHighlight: true),
-                const SizedBox(height: 4),
-                _infoRow('처리결과', displayResolution),
-              ],
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 왼쪽 컬럼
+            Expanded(
+              flex: 6,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _infoRow('신고번호', r.id),
+                  const SizedBox(height: 4),
+                  _infoRow('신고사유', r.reason),
+                  const SizedBox(height: 4),
+                  _infoRow('신고일시', r.formattedCreatedAt),
+                  const SizedBox(height: 4),
+                  _infoRow('처리일시', r.formattedResolvedAt),
+                ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+
+            // 오른쪽 컬럼
+            Expanded(
+              flex: 4,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _infoRow('타입', r.targetTypeLabel),
+                  const SizedBox(height: 4),
+
+                  FutureBuilder<String>(
+                    future: _getReportedNickname(r.targetType, r.targetId),
+                    builder: (context, snapshot) {
+                      final nickname = snapshot.data ?? '로딩 중...';
+                      return _infoRow('닉네임', nickname);
+                    },
+                  ),
+                  const SizedBox(height: 4),
+
+                  _infoRow('상태', displayStatus, isHighlight: true),
+                  const SizedBox(height: 4),
+                  _infoRow('처리결과', displayResolution),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
