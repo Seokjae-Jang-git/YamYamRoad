@@ -115,6 +115,22 @@ class PointPackage {
   }
 }
 
+class PointBalance {
+  const PointBalance({required this.freePoint, required this.paidPoint});
+
+  final int freePoint;
+  final int paidPoint;
+
+  int get totalPoint => freePoint + paidPoint;
+
+  factory PointBalance.fromMap(Map<String, dynamic>? data) {
+    return PointBalance(
+      freePoint: asPointInt(data?['freePointBalance']),
+      paidPoint: asPointInt(data?['paidPointBalance']),
+    );
+  }
+}
+
 class PointPurchaseResult {
   const PointPurchaseResult({
     required this.purchaseId,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'logic/point_purchase_service.dart';
 import 'logic/point_repository.dart';
+import 'logic/point_usage_calculator.dart';
 import 'logic/portone_point_payment_api_client.dart';
 import 'models/point_models.dart';
 import 'views/point_charge_view.dart';
@@ -44,8 +45,11 @@ class PointMainScreen extends StatefulWidget {
 class _PointMainScreenState extends State<PointMainScreen> {
   late final PointShopRepository _repository;
   late final PointPurchaseService _purchaseService;
-  late final PortonePointPaymentApiClient _pointPaymentApiClient;
+  PortonePointPaymentApiClient? _pointPaymentApiClient;
+  StreamSubscription<PointBalance>? _pointBalanceSubscription;
   late PointShopTab _selectedTab;
+  PointBalance? _pointBalance;
+  bool _isPointBalanceLoading = true;
   bool _isPurchasing = false;
 
   static const Color creamyIvory = Color(0xFFFFFDF9);
@@ -59,9 +63,29 @@ class _PointMainScreenState extends State<PointMainScreen> {
     _repository = widget.repository ?? FirestorePointShopRepository();
     _purchaseService =
         widget.purchaseService ?? FirestorePointPurchaseService();
-    _pointPaymentApiClient =
-        widget.pointPaymentApiClient ?? PortonePointPaymentApiClient();
+    _pointPaymentApiClient = widget.pointPaymentApiClient;
     _selectedTab = widget.initialTab;
+    _pointBalanceSubscription = _repository
+        .watchPointBalance(widget.userId)
+        .listen(
+          (balance) {
+            if (!mounted) return;
+            setState(() {
+              _pointBalance = balance;
+              _isPointBalanceLoading = false;
+            });
+          },
+          onError: (_) {
+            if (!mounted) return;
+            setState(() => _isPointBalanceLoading = false);
+          },
+        );
+  }
+
+  @override
+  void dispose() {
+    _pointBalanceSubscription?.cancel();
+    super.dispose();
   }
 
   @override
@@ -198,6 +222,9 @@ class _PointMainScreenState extends State<PointMainScreen> {
   }
 
   Future<void> _purchasePointPackage(PointPackage pointPackage) async {
+    final confirmed = await _confirmPointCharge(pointPackage);
+    if (!confirmed) return;
+
     final callback = widget.onPointPackagePurchase;
     try {
       if (callback != null) {
@@ -206,7 +233,9 @@ class _PointMainScreenState extends State<PointMainScreen> {
       }
 
       setState(() => _isPurchasing = true);
-      final preparation = await _pointPaymentApiClient.preparePayment(
+      final pointPaymentApiClient = _pointPaymentApiClient ??=
+          PortonePointPaymentApiClient();
+      final preparation = await pointPaymentApiClient.preparePayment(
         userId: widget.userId,
         pointPackageId: pointPackage.id,
       );
@@ -233,7 +262,7 @@ class _PointMainScreenState extends State<PointMainScreen> {
       }
 
       setState(() => _isPurchasing = true);
-      final result = await _pointPaymentApiClient.completePayment(
+      final result = await pointPaymentApiClient.completePayment(
         userId: widget.userId,
         paymentId: checkoutResult.paymentId,
       );
