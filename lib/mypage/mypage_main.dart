@@ -31,6 +31,11 @@ class MyPageMainScreen extends StatefulWidget {
 }
 
 class _MyPageMainScreenState extends State<MyPageMainScreen> {
+  // 브랜드 공식 컬러 팔레트 상수 정의
+  static const Color creamyIvory = Color(0xFFFFFDF9);   // 기본 바탕 화면색
+  static const Color deepChocolate = Color(0xFF4A3225); // 타이틀 및 강조 텍스트, 라인
+  static const Color subTextColor = Color(0xFF7A6B63);   // 서브 텍스트 및 자세히 보기
+
   bool _isLoading = true;
 
   @override
@@ -108,20 +113,20 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(child: CircularProgressIndicator(color: Colors.black)),
+        backgroundColor: creamyIvory,
+        body: Center(child: CircularProgressIndicator(color: deepChocolate)),
       );
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       appBar: AppBar(
         title: const Text('마이페이지',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+            style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold)),
+        backgroundColor: creamyIvory,
         elevation: 0,
         centerTitle: false,
-        iconTheme: const IconThemeData(color: Colors.black),
+        iconTheme: const IconThemeData(color: deepChocolate),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -181,22 +186,22 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
               // 외부에서 공급받는 컴포넌트 바인딩 구조
               _buildCardSection(
                   '다이어리', buildDiaryContent(), onDetailTap: _openDiary),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               _buildCardSection(
                   '얌얌북', buildYamyamBookContent(), onDetailTap: _openCommunity),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               _buildCardSection(
                   '스탬프', buildStampContent(), onDetailTap: _openStamp),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               _buildCardSection(
                   '뱃지', buildBadgeContent(), onDetailTap: _openBadge),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               _buildCardSection(
                   '포인트', buildPointContent(context), onDetailTap: _openPoint),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               _buildCardSection(
                   '문의', buildInquiryContent(), onDetailTap: _openInquiry),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               _buildCardSection(
                   '신고', buildReportContent(), onDetailTap: _openReport),
               const SizedBox(height: 32),
@@ -212,27 +217,54 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
       {VoidCallback? onDetailTap}) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(
+        color: Colors.white, // 크림색 배경 대비 또렷하게 들뜨는 순백색 카드
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: deepChocolate.withOpacity(0.12), // 딥 초콜릿 옅은 외곽선
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: deepChocolate.withOpacity(0.04), // 소프트 입체 그림자
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: const TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: deepChocolate,
+                ),
+              ),
               TextButton(
                 onPressed: onDetailTap ?? () {},
-                style: TextButton.styleFrom(minimumSize: Size.zero,
-                    padding: EdgeInsets.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                child: const Text('자세히 보기',
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                style: TextButton.styleFrom(
+                  minimumSize: Size.zero,
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  '자세히 보기',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: subTextColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           content,
         ],
       ),

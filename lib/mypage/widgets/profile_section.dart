@@ -71,28 +71,21 @@ class ProfileSection extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // 1. 프로필 이미지 (브랜드 포인트 컬러 테두리)
-        Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: coralRed.withOpacity(0.35), width: 2),
-          ),
-          padding: const EdgeInsets.all(2),
-          child: CircleAvatar(
-            radius: 30,
-            backgroundColor: const Color(0xFFFFF4F2),
-            child: UserData.isDefaultProfileImage || UserData.profileImagePath == null
-                ? const Icon(Icons.person_outline, size: 34, color: subTextColor)
-                : ClipOval(
-              child: Image.network(
-                UserData.profileImagePath!,
-                width: 60,
-                height: 60,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(Icons.person_outline, size: 34, color: subTextColor);
-                },
-              ),
+        // 1. 프로필 이미지 (테두리 완전 제거)
+        CircleAvatar(
+          radius: 32,
+          backgroundColor: const Color(0xFFFAF7F5),
+          child: UserData.isDefaultProfileImage || UserData.profileImagePath == null
+              ? const Icon(Icons.person_outline, size: 36, color: subTextColor)
+              : ClipOval(
+            child: Image.network(
+              UserData.profileImagePath!,
+              width: 64,
+              height: 64,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(Icons.person_outline, size: 36, color: subTextColor);
+              },
             ),
           ),
         ),

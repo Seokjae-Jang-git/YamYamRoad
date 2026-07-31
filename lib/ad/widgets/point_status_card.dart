@@ -10,37 +10,61 @@ class PointStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 1안: 딥 초콜릿 프리미엄 카드 컬러 팔레트
+    const Color cardBgColor = Color(0xFF4A3225); // 메인 딥 초콜릿 배경
+    const Color cardBorderColor = Color(0xFF5C3E2E); // 은은한 외각 테두리
+    const Color titleTextColor = Color(0xFFFAF6F0); // 크림 아이보리 타이틀
+    const Color goldAccentColor = Color(0xFFF5D070); // 골드 옐로우 (아이콘 & 수치)
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blue[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue[100]!, width: 1.5),
+        color: cardBgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: cardBorderColor,
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2A1C15).withOpacity(0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.monetization_on, color: Colors.amber, size: 24),
-              SizedBox(width: 8),
-              Text(
+              // 골드 옐로우 포인트 동전 아이콘
+              const Icon(
+                Icons.monetization_on_rounded,
+                color: goldAccentColor,
+                size: 26,
+              ),
+              const SizedBox(width: 10),
+              const Text(
                 '내 현재 무료 포인트',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: titleTextColor,
+                  letterSpacing: -0.3,
                 ),
               ),
             ],
           ),
+          // 골드 옐로우 포인트 수치 강조
           Text(
             '$points P',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.blue[800],
+            style: const TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+              color: goldAccentColor,
+              letterSpacing: -0.3,
             ),
           ),
         ],
