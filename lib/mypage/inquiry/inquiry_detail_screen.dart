@@ -3,7 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
 import 'inquiry_model.dart';
-import 'inquiry_write_screen.dart'; // 🌟 경로 확인 필요
+import 'inquiry_write_screen.dart';
+import 'inquiry_repository.dart';
 
 class InquiryDetailScreen extends StatefulWidget {
   final String inquiryId;
@@ -15,39 +16,38 @@ class InquiryDetailScreen extends StatefulWidget {
 }
 
 class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
-  bool _isDeleting = false;
+  bool _isProcessing = false; // 취소/종료 처리 중 플래그
 
   // 수정 화면으로 이동
   Future<void> _onEdit(InquiryModel inquiry) async {
     final edited = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => InquiryWriteScreen(editTarget: inquiry), // 🌟 WriteScreen에서 수정 모드 지원 필요
+        builder: (_) => InquiryWriteScreen(editTarget: inquiry),
       ),
     );
 
-    // 수정 후 상세 화면도 닫고 리스트로 복귀 (StreamBuilder라 리스트는 자동 갱신됨)
     if (edited == true && mounted) {
       Navigator.of(context).pop();
     }
   }
 
-  // 삭제 처리
-  Future<void> _onDelete() async {
+  // 🌟 문의 취소 처리
+  Future<void> _onCancel() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('문의 삭제', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('삭제한 문의는 다시 볼 수 없어요.\n정말 삭제하시겠어요?'),
+        title: const Text('문의 취소', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('취소한 문의는 다시 되돌릴 수 없어요.\n정말 취소하시겠어요?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('취소', style: TextStyle(color: Colors.grey)),
+            child: const Text('닫기', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('삭제', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            child: const Text('문의 취소', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -55,22 +55,60 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
 
     if (confirmed != true) return;
 
-    setState(() => _isDeleting = true);
+    setState(() => _isProcessing = true);
 
     try {
-      await FirebaseFirestore.instance.collection('inquiry').doc(widget.inquiryId).delete();
+      await InquiryRepository.instance.cancelInquiry(widget.inquiryId);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('문의가 삭제되었습니다.')));
-      Navigator.of(context).pop(); // 삭제 성공 시 화면 닫기
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('문의가 취소되었습니다.')));
+      Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isDeleting = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('삭제에 실패했습니다: $e')));
+      setState(() => _isProcessing = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('문의 취소에 실패했습니다: $e')));
     }
   }
 
-  // 날짜 포맷팅 (설계안: 2026.07.27. 15:59)
+  // 🌟 문의 종료 처리
+  Future<void> _onCloseInquiry() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('문의 종료', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('답변에 만족하셨나요?\n문의를 종료 상태로 변경합니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('취소', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('문의 종료', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isProcessing = true);
+
+    try {
+      await InquiryRepository.instance.closeInquiry(widget.inquiryId);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('문의가 종료되었습니다.')));
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('문의 종료에 실패했습니다: $e')));
+    }
+  }
+
   String _formatDate(DateTime? date) {
     if (date == null) return '-';
     return DateFormat('yyyy.MM.dd. HH:mm').format(date);
@@ -105,6 +143,28 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
 
           final inquiry = InquiryModel.fromFirestore(snapshot.data!);
           final bool isAnswered = inquiry.status == 'answered';
+          final bool isCanceled = inquiry.status == 'canceled';
+          final bool isClosed = inquiry.status == 'closed';
+
+          // 💡 화면 표시용 상태 라벨
+          String displayStatusText = inquiry.displayStatus;
+          if (isCanceled) {
+            displayStatusText = '문의 취소';
+          } else if (inquiry.status == 'pending') {
+            displayStatusText = '답변 대기';
+          } else if (isAnswered) {
+            displayStatusText = '답변 완료';
+          } else if (isClosed) {
+            displayStatusText = '문의 종료';
+          }
+
+          // 💡 상태별 텍스트 색상
+          Color statusColor = Colors.black87;
+          if (inquiry.status == 'pending') {
+            statusColor = Colors.orange;
+          } else if (isCanceled || isClosed) {
+            statusColor = Colors.grey.shade600;
+          }
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -127,14 +187,14 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
                 Row(
                   children: [
                     Text(
-                      inquiry.displayStatus,
+                      displayStatusText,
                       style: TextStyle(
-                        color: isAnswered ? Colors.black87 : Colors.orange,
+                        color: statusColor,
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                       ),
                     ),
-                    if (isAnswered && inquiry.answeredAt != null) ...[
+                    if ((isAnswered || isClosed) && inquiry.answeredAt != null) ...[
                       const Text('  |  ', style: TextStyle(color: Colors.grey, fontSize: 12)),
                       Text(
                         _formatDate(inquiry.answeredAt),
@@ -145,7 +205,7 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // 3. 본문 내용 (설계안의 박스 디자인 반영)
+                // 3. 본문 내용
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
@@ -191,7 +251,7 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
                   const SizedBox(height: 24),
                 ],
 
-                // 5. 버튼 영역 (답변 대기 상태일 때만 노출)
+                // 5. 버튼 영역 (답변 대기 상태일 때만 노출 / 취소 또는 답변완료 건은 버튼 비노출)
                 if (inquiry.status == 'pending')
                   Row(
                     children: [
@@ -209,26 +269,27 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: _isDeleting ? null : _onDelete,
+                          onPressed: _isProcessing ? null : _onCancel,
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             side: BorderSide(color: Colors.grey.shade400),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                          child: _isDeleting
+                          child: _isProcessing
                               ? const SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                           )
-                              : const Text('삭제', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+                              : const Text('문의 취소', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],
                   ),
 
-                // 6. 답변 내용 (답변 완료 상태일 때만 노출)
-                if (isAnswered && inquiry.adminMemo != null) ...[
+                // 🌟 (기존에 중복된 답변 코드는 지우고, 이 블록 하나만 남겨주세요!)
+                // 6. 답변 내용 및 문의 종료 버튼 (답변 완료/종료 상태일 때 노출)
+                if ((isAnswered || isClosed) && inquiry.adminMemo != null) ...[
                   const SizedBox(height: 32),
                   const Text('답변', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
                   const SizedBox(height: 12),
@@ -245,6 +306,43 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
                       style: const TextStyle(color: Colors.black87, height: 1.5, fontSize: 14),
                     ),
                   ),
+
+                  // 🌟 답변이 완료된 상태(answered)에서만 안내 문구 및 [문의 종료] 버튼 노출
+                  if (isAnswered) ...[
+                    const SizedBox(height: 24),
+
+                    // 💡 문의 종료 안내 텍스트
+                    const Center(
+                      child: Text(
+                        '답변이 만족스러우셨다면 문의 종료를 눌러주시기 바랍니다.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isProcessing ? null : _onCloseInquiry,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: _isProcessing
+                            ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                            : const Text('문의 종료', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
                 ],
                 const SizedBox(height: 40),
               ],
