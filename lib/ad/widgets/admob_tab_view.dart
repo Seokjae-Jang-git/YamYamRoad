@@ -22,21 +22,22 @@ class AdmobTabView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
+        // 상단 안내 상자 (소프트 밀크 베이지 + 모카 브라운 톤 적용)
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: Colors.grey[300]!, width: 0.5),
+            color: const Color(0xFFF4EFEA),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE5DDD5), width: 1.0),
           ),
           child: const Row(
             children: [
-              Icon(Icons.info_outline, color: Colors.blue, size: 20),
+              Icon(Icons.info_outline, color: Color(0xFF6B4A38), size: 20),
               SizedBox(width: 8),
               Expanded(
                 child: Text(
                   '구글 시스템을 통해 24시간 실시간 광고가 자동 매칭되는 안정적인 수익 모델입니다.',
-                  style: TextStyle(fontSize: 12, color: Colors.black87, height: 1.3),
+                  style: TextStyle(fontSize: 12, color: Color(0xFF6B4A38), height: 1.3),
                 ),
               ),
             ],
