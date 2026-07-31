@@ -40,44 +40,66 @@ class _AdStationPageState extends State<AdStationPage> {
   Widget build(BuildContext context) {
     final String? uid = AuthService.currentUser?.uid;
 
+    // 브랜드 포근한 베이지 & 브라운 컬러
+    const Color creamBgColor = Color(0xFFFAF7F2); // 포근한 크림 베이지
+    const Color deepChocolate = Color(0xFF4A3225); // 메인 딥 브라운
+    const Color softBorderColor = Color(0xFFE5DDD5); // 은은한 베이지 구분선
+    const Color cocoaBrown = Color(0xFF8C7A6B); // 보조 브라운 텍스트
+    const Color caramelAccent = Color(0xFFC88A4B); // 카라멜 브라운 로딩 강조
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        backgroundColor: creamBgColor,
         appBar: AppBar(
           title: const Text(
             '무료 포인트 충전소',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: deepChocolate,
+            ),
           ),
           centerTitle: true,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
+            icon: const Icon(Icons.arrow_back, color: deepChocolate),
             onPressed: () => Navigator.pop(context),
           ),
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
+          backgroundColor: creamBgColor,
+          foregroundColor: deepChocolate,
           elevation: 0,
           bottom: const PreferredSize(
             preferredSize: Size.fromHeight(1.0),
-            child: Divider(color: Colors.grey, height: 1.0, thickness: 0.5),
+            child: Divider(
+              color: softBorderColor,
+              height: 1.0,
+              thickness: 1.0,
+            ),
           ),
         ),
-        backgroundColor: Colors.white,
         body: uid == null
             ? const Center(
           child: Text(
             '로그인이 필요한 서비스입니다.',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
+            style: TextStyle(fontSize: 16, color: cocoaBrown),
           ),
         )
             : StreamBuilder<PointModel>(
           stream: _pointService.getPointStream(uid),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(
+                child: CircularProgressIndicator(
+                  color: caramelAccent,
+                ),
+              );
             }
             if (snapshot.hasError) {
               return Center(
-                child: Text('데이터를 불러오는데 실패했습니다: ${snapshot.error}'),
+                child: Text(
+                  '데이터를 불러오는데 실패했습니다: ${snapshot.error}',
+                  style: const TextStyle(color: cocoaBrown),
+                ),
               );
             }
 

@@ -13,12 +13,19 @@ class DetailPlaceCard extends StatelessWidget {
     required this.place,
   });
 
+  // YamYamRoad 브랜드 공식 컬러 상수 정의
+  static const Color pointCoralRed = Color(0xFFFF6B57);    // 시그니처 코랄 레드 (인증 버튼, 스탬프 수)
+  static const Color strawberryPink = Color(0xFFFFA09B);   // 연한 스트로베리 핑크 (에러 아이콘 배경 등)
+  static const Color deepChocolate = Color(0xFF4A3225);    // 타이틀 및 메인 텍스트
+  static const Color subBrown = Color(0xFF7A6B63);         // 서브 브라운 텍스트
+  static const Color cardBorder = Color(0xFFEFEBE4);       // 구분선 & 테두리 컬러
+
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.black12, width: 0.5)),
+        border: Border(bottom: BorderSide(color: cardBorder, width: 1.0)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -28,7 +35,7 @@ class DetailPlaceCard extends StatelessWidget {
             children: [
               // 1. 메인 썸네일 사진 (네트워크 이미지 연동 및 Fallback 예외 처리)
               ClipRRect(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
                 child: place.thumbnailUrl.isNotEmpty
                     ? Image.network(
                   place.thumbnailUrl,
@@ -40,12 +47,15 @@ class DetailPlaceCard extends StatelessWidget {
                     return Container(
                       width: 72,
                       height: 72,
-                      color: Colors.grey[200],
+                      color: cardBorder,
                       child: const Center(
                         child: SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: pointCoralRed,
+                          ),
                         ),
                       ),
                     );
@@ -54,7 +64,7 @@ class DetailPlaceCard extends StatelessWidget {
                     return Container(
                       width: 72,
                       height: 72,
-                      color: Colors.orange[100],
+                      color: strawberryPink.withOpacity(0.2),
                       alignment: Alignment.center,
                       child: const Text('🍒', style: TextStyle(fontSize: 28)),
                     );
@@ -63,7 +73,7 @@ class DetailPlaceCard extends StatelessWidget {
                     : Container(
                   width: 72,
                   height: 72,
-                  color: Colors.orange[100],
+                  color: strawberryPink.withOpacity(0.2),
                   alignment: Alignment.center,
                   child: const Text('🍒', style: TextStyle(fontSize: 28)),
                 ),
@@ -80,17 +90,22 @@ class DetailPlaceCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: deepChocolate,
+                        letterSpacing: -0.3,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 16),
+                        const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
                         const SizedBox(width: 2),
                         Text(
                           '${place.rating}',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: deepChocolate,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         Text(
@@ -98,22 +113,22 @@ class DetailPlaceCard extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: Colors.redAccent,
+                            color: pointCoralRed,
                           ),
                         ),
                         const SizedBox(width: 8),
                         Text(
                           '|  ${place.distance}',
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          style: const TextStyle(fontSize: 12, color: subBrown),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Text(
                       place.description,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 11,
-                        color: Colors.grey[700],
+                        color: subBrown,
                         fontStyle: FontStyle.italic,
                       ),
                     ),
@@ -143,7 +158,7 @@ class DetailPlaceCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
-                        color: Color(0xFF5D4037), // 가독성 높은 브라운 톤 텍스트
+                        color: deepChocolate, // 가독성 높은 브라운 톤 텍스트
                       ),
                     ),
                   ),
@@ -159,8 +174,9 @@ class DetailPlaceCard extends StatelessWidget {
               Expanded(
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Colors.grey[300]!),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    side: const BorderSide(color: cardBorder),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                   onPressed: () {
                     MapLauncher.launchNaverMap(
@@ -172,7 +188,11 @@ class DetailPlaceCard extends StatelessWidget {
                   },
                   child: const Text(
                     '🗺️ 길찾기',
-                    style: TextStyle(fontSize: 11, color: Colors.black87),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: deepChocolate,
+                    ),
                   ),
                 ),
               ),
@@ -181,9 +201,11 @@ class DetailPlaceCard extends StatelessWidget {
               Expanded(
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[600],
+                    backgroundColor: pointCoralRed,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                   onPressed: () async {
                     await StampVerificationNavigator.open(

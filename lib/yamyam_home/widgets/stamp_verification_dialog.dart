@@ -11,10 +11,20 @@ class StampVerificationDialog extends StatelessWidget {
     required this.onPlaceSelected,
   });
 
+  // YamYamRoad 브랜드 공식 컬러 상수 정의
+  static const Color pointCoralRed = Color(0xFFFF6B57);    // 시그니처 코랄 레드 (선택 버튼/스탬프 개수)
+  static const Color strawberryPink = Color(0xFFFFA09B);   // 서브 스트로베리 핑크 (아이콘 원형 배경)
+  static const Color deepChocolate = Color(0xFF4A3225);    // 텍스트 & 메인 타이틀
+  static const Color creamyIvory = Color(0xFFFFFDF9);      // 다이얼로그 바탕 크림 아이보리
+  static const Color cardBorder = Color(0xFFEFEBE4);       // 카드 테두리 선
+  static const Color subBrown = Color(0xFF7A6B63);         // 서브 브라운 텍스트
+  static const Color yellowStar = Color(0xFFF5D070);       // 별점 강조 노란색
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
+      surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20), // 🎨 더 둥글고 트렌디한 모서리
       ),
@@ -23,11 +33,11 @@ class StampVerificationDialog extends StatelessWidget {
       actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       title: Row(
         children: [
-          // 🍒 체리 컨셉의 화사한 원형 아이콘 배경
+          // 🍒 체리 컨셉의 화사한 원형 아이콘 배경 (Strawberry Pink 톤)
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.pink[50],
+              color: strawberryPink.withOpacity(0.2),
               shape: BoxShape.circle,
             ),
             child: const Text('🍒', style: TextStyle(fontSize: 18)),
@@ -38,7 +48,7 @@ class StampVerificationDialog extends StatelessWidget {
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: deepChocolate,
             ),
           ),
         ],
@@ -50,7 +60,7 @@ class StampVerificationDialog extends StatelessWidget {
             ? const Center(
           child: Text(
             '근처에 인증 가능한 업체의 정보가 없습니다. 😢',
-            style: TextStyle(color: Colors.grey, fontSize: 13),
+            style: TextStyle(color: subBrown, fontSize: 13),
           ),
         )
             : ListView.builder(
@@ -64,10 +74,10 @@ class StampVerificationDialog extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[100]!, width: 1.2),
+                border: Border.all(color: cardBorder, width: 1.0),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: deepChocolate.withOpacity(0.04),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -81,7 +91,7 @@ class StampVerificationDialog extends StatelessWidget {
                   child: Container(
                     width: 50,
                     height: 50,
-                    color: Colors.orange[50],
+                    color: const Color(0xFFF8F3EC),
                     alignment: Alignment.center,
                     child: place.thumbnailUrl.isNotEmpty
                         ? Image.network(
@@ -102,7 +112,7 @@ class StampVerificationDialog extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: deepChocolate,
                   ),
                 ),
                 subtitle: Column(
@@ -112,22 +122,22 @@ class StampVerificationDialog extends StatelessWidget {
                     // 🏃 실측 거리 표시 (예: 7.3km)
                     Text(
                       '🏃 ${place.distance}',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 11,
-                        color: Colors.grey[600],
+                        color: subBrown,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 12),
+                        const Icon(Icons.star, color: yellowStar, size: 12),
                         Text(
                           ' ${place.rating.toStringAsFixed(1)}',
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                            color: deepChocolate,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -137,9 +147,9 @@ class StampVerificationDialog extends StatelessWidget {
                         ),
                         Text(
                           ' ${place.stampCount}',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 11,
-                            color: Colors.redAccent[400],
+                            color: pointCoralRed,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -152,7 +162,7 @@ class StampVerificationDialog extends StatelessWidget {
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     minimumSize: const Size(54, 32),
-                    backgroundColor: Colors.blue[600],
+                    backgroundColor: pointCoralRed,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -183,7 +193,7 @@ class StampVerificationDialog extends StatelessWidget {
         TextButton(
           onPressed: () => Navigator.pop(context),
           style: TextButton.styleFrom(
-            foregroundColor: Colors.grey[600],
+            foregroundColor: subBrown,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           ),
           child: const Text(

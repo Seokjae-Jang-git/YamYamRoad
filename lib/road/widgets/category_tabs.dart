@@ -12,6 +12,10 @@ class CategoryTabs extends StatelessWidget {
     required this.onSearchPressed,
   });
 
+  // YamYamRoad 브랜드 공식 컬러 상수 정의
+  static const Color pointCoralRed = Color(0xFFFF6B57); // 시그니처 코랄 레드 (활성)
+  static const Color subBrown = Color(0xFF7A6B63);      // 부드러운 서브 브라운 (비활성)
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -27,7 +31,7 @@ class CategoryTabs extends StatelessWidget {
               _buildTabItem('메뉴별'),
             ],
           ),
-          // 우측 검색 버튼 (상단 알림 버튼과 동일한 베이지 미니멀 원형 디자인)
+          /* 💡 우측 검색 버튼 (현재 검색 페이지 미연동 상태이므로 주석 처리)
           GestureDetector(
             onTap: onSearchPressed,
             child: Container(
@@ -45,6 +49,7 @@ class CategoryTabs extends StatelessWidget {
               ),
             ),
           ),
+          */
         ],
       ),
     );
@@ -52,8 +57,6 @@ class CategoryTabs extends StatelessWidget {
 
   Widget _buildTabItem(String text) {
     final bool isSelected = text == selectedTab;
-    const Color activeColor = Color(0xFF504D46); // 딥 브라운
-    const Color inactiveColor = Color(0xFFA09891); // 부드러운 차콜 브라운
 
     return GestureDetector(
       onTap: () => onTabChanged(text),
@@ -67,18 +70,18 @@ class CategoryTabs extends StatelessWidget {
             style: TextStyle(
               fontSize: 18,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected ? activeColor : inactiveColor,
+              color: isSelected ? pointCoralRed : subBrown,
               letterSpacing: -0.3,
             ),
           ),
           const SizedBox(height: 6),
-          // 선택 시 나타나는 라운드 형태의 딥 브라운 밑줄 인디케이터
+          // 선택 시 나타나는 라운드 형태의 코랄 레드 밑줄 인디케이터
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             height: 3,
             width: 32,
             decoration: BoxDecoration(
-              color: isSelected ? activeColor : Colors.transparent,
+              color: isSelected ? pointCoralRed : Colors.transparent,
               borderRadius: BorderRadius.circular(2),
             ),
           ),

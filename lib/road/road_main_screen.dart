@@ -17,6 +17,12 @@ class RoadMainScreen extends StatefulWidget {
 }
 
 class _RoadMainScreenState extends State<RoadMainScreen> {
+  // YamYamRoad 브랜드 공식 컬러 상수 정의
+  static const Color pointCoralRed = Color(0xFFFF6B57);    // 시그니처 코랄 레드
+  static const Color deepChocolate = Color(0xFF4A3225);    // 텍스트 & 아이콘 메인
+  static const Color creamyIvory = Color(0xFFFFFDF9);      // 화면 바탕 크림 아이보리
+  static const Color subTextColor = Color(0xFF7A6B63);      // 서브 브라운 텍스트
+
   final RoadRepository _roadRepository = RoadRepository();
 
   String _selectedTab = '지역별';
@@ -126,7 +132,7 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -195,7 +201,9 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
   /// 로딩 / 에러 / 실데이터 연동 영역
   Widget _buildListContent() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(color: deepChocolate),
+      );
     }
 
     if (_errorMessage != null) {
@@ -204,7 +212,7 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Text(
             _errorMessage!,
-            style: const TextStyle(color: Colors.red, fontSize: 13),
+            style: const TextStyle(color: pointCoralRed, fontSize: 13),
             textAlign: TextAlign.center,
           ),
         ),
@@ -217,6 +225,8 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
     );
 
     return RefreshIndicator(
+      color: pointCoralRed,
+      backgroundColor: Colors.white,
       onRefresh: _fetchRoadsFromFirestore,
       child: ListView.builder(
         itemCount: uiItems.length,

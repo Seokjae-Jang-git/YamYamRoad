@@ -18,16 +18,29 @@ class InHouseTabView extends StatelessWidget {
   Widget build(BuildContext context) {
     final AdStationService adStationService = AdStationService();
 
+    // 제휴(In-House) 스폰서 전용 캐러멜 골드 컬러 정의
+    const Color caramelGold = Color(0xFFC88A4B);
+    const Color deepChocolate = Color(0xFF4A3225);
+    const Color cocoaText = Color(0xFF8C7A6B);
+    const Color sponsorBg = Color(0xFFFBF3EB);
+
     return StreamBuilder<List<InHouseAdModel>>(
       stream: adStationService.getInHouseAdsStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+            child: CircularProgressIndicator(
+              color: caramelGold,
+            ),
+          );
         }
 
         if (snapshot.hasError) {
           return Center(
-            child: Text('광고 데이터를 불러오는데 실패했습니다: ${snapshot.error}'),
+            child: Text(
+              '광고 데이터를 불러오는데 실패했습니다: ${snapshot.error}',
+              style: const TextStyle(color: cocoaText),
+            ),
           );
         }
 
@@ -36,22 +49,29 @@ class InHouseTabView extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           children: [
+            // 제휴 광고 전용 안내 상자 (캐러멜 골드 포인트)
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange[50],
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.orange[100]!, width: 0.5),
+                color: sponsorBg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: caramelGold.withOpacity(0.3),
+                  width: 1.0,
+                ),
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.store, color: Colors.orange, size: 20),
+                  Icon(Icons.store, color: caramelGold, size: 20),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       '얌얌로드와 정식 제휴를 맺은 브랜드의 프리미엄 광고를 시청하고 큰 보상을 받으세요!',
                       style: TextStyle(
-                          fontSize: 12, color: Colors.black87, height: 1.3),
+                        fontSize: 12,
+                        color: deepChocolate,
+                        height: 1.3,
+                      ),
                     ),
                   ),
                 ],
@@ -65,7 +85,7 @@ class InHouseTabView extends StatelessWidget {
                 child: Center(
                   child: Text(
                     '현재 진행 중인 제휴 광고가 없습니다.',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                    style: TextStyle(fontSize: 14, color: cocoaText),
                   ),
                 ),
               )

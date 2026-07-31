@@ -230,13 +230,75 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
 
                       final userDocRef = FirebaseFirestore.instance.collection('users').doc(UserData.uid);
 
-                      await userDocRef.update({
-                        'nickname': _nicknameController.text,
-                        'name': _nameController.text, // 만약 users 정의서 필드에 name이 없다면 생략 가능합니다.
-                        'phone': _phoneController.text, // 정의서 필드 구조에 맞춰서 조율 가능합니다.
-                        // 🌟 이미지가 새로 업로드되어 URL이 생성되었다면 DB에 저장하고, 기본 이미지로 돌렸다면 null을 꽂아줍니다.
-                        'profileImageUrl': _isDefaultImage ? null : (downloadUrl ?? UserData.profileImagePath),
-                      });
+                      final String newNickname = _nicknameController.text;
+                      final bool nicknameChanged = newNickname != UserData.nickname;
+
+                      debugPrint('🔍 [1단계] newNickname: $newNickname / old: ${UserData.nickname} / changed: $nicknameChanged');
+
+                      try {
+                        await userDocRef.update({
+                          'nickname': newNickname,
+                          'name': _nameController.text,
+                          'phone': _phoneController.text,
+                          'profileImageUrl': _isDefaultImage ? null : (downloadUrl ?? UserData.profileImagePath),
+                        });
+                        debugPrint('✅ [1단계] users 업데이트 성공');
+                      } catch (e) {
+                        debugPrint('🔴 [1단계] users 업데이트 실패: $e');
+                        rethrow;
+                      }
+
+                      if (nicknameChanged) {
+                        try {
+                          final postsSnapshot = await FirebaseFirestore.instance
+                              .collection('posts')
+                              .where('userId', isEqualTo: UserData.uid)
+                              .get();
+                          debugPrint('🔍 [2단계] posts 개수: ${postsSnapshot.docs.length}');
+
+                          if (postsSnapshot.docs.isNotEmpty) {
+                            const chunkSize = 500;
+                            final docs = postsSnapshot.docs;
+                            for (var i = 0; i < docs.length; i += chunkSize) {
+                              final batch = FirebaseFirestore.instance.batch();
+                              final end = (i + chunkSize < docs.length) ? i + chunkSize : docs.length;
+                              for (final doc in docs.sublist(i, end)) {
+                                batch.update(doc.reference, {'nickname': newNickname});
+                              }
+                              await batch.commit();
+                            }
+                          }
+                          debugPrint('✅ [2단계] posts 동기화 성공');
+                        } catch (e) {
+                          debugPrint('🔴 [2단계] posts 동기화 실패: $e');
+                          rethrow;
+                        }
+
+                        try {
+                          final commentsSnapshot = await FirebaseFirestore.instance
+                              .collectionGroup('comments')
+                              .where('userId', isEqualTo: UserData.uid)
+                              .get();
+                          debugPrint('🔍 [3단계] comments 개수: ${commentsSnapshot.docs.length}');
+
+                          if (commentsSnapshot.docs.isNotEmpty) {
+                            const chunkSize = 500;
+                            final commentDocs = commentsSnapshot.docs;
+                            for (var i = 0; i < commentDocs.length; i += chunkSize) {
+                              final batch = FirebaseFirestore.instance.batch();
+                              final end = (i + chunkSize < commentDocs.length) ? i + chunkSize : commentDocs.length;
+                              for (final doc in commentDocs.sublist(i, end)) {
+                                batch.update(doc.reference, {'nickname': newNickname});
+                              }
+                              await batch.commit();
+                            }
+                          }
+                          debugPrint('✅ [3단계] comments 동기화 성공');
+                        } catch (e) {
+                          debugPrint('🔴 [3단계] comments 동기화 실패: $e');
+                          rethrow;
+                        }
+                      }
 
                       // 4) 로컬 전역 변수(UserData)도 현재 수정한 값으로 동기화합니다.
                       UserData.nickname = _nicknameController.text;

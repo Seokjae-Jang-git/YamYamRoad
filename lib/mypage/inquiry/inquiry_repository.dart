@@ -109,8 +109,18 @@ class InquiryRepository {
     });
   }
 
-  /// 문의 삭제
-  Future<void> delete(String id) async {
-    await _collection.doc(id).delete();
+  // 🌟 기존 delete 메서드를 대체하는 문의 취소 메서드
+  Future<void> cancelInquiry(String id) async {
+    await _collection.doc(id).update({
+      'status': 'cancelled', // 상태값을 cancelled로 변경 (소프트 딜리트)
+    });
   }
+
+  /// 🌟 문의 종료 (답변 완료된 문의를 사용자가 종료 처리)
+  Future<void> closeInquiry(String id) async {
+    await _collection.doc(id).update({
+      'status': 'closed',
+    });
+  }
+
 }
