@@ -2,22 +2,22 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CommunityComment {
   final String id;
-  final String userId; // 🌟 authorId → userId
-  final String authorNickname;
-  final String? authorProfileImage;
+  final String userId;
+  final String nickname;
+  final String? profileImage;
   final String content;
   final String? parentId;
   final String? replyToNickname;
   final DateTime? createdAt;
-  final DateTime? updatedAt;   // 🌟 추가 - 수정 시각
-  final int likeCount;        // 🌟 추가
-  final int reportCount;      // 🌟 추가
+  final DateTime? updatedAt;
+  final int likeCount;
+  final int reportCount;
 
   CommunityComment({
     required this.id,
     required this.userId,
-    required this.authorNickname,
-    this.authorProfileImage,
+    required this.nickname,
+    this.profileImage,
     required this.content,
     this.parentId,
     this.replyToNickname,
@@ -44,9 +44,9 @@ class CommunityComment {
     return CommunityComment(
       id: doc.id,
       userId: (data['userId'] ?? '').toString(),
-      authorNickname: (data['authorNickname'] ?? '익명').toString(),
-      authorProfileImage: (data['authorProfileImage'] as String?)?.isNotEmpty == true
-          ? data['authorProfileImage'] as String
+      nickname: (data['nickname'] ?? '익명').toString(),
+      profileImage: (data['profileImageUrl'] as String?)?.isNotEmpty == true
+          ? data['profileImageUrl'] as String
           : null,
       content: (data['content'] ?? '').toString(),
       parentId: data['parentId'] as String?,
@@ -65,8 +65,8 @@ class CommunityComment {
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
-      'authorNickname': authorNickname,
-      'authorProfileImage': authorProfileImage,
+      'nickname': nickname,
+      'profileImageUrl': profileImage,
       'content': content,
       'parentId': parentId,
       'replyToNickname': replyToNickname,

@@ -10,11 +10,11 @@ class CommunityPost {
   final String category;
   final String content;
   final List<String> imageUrls;
-  final List<String> videoUrls;       // 🌟 추가
-  final List<String> tags;            // 🌟 추가
-  final List<String> emoticonIds;     // 🌟 추가
-  final List<String> searchKeywords;  // 🌟 추가
-  final String status;                // 🌟 추가
+  final List<String> videoUrls;
+  final List<String> tags;
+  final List<String> emoticonIds;
+  final List<String> searchKeywords;
+  final String status;
   final int likeCount;
   final int commentCount;
   final int scrapCount;
@@ -22,7 +22,7 @@ class CommunityPost {
   final List<String> likedBy;
   final List<String> scrappedBy;
   final DateTime createdAt;
-  final DateTime? updatedAt;          // 🌟 추가
+  final DateTime? updatedAt;
 
   CommunityPost({
     required this.id,

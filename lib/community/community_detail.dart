@@ -343,11 +343,11 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     final comment = CommunityComment(
       id: '',
       userId: _currentUserId,
-      authorNickname: _currentUserNickname,
-      authorProfileImage: UserData.profileImagePath,
+      nickname: _currentUserNickname,
+      profileImage: UserData.profileImagePath,
       content: text,
       parentId: _replyTarget?.parentId ?? _replyTarget?.id,
-      replyToNickname: _replyTarget?.authorNickname,
+      replyToNickname: _replyTarget?.nickname,
     );
 
     try {
