@@ -16,6 +16,14 @@ class CourseDetailSheet extends StatelessWidget {
     required this.onSortOptionChanged,
   });
 
+  // YamYamRoad 브랜드 공식 컬러 상수 정의
+  static const Color pointCoralRed = Color(0xFFFF6B57);    // 시그니처 코랄 레드 (선택된 정렬 칩/개수 텍스트)
+  static const Color strawberryPink = Color(0xFFFFA09B);   // 연한 스트로베리 핑크 (선택 칩 배경)
+  static const Color deepChocolate = Color(0xFF4A3225);    // 타이틀 및 메인 텍스트
+  static const Color subBrown = Color(0xFF7A6B63);         // 서브 브라운 텍스트
+  static const Color cardBorder = Color(0xFFEFEBE4);       // 구분선 & 테두리 컬러
+  static const Color handleBarColor = Color(0xFFE0D8D0);   // 핸들바 소프트 초콜릿 톤
+
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
@@ -24,17 +32,18 @@ class CourseDetailSheet extends StatelessWidget {
       maxChildSize: 0.85,
       builder: (context, scrollController) {
         return Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.only(
+            borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black12,
+                color: deepChocolate.withOpacity(0.08),
                 blurRadius: 10,
                 spreadRadius: 2,
+                offset: const Offset(0, -2),
               ),
             ],
           ),
@@ -46,7 +55,7 @@ class CourseDetailSheet extends StatelessWidget {
                 width: 40,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: handleBarColor,
                   borderRadius: BorderRadius.circular(2.5),
                 ),
               ),
@@ -61,15 +70,20 @@ class CourseDetailSheet extends StatelessWidget {
                       children: [
                         Text(
                           title,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: deepChocolate,
+                            letterSpacing: -0.3,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         Text(
                           '${places.length}개',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 14,
-                            color: Colors.orange[800],
-                            fontWeight: FontWeight.w600,
+                            color: pointCoralRed,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
@@ -84,7 +98,7 @@ class CourseDetailSheet extends StatelessWidget {
                   ],
                 ),
               ),
-              const Divider(color: Colors.black12, height: 1.0),
+              const Divider(color: cardBorder, height: 1.0, thickness: 1.0),
 
               // 2. 장소 카드 목록 영역
               Expanded(
@@ -115,10 +129,11 @@ class CourseDetailSheet extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.orange[50] : Colors.white,
+          color: isSelected ? strawberryPink.withOpacity(0.15) : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? Colors.orange : Colors.grey[300]!,
+            color: isSelected ? pointCoralRed : cardBorder,
+            width: isSelected ? 1.2 : 1.0,
           ),
         ),
         child: Text(
@@ -126,7 +141,7 @@ class CourseDetailSheet extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            color: isSelected ? Colors.orange[800] : Colors.grey[700],
+            color: isSelected ? pointCoralRed : subBrown,
           ),
         ),
       ),

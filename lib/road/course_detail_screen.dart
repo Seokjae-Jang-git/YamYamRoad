@@ -19,6 +19,12 @@ class CourseDetailScreen extends StatefulWidget {
 }
 
 class _CourseDetailScreenState extends State<CourseDetailScreen> {
+  // YamYamRoad 브랜드 공식 컬러 상수 정의
+  static const Color pointCoralRed = Color(0xFFFF6B57);    // 시그니처 코랄 레드 (로딩 인디케이터)
+  static const Color deepChocolate = Color(0xFF4A3225);    // 텍스트 & 메인 타이틀 & 아이콘
+  static const Color creamyIvory = Color(0xFFFFFDF9);      // 스캐폴드/앱바 바탕 크림 아이보리
+  static const Color cardBorder = Color(0xFFEFEBE4);       // 구분선 테두리 컬러
+
   final PlaceRepository _placeRepository = PlaceRepository();
 
   String _sortOption = '거리순';
@@ -92,45 +98,55 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final sortedPlaces = _getSortedPlaces;
+    final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       appBar: AppBar(
         title: Text(
           widget.road.title,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black),
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: deepChocolate,
+            letterSpacing: -0.3,
+          ),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: creamyIvory,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
+        scrolledUnderElevation: 0,
+        iconTheme: const IconThemeData(color: deepChocolate),
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1.0),
-          child: Divider(color: Colors.black12, height: 1.0, thickness: 0.5),
+          child: Divider(color: cardBorder, height: 1.0, thickness: 1.0),
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+        child: CircularProgressIndicator(color: pointCoralRed),
+      )
           : _errorMessage != null
           ? Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Text(
             _errorMessage!,
-            style: const TextStyle(color: Colors.red, fontSize: 13),
+            style: const TextStyle(color: pointCoralRed, fontSize: 13),
             textAlign: TextAlign.center,
           ),
         ),
       )
           : Stack(
         children: [
-          // 🗺️ 상단 레이어: 구글 지도 컴포넌트
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: MediaQuery.of(context).size.height * 0.45,
-            child: CourseDetailMap(places: _places),
+          // 🗺️ 상단 레이어: 배경 전체를 채우되, 시트에 가려지지 않도록 bottom padding 부여
+          Positioned.fill(
+            child: CourseDetailMap(
+              places: _places,
+              padding: EdgeInsets.only(
+                bottom: screenHeight * 0.45,
+              ),
+            ),
           ),
 
           // 🛗 하단 레이어: 드래그 가능한 슬라이딩 시트 컴포넌트

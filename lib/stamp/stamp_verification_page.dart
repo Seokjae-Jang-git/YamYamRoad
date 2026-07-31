@@ -1,9 +1,13 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'colors/stamp_colors.dart';
 import 'models/stamp_verification_models.dart';
+import 'stamp_verification_complete_page.dart';
+import 'widgets/place_info_card.dart';
+import 'widgets/receipt_capture_area.dart';
+import 'widgets/star_rating_card.dart';
+import 'widgets/visit_note_input.dart';
 
 class StampVerificationPage extends StatefulWidget {
   final String placeId;
@@ -72,12 +76,31 @@ class _StampVerificationPageState extends State<StampVerificationPage> {
       barrierDismissible: false,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('스탬프 인증 불가'),
-          content: Text(result.message ?? '현재 기기에서는 스탬프 인증을 진행할 수 없습니다.'),
+          backgroundColor: YamYamStampColors.creamyIvory,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            '스탬프 인증 불가',
+            style: TextStyle(
+              color: YamYamStampColors.deepChocolate,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            result.message ?? '현재 기기에서는 스탬프 인증을 진행할 수 없습니다.',
+            style: const TextStyle(color: YamYamStampColors.subTextColor),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('확인'),
+              child: const Text(
+                '확인',
+                style: TextStyle(
+                  color: YamYamStampColors.coralRed,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         );
@@ -186,12 +209,31 @@ class _StampVerificationPageState extends State<StampVerificationPage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text(title),
-          content: Text(message),
+          backgroundColor: YamYamStampColors.creamyIvory,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            title,
+            style: const TextStyle(
+              color: YamYamStampColors.deepChocolate,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            message,
+            style: const TextStyle(color: YamYamStampColors.subTextColor),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('확인'),
+              child: const Text(
+                '확인',
+                style: TextStyle(
+                  color: YamYamStampColors.coralRed,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         );
@@ -202,14 +244,19 @@ class _StampVerificationPageState extends State<StampVerificationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F8),
+      backgroundColor: YamYamStampColors.creamyIvory,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF504D46),
+        backgroundColor: YamYamStampColors.creamyIvory,
+        foregroundColor: YamYamStampColors.deepChocolate,
         elevation: 0,
+        centerTitle: true,
         title: const Text(
-          '스탬프 인증',
-          style: TextStyle(fontWeight: FontWeight.w800),
+          '영수증 스탬프 인증',
+          style: TextStyle(
+            color: YamYamStampColors.deepChocolate,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
       body: SafeArea(
@@ -217,10 +264,14 @@ class _StampVerificationPageState extends State<StampVerificationPage> {
           children: [
             if (_entryCheckComplete) _buildVerificationForm(),
             if (!_entryCheckComplete || _isSubmitting)
-              const Positioned.fill(
+              Positioned.fill(
                 child: ColoredBox(
-                  color: Color(0x99FFFFFF),
-                  child: Center(child: CircularProgressIndicator()),
+                  color: Colors.white.withOpacity(0.7),
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      color: YamYamStampColors.coralRed,
+                    ),
+                  ),
                 ),
               ),
           ],
@@ -231,306 +282,106 @@ class _StampVerificationPageState extends State<StampVerificationPage> {
 
   Widget _buildVerificationForm() {
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       children: [
-        _PlaceCard(placeId: widget.placeId, placeName: widget.placeName),
+        // 1. 매장 카드
+        PlaceInfoCard(
+          placeId: widget.placeId,
+          placeName: widget.placeName,
+        ),
         const SizedBox(height: 20),
-        const Text(
-          '별점',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+
+        // 2. 별점 평가 세그먼트 카드
+        StarRatingCard(
+          rating: _rating,
+          onRatingChanged: (newRating) {
+            setState(() {
+              _rating = newRating;
+            });
+          },
         ),
-        const SizedBox(height: 8),
-        Row(
-          children: List.generate(5, (index) {
-            final value = index + 1;
-            return IconButton(
-              tooltip: '$value점',
-              onPressed: () {
-                setState(() {
-                  _rating = value;
-                });
-              },
-              icon: Icon(
-                value <= _rating
-                    ? Icons.star_rounded
-                    : Icons.star_border_rounded,
-                color: const Color(0xFFFFB74D),
-                size: 36,
-              ),
-            );
-          }),
+
+        const SizedBox(height: 20),
+
+        // 3. 영수증 첨부 헤더 및 메인 캡처 영역
+        const Padding(
+          padding: EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            '영수증 사진',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: YamYamStampColors.deepChocolate,
+            ),
+          ),
         ),
-        const SizedBox(height: 16),
-        const Text(
-          '영수증',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 10),
-        _ReceiptCaptureArea(
+        ReceiptCaptureArea(
           imagePath: _receiptImage?.path,
           onTap: _takeReceiptPhoto,
         ),
+
         if (widget.allowGallerySelection) ...[
           const SizedBox(height: 10),
           OutlinedButton.icon(
             onPressed: _pickReceiptFromGallery,
-            icon: const Icon(Icons.photo_library_outlined),
-            label: const Text('개발용: 갤러리에서 영수증 선택'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: YamYamStampColors.deepChocolate,
+              side: const BorderSide(color: YamYamStampColors.borderPink),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+            icon: const Icon(Icons.photo_library_outlined, size: 20),
+            label: const Text('개발용: 갤러리에서 선택'),
           ),
         ],
+
         const SizedBox(height: 20),
-        TextField(
-          controller: _noteController,
-          maxLength: 100,
-          maxLines: 3,
-          decoration: InputDecoration(
-            labelText: '나만의 메모',
-            hintText: '이곳에서의 기억을 한 줄로 남겨보세요.',
-            filled: true,
-            fillColor: Colors.white,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide.none,
+
+        // 4. 메모 입력창
+        const Padding(
+          padding: EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            '나만의 방문 메모',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: YamYamStampColors.deepChocolate,
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        VisitNoteInput(
+          controller: _noteController,
+        ),
+
+        const SizedBox(height: 24),
+
+        // 5. 스탬프 발급 실행 버튼
         SizedBox(
-          height: 54,
-          child: FilledButton(
+          height: 56,
+          child: ElevatedButton(
             onPressed: _isSubmitting ? null : _submit,
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF75BDF5),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: YamYamStampColors.coralRed,
+              foregroundColor: Colors.white,
+              elevation: 3,
+              shadowColor: YamYamStampColors.coralRed.withOpacity(0.4),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
             child: const Text(
-              '인증하기',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              '인증 제출하고 스탬프 받기',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
+        const SizedBox(height: 20),
       ],
-    );
-  }
-}
-
-class _PlaceCard extends StatelessWidget {
-  final String placeId;
-  final String placeName;
-
-  const _PlaceCard({required this.placeId, required this.placeName});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          const CircleAvatar(
-            backgroundColor: Color(0xFFFFE4E2),
-            child: Text('🍰'),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  placeName,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  placeId,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ReceiptCaptureArea extends StatelessWidget {
-  final String? imagePath;
-  final VoidCallback onTap;
-
-  const _ReceiptCaptureArea({required this.imagePath, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Ink(
-        height: 300,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E2E2)),
-        ),
-        child: imagePath == null
-            ? const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.receipt_long_outlined,
-                    size: 54,
-                    color: Colors.grey,
-                  ),
-                  SizedBox(height: 12),
-                  Text(
-                    '눌러서 영수증 촬영',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    '상호명과 결제 시간이 잘 보이게 찍어주세요.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
-              )
-            : ClipRRect(
-                borderRadius: BorderRadius.circular(15),
-                child: Image.file(
-                  File(imagePath!),
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  errorBuilder: (_, _, _) =>
-                      const Center(child: Text('사진을 불러오지 못했습니다. 다시 촬영해 주세요.')),
-                ),
-              ),
-      ),
-    );
-  }
-}
-
-class StampVerificationCompletePage extends StatelessWidget {
-  final String placeName;
-  final String receiptImagePath;
-  final int rating;
-  final String note;
-  final int awardedPoints;
-
-  const StampVerificationCompletePage({
-    super.key,
-    required this.placeName,
-    required this.receiptImagePath,
-    required this.rating,
-    required this.note,
-    required this.awardedPoints,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F8),
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF504D46),
-        elevation: 0,
-        title: const Text(
-          '스탬프 인증 완료',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Container(
-              padding: const EdgeInsets.all(22),
-              decoration: BoxDecoration(
-                color: const Color(0xFF9CE3D4),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                children: [
-                  const Text('🍒', style: TextStyle(fontSize: 58)),
-                  const SizedBox(height: 10),
-                  Text(
-                    placeName,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    awardedPoints > 0
-                        ? '스탬프와 $awardedPoints 포인트를 받았습니다.'
-                        : '스탬프를 받았습니다.',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.file(
-                File(receiptImagePath),
-                height: 300,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(height: 18),
-            Row(
-              children: List.generate(
-                5,
-                (index) => Icon(
-                  index < rating
-                      ? Icons.star_rounded
-                      : Icons.star_border_rounded,
-                  color: const Color(0xFFFFB74D),
-                ),
-              ),
-            ),
-            if (note.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(note),
-              ),
-            ],
-            const SizedBox(height: 24),
-            SizedBox(
-              height: 54,
-              child: FilledButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF75BDF5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                child: const Text(
-                  '돌아가기',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

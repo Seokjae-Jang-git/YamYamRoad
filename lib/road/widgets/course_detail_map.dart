@@ -4,10 +4,12 @@ import '../models/place_model.dart';
 
 class CourseDetailMap extends StatefulWidget {
   final List<PlaceModel> places;
+  final EdgeInsets padding;
 
   const CourseDetailMap({
     super.key,
     required this.places,
+    this.padding = EdgeInsets.zero,
   });
 
   @override
@@ -20,8 +22,8 @@ class _CourseDetailMapState extends State<CourseDetailMap> {
   @override
   void didUpdateWidget(covariant CourseDetailMap oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // 장소 데이터 목록이 변경되면 지도 카메라 영역 재조정
-    if (oldWidget.places != widget.places) {
+    // 장소 데이터 목록이나 패딩이 변경되면 지도 카메라 영역 재조정
+    if (oldWidget.places != widget.places || oldWidget.padding != widget.padding) {
       _moveCameraToFitPlaces();
     }
   }
@@ -73,6 +75,7 @@ class _CourseDetailMapState extends State<CourseDetailMap> {
         target: LatLng(37.5666102, 126.9783881), // 기본 임시 좌표 (서울시청)
         zoom: 14,
       ),
+      padding: widget.padding,
       markers: _markers,
       myLocationButtonEnabled: false,
       indoorViewEnabled: true,
