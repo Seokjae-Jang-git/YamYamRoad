@@ -19,6 +19,13 @@ class CommunityMainScreen extends StatefulWidget {
 }
 
 class _CommunityMainScreenState extends State<CommunityMainScreen> {
+  // YamYamRoad 브랜드 공식 컬러 상수 정의
+  static const Color pointCoralRed = Color(0xFFFF6B57);    // 시그니처 코랄 레드
+  static const Color subStrawberryPink = Color(0xFFFFA09B); // 서브 분홍
+  static const Color deepChocolate = Color(0xFF4A3225);    // 텍스트 & 아이콘 메인
+  static const Color creamyIvory = Color(0xFFFFFDF9);      // 화면 바탕 크림 아이보리
+  static const Color subTextColor = Color(0xFF7A6B63);      // 서브 브라운 텍스트
+
   SortOption _sortOption = SortOption.latest;
   SortPeriod _sortPeriod = SortPeriod.all;
   final ScrollController _scrollController = ScrollController(); // 🌟 얌얌북 탭 시 맨 위로 스크롤하기 위한 컨트롤러
@@ -183,19 +190,22 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       appBar: AppBar(
         title: GestureDetector(
           onTap: _scrollToTop,
-          child: const Text('얌얌북',
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          child: const Text(
+            '얌얌북',
+            style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold),
+          ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: creamyIvory,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
+        scrolledUnderElevation: 0,
+        iconTheme: const IconThemeData(color: deepChocolate),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.black),
+            icon: const Icon(Icons.search, color: deepChocolate),
             onPressed: _openSearch,
           ),
         ],
@@ -207,7 +217,8 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFFFF8A3D),
+        backgroundColor: pointCoralRed,
+        elevation: 3,
         onPressed: _openWriteScreen,
         child: const Icon(Icons.edit, color: Colors.white),
       ),
@@ -226,11 +237,11 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
           child: Row(
             children: [
               _sortTabButton('최신순', SortOption.latest),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               _sortTabButton('좋아요순', SortOption.likes),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               _sortTabButton('댓글순', SortOption.comments),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               _sortTabButton('스크랩순', SortOption.scrap),
             ],
           ),
@@ -261,8 +272,8 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
         label,
         style: TextStyle(
           fontSize: 13,
-          fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-          color: selected ? Colors.black : Colors.grey,
+          fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+          color: selected ? pointCoralRed : subTextColor,
         ),
       ),
     );
@@ -273,9 +284,9 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
     return GestureDetector(
       onTap: () => _changeSortPeriod(period),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFFF8A3D) : const Color(0xFFF5F5F5),
+          color: selected ? pointCoralRed : deepChocolate.withOpacity(0.06),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Text(
@@ -283,7 +294,7 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : Colors.grey.shade700,
+            color: selected ? Colors.white : subTextColor,
           ),
         ),
       ),
@@ -301,13 +312,13 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
               child: Text(
                 '글을 불러오는 중 오류가 발생했습니다.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 13),
+                style: TextStyle(color: subTextColor, fontSize: 13),
               ),
             ),
           );
         }
         if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator(color: Colors.black));
+          return const Center(child: CircularProgressIndicator(color: deepChocolate));
         }
 
         final posts = snapshot.data!;
@@ -316,21 +327,34 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Text('총 ${posts.length}개',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Text(
+                '총 ${posts.length}개',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: deepChocolate,
+                ),
+              ),
             ),
             Expanded(
               child: posts.isEmpty
-                  ? const Center(child: Text('아직 등록된 글이 없어요.'))
+                  ? const Center(
+                child: Text(
+                  '아직 등록된 글이 없어요.',
+                  style: TextStyle(color: subTextColor),
+                ),
+              )
                   : RefreshIndicator(
+                color: pointCoralRed,
+                backgroundColor: Colors.white,
                 // 🌟 실시간 스트림이 아니라 Future 기반이라, 당겨서 새로고침으로 최신 값을 다시 계산합니다.
                 onRefresh: () async => _refetch(),
                 child: ListView.separated(
                   controller: _scrollController, // 🌟 여기(메인 화면 리스트)에 연결
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: posts.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 16),
+                  separatorBuilder: (_, __) => const SizedBox(height: 14),
                   itemBuilder: (context, index) => _buildPostCard(posts[index]),
                 ),
               ),
@@ -344,8 +368,23 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
   Widget _buildPostCard(CommunityPost post) {
     return GestureDetector(
       onTap: () => _openDetail(post),
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 4),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white, // 크림색 배경 바탕 위 입체 순백색 카드로 피드 구분
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: deepChocolate.withOpacity(0.12),
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: deepChocolate.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -356,16 +395,16 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
               authorProfileImage: post.profileImage,
               createdAt: post.createdAt,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             // 🌟 이모티콘 토큰([emoji:xxx.svg])을 실제 이미지로 인라인 렌더링 (상세페이지와 동일)
             EmoticonRichContent(
               content: post.content,
               emojiSize: 16,
-              style: const TextStyle(fontSize: 13, height: 1.4, color: Colors.black),
+              style: const TextStyle(fontSize: 13, height: 1.4, color: deepChocolate),
             ),
             // 🌟 태그 표시 - 상세 페이지와 동일하게, 누르면 해당 태그로 검색 화면 이동
             if (post.tags.isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
@@ -376,7 +415,7 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
                       '#$tag',
                       style: const TextStyle(
                         fontSize: 12,
-                        color: Color(0xFFFF8A3D),
+                        color: pointCoralRed,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -385,13 +424,13 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
               ),
             ],
             if (post.imageUrls.isNotEmpty) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               PostImageCarousel(imageUrls: post.imageUrls),
             ],
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Text(
               '좋아요 ${post.likeCount}   댓글 ${post.commentCount}   스크랩 ${post.scrapCount}',
-              style: const TextStyle(fontSize: 12, color: Colors.black54),
+              style: const TextStyle(fontSize: 12, color: subTextColor, fontWeight: FontWeight.w500),
             ),
           ],
         ),
@@ -409,6 +448,9 @@ class _PostHeaderWithBadges extends StatelessWidget {
   final String authorNickname;
   final String? authorProfileImage;
   final DateTime createdAt;
+
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color subTextColor = Color(0xFF7A6B63);
 
   const _PostHeaderWithBadges({
     Key? key,
@@ -496,12 +538,12 @@ class _PostHeaderWithBadges extends StatelessWidget {
             // 1. 프로필 이미지
             CircleAvatar(
               radius: 18,
-              backgroundColor: const Color(0xFFF5F5F5),
+              backgroundColor: const Color(0xFFFAF7F5),
               backgroundImage: authorProfileImage != null && authorProfileImage!.isNotEmpty
                   ? NetworkImage(authorProfileImage!)
                   : null,
               child: authorProfileImage == null || authorProfileImage!.isEmpty
-                  ? const Icon(Icons.person_outline, size: 20, color: Colors.grey)
+                  ? const Icon(Icons.person_outline, size: 20, color: subTextColor)
                   : null,
             ),
             const SizedBox(width: 10),
@@ -513,12 +555,16 @@ class _PostHeaderWithBadges extends StatelessWidget {
               children: [
                 Text(
                   authorNickname,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: deepChocolate,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   _formatTime(createdAt),
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  style: const TextStyle(fontSize: 11, color: subTextColor),
                 ),
               ],
             ),
@@ -560,12 +606,12 @@ class _PostHeaderWithBadges extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEEEEEE),
+                    color: deepChocolate.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     '+$extraCount',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black87),
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: deepChocolate),
                   ),
                 ),
               ),
@@ -581,9 +627,14 @@ class _PostHeaderWithBadges extends StatelessWidget {
       List<Map<String, dynamic>> allBadges, {
         int initialIndex = 0,
       }) {
+    const Color creamyIvory = Color(0xFFFFFDF9);
+    const Color deepChocolate = Color(0xFF4A3225);
+    const Color pointCoralRed = Color(0xFFFF6B57);
+    const Color subTextColor = Color(0xFF7A6B63);
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -603,14 +654,14 @@ class _PostHeaderWithBadges extends StatelessWidget {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: deepChocolate.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     '보유한 뱃지 (${currentPage + 1}/${allBadges.length})',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                    style: const TextStyle(fontSize: 13, color: subTextColor, fontWeight: FontWeight.w500),
                   ),
                   SizedBox(
                     height: 190,
@@ -634,7 +685,7 @@ class _PostHeaderWithBadges extends StatelessWidget {
                                 badge['imageUrl'],
                                 fit: BoxFit.contain,
                                 errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.workspace_premium, size: 70, color: Colors.orange),
+                                const Icon(Icons.workspace_premium, size: 70, color: pointCoralRed),
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -643,7 +694,7 @@ class _PostHeaderWithBadges extends StatelessWidget {
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                                color: deepChocolate,
                               ),
                             ),
                             const SizedBox(height: 6),
@@ -652,9 +703,9 @@ class _PostHeaderWithBadges extends StatelessWidget {
                               textAlign: TextAlign.center,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 13,
-                                color: Colors.grey.shade700,
+                                color: subTextColor,
                                 height: 1.3,
                               ),
                             ),
@@ -673,7 +724,7 @@ class _PostHeaderWithBadges extends StatelessWidget {
                           height: 6,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(3),
-                            color: currentPage == dotIndex ? Colors.black : Colors.grey.shade300,
+                            color: currentPage == dotIndex ? pointCoralRed : deepChocolate.withOpacity(0.15),
                           ),
                         );
                       }),
@@ -686,10 +737,10 @@ class _PostHeaderWithBadges extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed: () => Navigator.pop(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
+                        backgroundColor: deepChocolate,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                       child: const Text(

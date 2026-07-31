@@ -89,21 +89,21 @@ class SubFilterChips extends StatelessWidget {
     );
   }
 
-  // 공통 칩 위젯 생성 함수 (크림 베이지 & 딥 브라운 테마 적용)
+  // 공통 칩 위젯 생성 함수 (로스팅 카페 브랜드 테마 적용)
   Widget _buildChip({
     required String label,
     required bool isSelected,
     required VoidCallback onSelected,
   }) {
-    // 선택 상태 색상 (크림 베이지 & 딥 브라운)
-    const Color activeBg = Color(0xFFFAF6F0);
-    const Color activeBorder = Color(0xFFE6DDD0);
-    const Color activeText = Color(0xFF504D46);
+    // 선택 상태 색상 (시그니처 코랄 레드 배경 & 화이트 텍스트)
+    const Color activeBg = Color(0xFFFF6B57);
+    const Color activeBorder = Color(0xFFFF6B57);
+    const Color activeText = Colors.white;
 
-    // 비선택 상태 색상 (화이트 & 부드러운 차콜 브라운)
+    // 비선택 상태 색상 (화이트 배경 & 부드러운 서브 브라운 텍스트)
     const Color inactiveBg = Colors.white;
     const Color inactiveBorder = Color(0xFFEFEBE4);
-    const Color inactiveText = Color(0xFFA09891);
+    const Color inactiveText = Color(0xFF7A6B63);
 
     return ChoiceChip(
       label: Text(label),

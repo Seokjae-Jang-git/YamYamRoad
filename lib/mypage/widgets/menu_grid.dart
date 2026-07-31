@@ -13,10 +13,11 @@ class MenuGrid extends StatelessWidget {
   final VoidCallback openSetting;
 
   // YamYamRoad 브랜드 공식 컬러 상수 정의
+  static const Color pointCoralRed = Color(0xFFFF6B57);
+  static const Color subStrawberryPink = Color(0xFFFFA09B);
   static const Color deepChocolate = Color(0xFF4A3225);
-  static const Color subTextColor = Color(0xFF7A6B63);
-  static const Color cardBorderColor = Color(0xFFEFE8E0);
-  static const Color iconBgColor = Color(0xFFFFF4F2);
+  static const Color mint = Color(0xFF9CE3D4);
+  static const Color yellow = Color(0xFFF5D070);
 
   const MenuGrid({
     Key? key,
@@ -32,15 +33,48 @@ class MenuGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 각 기능별 공식 팔레트 기반 파스텔 배경색 매핑
     final List<Map<String, dynamic>> menuItems = [
-      {'icon': Icons.book_outlined, 'label': '다이어리'},
-      {'icon': Icons.people_outlined, 'label': '얌얌북'},
-      {'icon': Icons.verified_outlined, 'label': '스탬프'},
-      {'icon': Icons.military_tech_outlined, 'label': '뱃지'},
-      {'icon': Icons.monetization_on_outlined, 'label': '포인트'},
-      {'icon': Icons.help_outlined, 'label': '문의'},
-      {'icon': Icons.report_problem_outlined, 'label': '신고'},
-      {'icon': Icons.settings_outlined, 'label': '설정'},
+      {
+        'icon': Icons.book_outlined,
+        'label': '다이어리',
+        'bgColor': subStrawberryPink.withOpacity(0.18),
+      },
+      {
+        'icon': Icons.people_outlined,
+        'label': '얌얌북',
+        'bgColor': pointCoralRed.withOpacity(0.15),
+      },
+      {
+        'icon': Icons.verified_outlined,
+        'label': '스탬프',
+        'bgColor': subStrawberryPink.withOpacity(0.18),
+      },
+      {
+        'icon': Icons.military_tech_outlined,
+        'label': '뱃지',
+        'bgColor': yellow.withOpacity(0.25),
+      },
+      {
+        'icon': Icons.monetization_on_outlined,
+        'label': '포인트',
+        'bgColor': yellow.withOpacity(0.28),
+      },
+      {
+        'icon': Icons.help_outlined,
+        'label': '문의',
+        'bgColor': mint.withOpacity(0.22),
+      },
+      {
+        'icon': Icons.report_problem_outlined,
+        'label': '신고',
+        'bgColor': pointCoralRed.withOpacity(0.12),
+      },
+      {
+        'icon': Icons.settings_outlined,
+        'label': '설정',
+        'bgColor': deepChocolate.withOpacity(0.08),
+      },
     ];
 
     final row1Items = menuItems.sublist(0, 4);
@@ -48,6 +82,8 @@ class MenuGrid extends StatelessWidget {
 
     Widget buildMenuItem(BuildContext context, Map<String, dynamic> item) {
       final String label = item['label'];
+      final Color tileColor = item['bgColor'] as Color;
+
       return Expanded(
         child: GestureDetector(
           onTap: () {
@@ -69,7 +105,10 @@ class MenuGrid extends StatelessWidget {
               openSetting();
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('$label 화면 준비중'), duration: const Duration(seconds: 1)),
+                SnackBar(
+                  content: Text('$label 화면 준비중'),
+                  duration: const Duration(seconds: 1),
+                ),
               );
             }
           },
@@ -78,19 +117,19 @@ class MenuGrid extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: iconBgColor,
-                  borderRadius: BorderRadius.circular(12),
+                  color: tileColor,
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
                   item['icon'],
                   color: deepChocolate,
-                  size: 22,
+                  size: 23,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 7),
               Text(
                 label,
                 style: const TextStyle(
@@ -108,14 +147,17 @@ class MenuGrid extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: cardBorderColor, width: 1.2),
+        color: Colors.white, // 크림색 바탕 위 명확한 순백색 카드
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: deepChocolate.withOpacity(0.12), // 통일된 딥 초콜릿 외곽선
+          width: 1.0,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: deepChocolate.withOpacity(0.04), // 부드러운 입체 그림자
             blurRadius: 8,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -123,12 +165,14 @@ class MenuGrid extends StatelessWidget {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: row1Items.map((item) => buildMenuItem(context, item)).toList(),
+            children:
+            row1Items.map((item) => buildMenuItem(context, item)).toList(),
           ),
           const SizedBox(height: 18),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: row2Items.map((item) => buildMenuItem(context, item)).toList(),
+            children:
+            row2Items.map((item) => buildMenuItem(context, item)).toList(),
           ),
         ],
       ),

@@ -12,6 +12,13 @@ class CourseListCard extends StatelessWidget {
     this.onTap,
   });
 
+  // YamYamRoad 브랜드 공식 컬러 상수 정의
+  static const Color deepChocolate = Color(0xFF4A3225); // 텍스트 및 메인 포인트
+  static const Color subBrown = Color(0xFF7A6B63);      // 서브 브라운 텍스트 및 아이콘
+  static const Color cardBorder = Color(0xFFEFEBE4);    // 따뜻한 톤의 카드 테두리
+  static const Color placeholderBg = Color(0xFFF2ECE4);  // 플레이스홀더 배경
+  static const Color placeholderIcon = Color(0xFFA89A91);// 플레이스홀더 아이콘
+
   @override
   Widget build(BuildContext context) {
     // roadPlace 리스트의 길이를 기반으로 가게 수 연산
@@ -21,13 +28,15 @@ class CourseListCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
-        side: BorderSide(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(14.0),
+        side: const BorderSide(color: cardBorder, width: 1.0),
       ),
       color: Colors.white,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: BorderRadius.circular(14.0),
+        splashColor: deepChocolate.withOpacity(0.05),
+        highlightColor: deepChocolate.withOpacity(0.02),
         child: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Row(
@@ -35,19 +44,19 @@ class CourseListCard extends StatelessWidget {
             children: [
               // 1. 썸네일 이미지 영역
               ClipRRect(
-                borderRadius: BorderRadius.circular(8.0),
+                borderRadius: BorderRadius.circular(10.0),
                 child: road.thumbnailUrl.isNotEmpty
                     ? Image.network(
                   road.thumbnailUrl,
-                  width: 64,
-                  height: 64,
+                  width: 68,
+                  height: 68,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) =>
                       _buildImagePlaceholder(),
                 )
                     : _buildImagePlaceholder(),
               ),
-              const SizedBox(width: 12.0),
+              const SizedBox(width: 14.0),
 
               // 2. 텍스트 정보 영역 (제목 + 가게 수 + 설명)
               Expanded(
@@ -67,7 +76,8 @@ class CourseListCard extends StatelessWidget {
                             style: const TextStyle(
                               fontSize: 15.0,
                               fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                              color: deepChocolate,
+                              letterSpacing: -0.3,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -78,23 +88,25 @@ class CourseListCard extends StatelessWidget {
                         // 가게 수 표시 태그 (🍽 N곳)
                         Text(
                           '🍽 $placeCount곳',
-                          style: TextStyle(
-                            fontSize: 13.0,
+                          style: const TextStyle(
+                            fontSize: 12.5,
                             fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade700,
+                            color: subBrown,
+                            letterSpacing: -0.2,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6.0),
+                    const SizedBox(height: 5.0),
 
                     // 코스 설명글 (최대 2줄 노출 후 말줄임)
                     Text(
                       road.description,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color: Colors.grey.shade600,
-                        height: 1.3,
+                      style: const TextStyle(
+                        fontSize: 12.0,
+                        color: subBrown,
+                        height: 1.35,
+                        letterSpacing: -0.2,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -112,13 +124,13 @@ class CourseListCard extends StatelessWidget {
   /// 이미지 로딩 실패 시 표시할 대체 박스
   Widget _buildImagePlaceholder() {
     return Container(
-      width: 64,
-      height: 64,
-      color: Colors.grey.shade200,
+      width: 68,
+      height: 68,
+      color: placeholderBg,
       child: const Icon(
         Icons.image_not_supported_outlined,
-        color: Colors.grey,
-        size: 28,
+        color: placeholderIcon,
+        size: 26,
       ),
     );
   }
