@@ -261,19 +261,34 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     }
   }
 
-  // 🌟 게시글 스크랩 (post_scrap 서브컬렉션 + 트랜잭션)
+  // 🌟 게시글 스크랩 (post_scrap 서브컬렉션 + users_myscrap 서브컬렉션을 같은 트랜잭션으로 동기화)
+  // - posts/{postId}/post_scrap 문서 ID = 스크랩한 사용자의 uid
+  // - users/{uid}/users_myscrap 문서 ID = 스크랩된 게시글의 postId
+  // 양쪽 다 "문서 ID로 바로 존재 여부 확인/삭제"가 가능하도록 맞춰서, 마이페이지의
+  // 내 스크랩 목록에서 취소할 때도 where 쿼리 없이 doc(postId)로 바로 지울 수 있게 함.
   Future<void> _toggleScrap(CommunityPost post) async {
     final postRef = FirebaseFirestore.instance.collection('posts').doc(post.id);
     final scrapRef = postRef.collection('post_scrap').doc(_currentUserId);
+    final myScrapRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(_currentUserId)
+        .collection('users_myscrap')
+        .doc(post.id);
 
     try {
       await FirebaseFirestore.instance.runTransaction((tx) async {
         final scrapSnap = await tx.get(scrapRef);
         if (scrapSnap.exists) {
           tx.delete(scrapRef);
+          tx.delete(myScrapRef);
           tx.update(postRef, {'scrapCount': FieldValue.increment(-1)});
         } else {
-          tx.set(scrapRef, {'scrappedAt': FieldValue.serverTimestamp()});
+          final scrappedAt = FieldValue.serverTimestamp();
+          tx.set(scrapRef, {'scrappedAt': scrappedAt});
+          tx.set(myScrapRef, {
+            'postId': post.id,
+            'scrappedAt': scrappedAt,
+          });
           tx.update(postRef, {'scrapCount': FieldValue.increment(1)});
         }
       });
@@ -473,6 +488,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                                   CommentListWidget(
                                     postId: widget.postId,
                                     currentUserId: _currentUserId,
+                                    postAuthorId: post.userId,
                                     onStartReply: _startReply,
                                     onDeleteComment: _deleteComment,
                                     onLikeToggle: _handleCommentLike,

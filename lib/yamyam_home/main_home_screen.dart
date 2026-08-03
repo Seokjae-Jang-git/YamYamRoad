@@ -31,7 +31,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     _checkWithdrawnStatus();
   }
 
-  // 🌟 로그인 직후 탭과 무관하게 딱 한 번, 탈퇴 상태인지 확인합니다.
+  // 🌟 로그인 직후 탭과 무관하게 딱 한 번, 탈퇴(paused) 상태인지 확인합니다.
   Future<void> _checkWithdrawnStatus() async {
     debugPrint('🔎 [탈퇴체크] 시작');
     final uid = AuthService.currentUser?.uid;
@@ -43,17 +43,17 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
 
     final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
     final data = doc.data();
-    debugPrint('🔎 [탈퇴체크] Firestore status=${data?['status']}, withdrawnAt=${data?['withdrawnAt']}');
+    debugPrint('🔎 [탈퇴체크] Firestore status=${data?['status']}, pausedAt=${data?['pausedAt']}');
 
-    if (data != null && data['status'] == 'withdrawn') {
-      final ts = data['withdrawnAt'] as Timestamp?;
-      debugPrint('🔎 [탈퇴체크] withdrawn 확인, 복구 다이얼로그 호출 시도. mounted=$mounted');
+    if (data != null && data['status'] == 'paused') {
+      final ts = data['pausedAt'] as Timestamp?;
+      debugPrint('🔎 [탈퇴체크] paused 확인, 복구 다이얼로그 호출 시도. mounted=$mounted');
       if (!mounted) return;
 
       final canProceed = await handleWithdrawnRecovery(
         context: context,
         uid: uid,
-        withdrawnAt: ts?.toDate(),
+        pausedAt: ts?.toDate(),
       );
       debugPrint('🔎 [탈퇴체크] 다이얼로그 결과 canProceed=$canProceed');
 

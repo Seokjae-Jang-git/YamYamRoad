@@ -39,6 +39,7 @@ class _WithdrawnScreenState extends State<WithdrawnScreen> {
   }
 
   // 🌟 실제 DB(Firestore) 탈퇴 처리 (Soft Delete 로직)
+  // ※ status: 'paused', pausedAt 필드로 통일 (30일 이내 복구 로직과 연동됨)
   Future<void> _processWithdrawal() async {
     setState(() {
       _isLoading = true;
@@ -47,8 +48,8 @@ class _WithdrawnScreenState extends State<WithdrawnScreen> {
     try {
       // Hard Delete(문서 삭제)가 아닌 Soft Delete(상태 변경 및 시간 기록)를 수행
       await FirebaseFirestore.instance.collection('users').doc(UserData.uid).update({
-        'status': 'withdrawn', // 상태를 '탈퇴'로 변경
-        'withdrawnAt': FieldValue.serverTimestamp(), // 서버의 현재 시간을 탈퇴 시간으로 기록
+        'status': 'paused', // 상태를 '탈퇴 신청(복구 가능)'으로 변경
+        'pausedAt': FieldValue.serverTimestamp(), // 서버의 현재 시간을 탈퇴 신청 시간으로 기록
       });
 
       setState(() {
@@ -70,7 +71,6 @@ class _WithdrawnScreenState extends State<WithdrawnScreen> {
     }
   }
 
-  // 🌟 완료 팝업 및 로그인 화면 이동 로직
   // 🌟 완료 팝업 및 로그인 화면 이동 로직
   void _showCompletionDialog() {
     showDialog(

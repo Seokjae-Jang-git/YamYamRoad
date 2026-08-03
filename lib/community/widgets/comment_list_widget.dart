@@ -8,6 +8,7 @@ import '../../features/emoticon/emoticon_text_controller.dart';
 class CommentListWidget extends StatelessWidget {
   final String postId;
   final String currentUserId;
+  final String postAuthorId; // 🌟 게시글 작성자 uid - "작성자" 배지 표시용
   final Function(CommunityComment) onStartReply;
   final Function(CommunityComment) onDeleteComment;
   final Function(CommunityComment) onLikeToggle;
@@ -18,6 +19,7 @@ class CommentListWidget extends StatelessWidget {
     Key? key,
     required this.postId,
     required this.currentUserId,
+    required this.postAuthorId,
     required this.onStartReply,
     required this.onDeleteComment,
     required this.onLikeToggle,
@@ -77,6 +79,7 @@ class CommentListWidget extends StatelessWidget {
 
   Widget _buildCommentTile(BuildContext context, CommunityComment comment, {required bool isReply}) {
     final bool isMine = comment.userId == currentUserId;
+    final bool isAuthor = comment.userId == postAuthorId; // 🌟 댓글 작성자 == 게시글 작성자
 
     return Padding(
       padding: EdgeInsets.only(left: isReply ? 40 : 0, top: 12, bottom: 0),
@@ -104,6 +107,25 @@ class CommentListWidget extends StatelessWidget {
                 Row(
                   children: [
                     Text(comment.nickname, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    // 🌟 게시글 작성자가 남긴 댓글이면 "작성자" 배지 표시
+                    if (isAuthor) ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF0E6),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          '작성자',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFFFF8A3D),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(width: 6),
                     if (comment.createdAt != null)
                       Text(_formatTime(comment.createdAt!), style: const TextStyle(fontSize: 11, color: Colors.grey)),

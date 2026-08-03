@@ -3,6 +3,8 @@ import 'package:flutter_naver_login/interface/types/naver_login_status.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:flutter_naver_login/flutter_naver_login.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 
 // 🌟 휴대폰 로그인 화면 임포트
@@ -52,6 +54,25 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) setState(() => _isLoading = value);
   }
 
+  // 🌟 users/{uid} 문서의 status가 'banned'인지 확인.
+  // banned면 즉시 Firebase Auth에서 sign-out 시켜서
+  // main.dart의 authStateChanges StreamBuilder가 로그인 화면에 그대로 머물게 함.
+  Future<bool> _blockIfBanned(String uid) async {
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final status = doc.data()?['status'] as String?;
+      if (status == 'banned') {
+        await FirebaseAuth.instance.signOut();
+        _showError('이용이 제한된 계정입니다. 고객센터로 문의해주세요.');
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('🔴 계정 상태 확인 실패: $e');
+      return false;
+    }
+  }
+
   // ---------------- 카카오 로그인 ----------------
   Future<void> _handleKakaoLogin() async {
     _setLoading(true);
@@ -65,6 +86,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final userModel = await AuthService.loginWithKakao(token.accessToken);
       debugPrint('🟢 AuthService 카카오 로그인 완료: uid=${userModel.uid}');
+
+      if (await _blockIfBanned(userModel.uid)) return;
 
       // 🌟 탈퇴 체크는 MainHomeScreen.initState()에서 처리하므로
       //    여기서는 아무것도 하지 않습니다.
@@ -94,6 +117,8 @@ class _LoginScreenState extends State<LoginScreen> {
       final userModel = await AuthService.loginWithNaver(tokenResult.accessToken);
       debugPrint('🟢 AuthService 네이버 로그인 완료: uid=${userModel.uid}');
 
+      if (await _blockIfBanned(userModel.uid)) return;
+
       // 🌟 탈퇴 체크는 MainHomeScreen.initState()에서 처리합니다.
       // 🌟 화면 전환은 StreamBuilder가 자동으로 처리합니다.
     } catch (e, stackTrace) {
@@ -118,6 +143,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final userModel = await AuthService.loginWithGoogle(idToken: idToken);
       debugPrint('🟢 AuthService 구글 로그인 완료: uid=${userModel.uid}');
+
+      if (await _blockIfBanned(userModel.uid)) return;
 
       // 🌟 탈퇴 체크는 MainHomeScreen.initState()에서 처리합니다.
       // 🌟 화면 전환은 StreamBuilder가 자동으로 처리합니다.
