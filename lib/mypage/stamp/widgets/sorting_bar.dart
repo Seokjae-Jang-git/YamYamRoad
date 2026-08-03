@@ -4,6 +4,9 @@ class SortingBar extends StatelessWidget {
   final String selectedSort;
   final ValueChanged<String> onSortChanged;
 
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color subTextColor = Color(0xFF7A6B63);
+
   const SortingBar({
     super.key,
     required this.selectedSort,
@@ -12,9 +15,8 @@ class SortingBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 🌟 Row 상위의 Padding(horizontal: 16.0)을 제거하여 상단 Row와 여백을 맞춥니다.
     return Row(
-      mainAxisSize: MainAxisSize.min, // 필요한 만큼만 공간 차지
+      mainAxisSize: MainAxisSize.min,
       children: [
         _buildSortOption('최신순'),
         _buildDivider(),
@@ -34,7 +36,7 @@ class SortingBar extends StatelessWidget {
         style: TextStyle(
           fontSize: 16,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          color: isSelected ? Colors.black87 : Colors.grey[500],
+          color: isSelected ? deepChocolate : subTextColor,
         ),
       ),
     );
@@ -45,7 +47,7 @@ class SortingBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6.0),
       child: Text(
         '|',
-        style: TextStyle(color: Colors.grey[300], fontSize: 10),
+        style: TextStyle(color: deepChocolate.withOpacity(0.2), fontSize: 10),
       ),
     );
   }

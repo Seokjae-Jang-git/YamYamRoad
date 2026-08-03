@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart'; // 날짜 포맷용
+import 'package:intl/intl.dart';
 import 'repository/stamp_repository.dart';
 import 'widgets/sub_filter_chips.dart';
 import 'widgets/sorting_bar.dart';
@@ -14,6 +14,12 @@ class StampMainScreen extends StatefulWidget {
 }
 
 class _StampMainScreenState extends State<StampMainScreen> {
+  static const Color pointCoralRed = Color(0xFFFF6B57);
+  static const Color strawberryPink = Color(0xFFFFA09B);
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+  static const Color subTextColor = Color(0xFF7A6B63);
+
   String _selectedTab = '지역별';
   String _selectedFilter = '전체';
   String _selectedSort = '최신순';
@@ -38,14 +44,13 @@ class _StampMainScreenState extends State<StampMainScreen> {
     }
   }
 
-  // 1. 메뉴 더보기 팝업 모달
   void _openMenuSelectModal() async {
     final List<String> menuOptions = _dbMenuFilters;
 
     final String? selected = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -58,14 +63,21 @@ class _StampMainScreenState extends State<StampMainScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('메뉴 선택', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text(
+                    '메뉴 선택',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: deepChocolate,
+                    ),
+                  ),
                   IconButton(
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(Icons.close, color: deepChocolate),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
-              const Divider(),
+              Divider(color: deepChocolate.withOpacity(0.12)),
               Expanded(
                 child: SingleChildScrollView(
                   child: Padding(
@@ -79,11 +91,17 @@ class _StampMainScreenState extends State<StampMainScreen> {
                           showCheckmark: false,
                           label: Text(menu),
                           selected: isSelected,
-                          selectedColor: Colors.orange[50],
+                          selectedColor: pointCoralRed,
                           backgroundColor: Colors.white,
                           labelStyle: TextStyle(
-                            color: isSelected ? Colors.orange[800] : Colors.black87,
+                            color: isSelected ? Colors.white : deepChocolate,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(
+                              color: isSelected ? pointCoralRed : deepChocolate.withOpacity(0.15),
+                            ),
                           ),
                           onSelected: (_) => Navigator.pop(context, menu),
                         );
@@ -103,7 +121,6 @@ class _StampMainScreenState extends State<StampMainScreen> {
     }
   }
 
-  // 2. 지역 더보기 팝업 모달
   Future<void> _openRegionSelectModal() async {
     final selectedRegion = await Navigator.push(
       context,
@@ -119,24 +136,20 @@ class _StampMainScreenState extends State<StampMainScreen> {
     }
   }
 
-  // 3. 필터링 및 정렬 처리 함수
   List<Map<String, dynamic>> _processRoads(List<Map<String, dynamic>> rawList) {
     List<Map<String, dynamic>> result = List.from(rawList);
 
-    // 1차 필터링: region 필드 유무로 지역 로드 / 메뉴 로드 분리
     if (_selectedTab == '지역별') {
       result = result.where((r) => r['region'] != null && r['region'].toString().trim().isNotEmpty).toList();
     } else if (_selectedTab == '메뉴별') {
       result = result.where((r) => r['region'] == null || r['region'].toString().trim().isEmpty).toList();
     }
 
-    // 🌟 2차 필터링: 하위 필터
     if (_selectedFilter != '전체') {
       if (_selectedTab == '지역별') {
         result = result.where((r) => r['region'] == _selectedFilter).toList();
       } else if (_selectedTab == '메뉴별') {
         result = result.where((r) {
-          // 🌟 categoryIds 배열을 사용하여 필터링
           final categoryList = r['categoryIds'];
           if (categoryList is List && categoryList.contains(_selectedFilter)) return true;
           return false;
@@ -144,7 +157,6 @@ class _StampMainScreenState extends State<StampMainScreen> {
       }
     }
 
-    // 정렬
     if (_selectedSort == '최신순') {
       result.sort((a, b) {
         final aTime = (a['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
@@ -160,15 +172,13 @@ class _StampMainScreenState extends State<StampMainScreen> {
     return result;
   }
 
-  // 스탬프 판 팝업 모달
   void _showStampBoardModal(Map<String, dynamic> roadData) async {
-    // 🌟 roadPlace 필드 사용
     final List<dynamic> placeIds = roadData['roadPlace'] ?? [];
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -176,14 +186,13 @@ class _StampMainScreenState extends State<StampMainScreen> {
         return FutureBuilder<List<dynamic>>(
           future: Future.wait([
             StampRepository.getMyStampsMap(),
-            // 💡 주의: StampRepository.getPlaceNames 내부 로직이 placeIds 리스트를 받아 'place' 컬렉션에서 상호명을 조회하도록 구현되어 있어야 합니다.
             StampRepository.getPlaceNames(placeIds),
           ]),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const SizedBox(
                 height: 300,
-                child: Center(child: CircularProgressIndicator(color: Colors.black)),
+                child: Center(child: CircularProgressIndicator(color: deepChocolate)),
               );
             }
 
@@ -201,21 +210,28 @@ class _StampMainScreenState extends State<StampMainScreen> {
                     children: [
                       Text(
                         roadData['title'] ?? '스탬프 판',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: deepChocolate,
+                        ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close),
+                        icon: const Icon(Icons.close, color: deepChocolate),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ],
                   ),
-                  const Divider(),
+                  Divider(color: deepChocolate.withOpacity(0.12)),
                   const SizedBox(height: 10),
 
                   if (placeIds.isEmpty)
                     const Expanded(
                       child: Center(
-                        child: Text('등록된 매장이 없습니다.', style: TextStyle(color: Colors.grey)),
+                        child: Text(
+                          '등록된 매장이 없습니다.',
+                          style: TextStyle(color: subTextColor),
+                        ),
                       ),
                     )
                   else
@@ -240,9 +256,9 @@ class _StampMainScreenState extends State<StampMainScreen> {
 
                           return Container(
                             decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade300),
-                              borderRadius: BorderRadius.circular(8),
-                              color: Colors.grey.shade50,
+                              border: Border.all(color: deepChocolate.withOpacity(0.12)),
+                              borderRadius: BorderRadius.circular(12),
+                              color: Colors.white,
                             ),
                             alignment: Alignment.center,
                             padding: const EdgeInsets.all(4),
@@ -251,7 +267,11 @@ class _StampMainScreenState extends State<StampMainScreen> {
                                 : Text(
                               storeName,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w500),
+                              style: const TextStyle(
+                                color: deepChocolate,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           );
                         },
@@ -266,7 +286,6 @@ class _StampMainScreenState extends State<StampMainScreen> {
     );
   }
 
-  // 5. 붉은색 동그라미 도장 UI
   Widget _buildRedStampUI(Map<String, dynamic>? stampData, String storeName) {
     String dateStr = '';
     if (stampData != null && stampData['issuedAt'] != null) {
@@ -283,7 +302,7 @@ class _StampMainScreenState extends State<StampMainScreen> {
         height: 70,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.red.shade700, width: 2.0),
+          border: Border.all(color: pointCoralRed, width: 2.0),
         ),
         padding: const EdgeInsets.all(4),
         child: Column(
@@ -293,8 +312,8 @@ class _StampMainScreenState extends State<StampMainScreen> {
               displayName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.red.shade700,
+              style: const TextStyle(
+                color: pointCoralRed,
                 fontWeight: FontWeight.bold,
                 fontSize: 10,
               ),
@@ -302,7 +321,7 @@ class _StampMainScreenState extends State<StampMainScreen> {
             const SizedBox(height: 2),
             Text(
               dateStr,
-              style: TextStyle(color: Colors.red.shade700, fontSize: 8),
+              style: const TextStyle(color: pointCoralRed, fontSize: 8),
             ),
           ],
         ),
@@ -313,12 +332,16 @@ class _StampMainScreenState extends State<StampMainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       appBar: AppBar(
-        title: const Text('스탬프', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        title: const Text(
+          '스탬프',
+          style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: creamyIvory,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
+        scrolledUnderElevation: 0,
+        iconTheme: const IconThemeData(color: deepChocolate),
       ),
       body: SafeArea(
         child: Column(
@@ -345,12 +368,9 @@ class _StampMainScreenState extends State<StampMainScreen> {
             ),
             const SizedBox(height: 8),
 
-            // 가로 서브 필터 칩
             SubFilterChips(
               selectedTab: _selectedTab,
               selectedFilter: _selectedFilter,
-              // 💡 팁: 만약 여기서 지역칩이 안 보인다면, SubFilterChips 내부에
-              // 지역 필터 배열을 받는 속성도 추가되어야 완벽하게 작동할 수 있습니다.
               menuFilters: _dbMenuFilters,
               onFilterSelected: (filter) => setState(() => _selectedFilter = filter),
               onMorePressed: _selectedTab == '지역별' ? _openRegionSelectModal : _openMenuSelectModal,
@@ -362,7 +382,7 @@ class _StampMainScreenState extends State<StampMainScreen> {
                 stream: StampRepository.getRoadWithMyStampStream(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator(color: Colors.black));
+                    return const Center(child: CircularProgressIndicator(color: deepChocolate));
                   }
 
                   final rawList = snapshot.data ?? [];
@@ -370,7 +390,10 @@ class _StampMainScreenState extends State<StampMainScreen> {
 
                   if (processedList.isEmpty) {
                     return const Center(
-                      child: Text('조건에 해당하는 스탬프 로드가 없습니다.', style: TextStyle(color: Colors.grey)),
+                      child: Text(
+                        '조건에 해당하는 스탬프 로드가 없습니다.',
+                        style: TextStyle(color: subTextColor),
+                      ),
                     );
                   }
 
@@ -401,46 +424,45 @@ class _StampMainScreenState extends State<StampMainScreen> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: isSelected ? Colors.orange : Colors.transparent,
-              width: 2.0,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        color: Colors.transparent,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? pointCoralRed : subTextColor,
+              ),
             ),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            color: isSelected ? Colors.orange : Colors.grey,
-          ),
+            const SizedBox(height: 4),
+            Container(
+              height: 3,
+              width: 36,
+              decoration: BoxDecoration(
+                color: isSelected ? pointCoralRed : Colors.transparent,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // 스탬프 로드 카드 뷰
   Widget _buildStampCourseCard(Map<String, dynamic> road) {
-    // 🌟 1. 전체 스탬프 개수 계산 로직
     int totalStampCount = 0;
 
-    // 지역 로드: placeCount 필드가 있으면 그 값을 사용
     if (road['placeCount'] != null && road['placeCount'] is int) {
       totalStampCount = road['placeCount'];
-    }
-    // 메뉴 로드: placeCount가 없으면 roadPlace(또는 placeIds) 배열의 길이를 사용
-    else {
+    } else {
       final List<dynamic> places = road['roadPlace'] ?? road['placeIds'] ?? [];
       totalStampCount = places.length;
     }
 
-    // 🌟 2. 획득한 스탬프 개수
     final int myStampCount = road['myStampCount'] ?? 0;
-
-    // 🌟 3. 이미지 URL (지역은 imageUrl, 메뉴는 thumbnailUrl 대응)
     final String imageUrl = road['imageUrl'] ?? road['thumbnailUrl'] ?? road['thumbnail'] ?? '';
 
     return GestureDetector(
@@ -449,9 +471,16 @@ class _StampMainScreenState extends State<StampMainScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade200),
-          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: deepChocolate.withOpacity(0.12)),
+          borderRadius: BorderRadius.circular(12),
           color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: deepChocolate.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -460,8 +489,8 @@ class _StampMainScreenState extends State<StampMainScreen> {
               width: 70,
               height: 70,
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(6),
+                color: creamyIvory,
+                borderRadius: BorderRadius.circular(8),
               ),
               clipBehavior: Clip.hardEdge,
               child: imageUrl.isNotEmpty
@@ -469,15 +498,14 @@ class _StampMainScreenState extends State<StampMainScreen> {
                 imageUrl,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => const Center(
-                  child: Text('사진 없음', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                  child: Text('사진 없음', style: TextStyle(color: subTextColor, fontSize: 11)),
                 ),
               )
                   : const Center(
-                child: Text('코스사진', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                child: Text('코스사진', style: TextStyle(color: subTextColor, fontSize: 11)),
               ),
             ),
             const SizedBox(width: 12),
-
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,27 +514,29 @@ class _StampMainScreenState extends State<StampMainScreen> {
                   const SizedBox(height: 4),
                   Text(
                     road['title'] ?? '제목 없음',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: deepChocolate,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
-
                   Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.verified,
                         size: 16,
-                        color: Colors.red.shade700,
+                        color: pointCoralRed,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        // 🌟 0/0 오류 완벽 해결!
                         '스탬프 $myStampCount / $totalStampCount 개',
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: deepChocolate,
                         ),
                       ),
                     ],
