@@ -4,24 +4,86 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 const int kRecoveryLimitDays = 30;
 
-/// 탈퇴 상태인 유저에게 복구 여부를 묻고, 복구를 선택하면 Firestore를 되돌립니다.
-///
-/// 반환값:
-/// - true  : 로그인 진행 가능 (복구 완료)
-/// - false : 로그인 중단 (취소했거나 복구 기간이 지남)
+// =============================================================
+// 1) 회원 탈퇴 신청 처리
+//    - status: 'paused', pausedAt: 서버 타임스탬프로 저장
+//    - (마이페이지 > 탈퇴하기 버튼에서 호출)
+// =============================================================
+Future<void> requestWithdrawal({required String uid}) async {
+  debugPrint('🔎 [탈퇴처리] 진입. uid=$uid');
+
+  await FirebaseFirestore.instance.collection('users').doc(uid).update({
+    'status': 'paused',
+    'pausedAt': FieldValue.serverTimestamp(),
+    'updatedAt': FieldValue.serverTimestamp(),
+  });
+
+  debugPrint('🔎 [탈퇴처리] Firestore 업데이트 완료. status=paused, pausedAt=now');
+}
+
+// =============================================================
+// 2) 로그인 시 상태 체크 후 복구 로직 진입 여부 판단
+//    - 로그인 성공 직후(각 소셜/휴대폰 로그인 콜백) 이 함수를 호출
+//    - status가 'paused'가 아니면 그냥 통과(true)
+//    - status가 'banned' 등 다른 차단 상태는 별도 처리 필요(여기선 다루지 않음)
+// =============================================================
+Future<bool> checkUserStatusAndHandleLogin({
+  required BuildContext context,
+  required String uid,
+}) async {
+  final docRef = FirebaseFirestore.instance.collection('users').doc(uid);
+  final snapshot = await docRef.get();
+
+  if (!snapshot.exists) {
+    debugPrint('🔎 [상태체크] 유저 문서 없음. uid=$uid');
+    return true; // 신규 유저 등 별도 플로우에서 처리
+  }
+
+  final data = snapshot.data();
+  final String? status = data?['status'] as String?;
+  debugPrint('🔎 [상태체크] uid=$uid, status=$status');
+
+  if (status == 'paused') {
+    final Timestamp? pausedAtTs = data?['pausedAt'] as Timestamp?;
+    final DateTime? pausedAt = pausedAtTs?.toDate();
+
+    if (!context.mounted) {
+      debugPrint('🔎 [상태체크] context unmounted, 복구 로직 진입 불가');
+      return false;
+    }
+
+    return handleWithdrawnRecovery(
+      context: context,
+      uid: uid,
+      pausedAt: pausedAt,
+    );
+  }
+
+  // status == 'active' 이거나 다른 값이면 그대로 통과
+  return true;
+}
+
+// =============================================================
+// 3) status가 'paused'(탈퇴 신청) 상태인 유저에게 복구 여부를 묻고,
+//    복구를 선택하면 Firestore를 되돌립니다.
+//
+//    반환값:
+//    - true  : 로그인 진행 가능 (복구 완료)
+//    - false : 로그인 중단 (취소했거나 복구 기간이 지남)
+// =============================================================
 Future<bool> handleWithdrawnRecovery({
   required BuildContext context,
   required String uid,
-  required DateTime? withdrawnAt,
+  required DateTime? pausedAt,
 }) async {
-  debugPrint('🔎 [복구로직] 진입. uid=$uid, withdrawnAt=$withdrawnAt');
+  debugPrint('🔎 [복구로직] 진입. uid=$uid, pausedAt=$pausedAt');
 
-  if (withdrawnAt == null) {
-    debugPrint('🔎 [복구로직] withdrawnAt이 null이라 차단 (return false)');
+  if (pausedAt == null) {
+    debugPrint('🔎 [복구로직] pausedAt이 null이라 차단 (return false)');
     return false;
   }
 
-  final int elapsedDays = DateTime.now().difference(withdrawnAt).inDays;
+  final int elapsedDays = DateTime.now().difference(pausedAt).inDays;
   debugPrint('🔎 [복구로직] 경과일=$elapsedDays, 제한일=$kRecoveryLimitDays');
 
   if (elapsedDays >= kRecoveryLimitDays) {
@@ -82,7 +144,7 @@ Future<bool> handleWithdrawnRecovery({
   debugPrint('🔎 [복구로직] Firestore 업데이트 시작 (uid=$uid)');
   await FirebaseFirestore.instance.collection('users').doc(uid).update({
     'status': 'active',
-    'withdrawnAt': null,
+    'pausedAt': null,
     'updatedAt': FieldValue.serverTimestamp(),
   });
   debugPrint('🔎 [복구로직] Firestore 업데이트 완료 (return true)');

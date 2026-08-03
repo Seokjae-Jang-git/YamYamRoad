@@ -83,9 +83,13 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
     }
   }
 
+  // 🌟 삭제된 글(status: 'deleted')은 피드에서 제외.
+  // orderBy와 함께 쓰이므로 Firestore 복합 색인이 요구될 수 있음
+  // (콘솔에 색인 생성 링크 에러가 뜨면 그 링크로 바로 생성하면 됩니다).
   Query<Map<String, dynamic>> _buildQuery() {
     return FirebaseFirestore.instance
         .collection('posts')
+        .where('status', isEqualTo: 'active')
         .orderBy(_sortField, descending: true);
   }
 
@@ -103,6 +107,7 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
 
     final candidateSnap = await FirebaseFirestore.instance
         .collection('posts')
+        .where('status', isEqualTo: 'active')
         .orderBy(_sortField, descending: true)
         .limit(_candidatePoolSize)
         .get();

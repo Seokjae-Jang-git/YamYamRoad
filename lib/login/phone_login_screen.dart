@@ -37,6 +37,26 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
     return '+82$digits';
   }
 
+  // 🌟 Firebase Phone Auth가 주는 E.164 형식(+821012345678)을
+  // 국내에서 익숙한 하이픈 형식(010-1234-5678)으로 변환해서 저장.
+  // 표준 010 휴대폰 번호(11자리)와, 혹시 모를 10자리 번호도 함께 처리.
+  String _toLocalPhoneFormat(String? e164) {
+    if (e164 == null || e164.isEmpty) return '';
+    String digits = e164.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.startsWith('82')) {
+      digits = '0${digits.substring(2)}';
+    } else if (!digits.startsWith('0')) {
+      digits = '0$digits';
+    }
+
+    if (digits.length == 11) {
+      return '${digits.substring(0, 3)}-${digits.substring(3, 7)}-${digits.substring(7)}';
+    } else if (digits.length == 10) {
+      return '${digits.substring(0, 3)}-${digits.substring(3, 6)}-${digits.substring(6)}';
+    }
+    return digits;
+  }
+
   // ---------------- 1단계: 인증번호 발송 ----------------
   Future<void> _sendCode() async {
     if (_phoneController.text.trim().length < 9) {
@@ -126,6 +146,9 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   //    → MainHomeScreen.initState()에서 탈퇴 여부를 확인하고 복구 팝업을 띄웁니다.
   //    여기서 context를 써서 다이얼로그를 띄우면, 화면 전환 타이밍과 겹쳐
   //    context가 이미 unmount된 상태일 수 있어 실패했었습니다.
+  //
+  // 🌟 다만 밴(banned) 상태는 여기서 바로 막습니다. 기존 회원 문서가 이미
+  //    banned 상태라면 로그인 자체를 취소시켜서 다음 화면으로 못 넘어가게 합니다.
   Future<void> _signInWithCredential(PhoneAuthCredential credential) async {
     try {
       final userCredential =
@@ -139,6 +162,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
       final docRef =
       FirebaseFirestore.instance.collection('users').doc(firebaseUser.uid);
       final snapshot = await docRef.get();
+      final localPhone = _toLocalPhoneFormat(firebaseUser.phoneNumber);
 
       if (!snapshot.exists) {
         await docRef.set({
@@ -149,7 +173,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
           'lastLocation': null,
           'name': null,
           'nickname': '휴대폰 회원',
-          'phone': firebaseUser.phoneNumber,
+          'phone': localPhone,
           'profileImageUrl': null,
           'provider': 'phone',
           'selectedBadgeIds': null,
@@ -157,9 +181,16 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
           'withdrawnAt': null,
         });
       } else {
+        final existingStatus = snapshot.data()?['status'] as String?;
+        if (existingStatus == 'banned') {
+          await FirebaseAuth.instance.signOut();
+          _showError('이용이 제한된 계정입니다. 고객센터로 문의해주세요.');
+          return;
+        }
+
         await docRef.update({
           'updatedAt': FieldValue.serverTimestamp(),
-          'phone': firebaseUser.phoneNumber,
+          'phone': localPhone,
         });
       }
 
