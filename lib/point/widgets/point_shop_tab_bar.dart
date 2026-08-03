@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 /// 포인트 상점 탭 구분 열거형
 enum PointShopTab {
-  emoticon('이모티콘', '이모티콘 구매'),
-  gifticon('기프티콘', '기프티콘 구매'),
+  emoticon('이모티콘', '이모티콘'),
+  gifticon('기프티콘', '기프티콘'),
   charge('포인트 충전', '포인트 충전');
 
   const PointShopTab(this.tabLabel, this.pageTitle);
@@ -40,45 +40,45 @@ class PointShopTabBar extends StatelessWidget {
       child: Row(
         children: PointShopTab.values
             .map((tab) {
-          final isSelected = selectedTab == tab;
-          return Expanded(
-            child: InkWell(
-              onTap: () => onSelected(tab),
-              borderRadius: BorderRadius.circular(8),
-              child: AnimatedContainer(
-                duration: isSelected
-                    ? const Duration(milliseconds: 90)
-                    : Duration.zero,
-                curve: Curves.easeOut,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: isSelected ? Colors.white : Colors.transparent,
+              final isSelected = selectedTab == tab;
+              return Expanded(
+                child: InkWell(
+                  onTap: () => onSelected(tab),
                   borderRadius: BorderRadius.circular(8),
-                  boxShadow: isSelected
-                      ? const [
-                    BoxShadow(
-                      color: Color(0x0D4A3225),
-                      blurRadius: 4,
-                      offset: Offset(0, 1),
+                  child: AnimatedContainer(
+                    duration: isSelected
+                        ? const Duration(milliseconds: 90)
+                        : Duration.zero,
+                    curve: Curves.easeOut,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isSelected ? Colors.white : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: isSelected
+                          ? const [
+                              BoxShadow(
+                                color: Color(0x0D4A3225),
+                                blurRadius: 4,
+                                offset: Offset(0, 1),
+                              ),
+                            ]
+                          : null,
                     ),
-                  ]
-                      : null,
-                ),
-                child: Text(
-                  tab.tabLabel,
-                  style: TextStyle(
-                    color: isSelected ? deepChocolate : subBrown,
-                    fontSize: 13,
-                    fontWeight: isSelected
-                        ? FontWeight.w700
-                        : FontWeight.w500,
-                    letterSpacing: -0.2,
+                    child: Text(
+                      tab.tabLabel,
+                      style: TextStyle(
+                        color: isSelected ? deepChocolate : subBrown,
+                        fontSize: 13,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          );
-        })
+              );
+            })
             .toList(growable: false),
       ),
     );

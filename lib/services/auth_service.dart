@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/foundation.dart';
 import '../common/user_data.dart';
+import '../noti/logic/noti_device_service.dart';
 
 /// Blaze 요금제 기반 인증 서비스.
 ///
@@ -286,6 +288,14 @@ class AuthService {
 
   /// 로그아웃 및 전역 UserData 초기화
   static Future<void> logout() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid != null) {
+      try {
+        await NotiDeviceService().unregisterCurrentDevice(uid);
+      } catch (error) {
+        debugPrint('FCM 기기 해제 실패: $error');
+      }
+    }
     await _auth.signOut();
 
     // 전역 유저 메모리 데이터 즉시 초기화

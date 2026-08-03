@@ -12,11 +12,13 @@ class PointEmoticonView extends StatelessWidget {
     super.key,
     required this.repository,
     required this.onSelectEmoticon,
+    required this.onOpenAiRecommendationPage,
     required this.onOpenStampDevPage,
   });
 
   final PointShopRepository repository;
   final ValueChanged<EmoticonProduct> onSelectEmoticon;
+  final VoidCallback onOpenAiRecommendationPage;
   final VoidCallback onOpenStampDevPage;
 
   static const Color deepChocolate = Color(0xFF4A3225);
@@ -59,18 +61,37 @@ class PointEmoticonView extends StatelessWidget {
               SafeArea(
                 top: false,
                 minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: OutlinedButton.icon(
-                    onPressed: onOpenStampDevPage,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: deepChocolate,
-                      side: const BorderSide(color: cardBorder),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: OutlinedButton.icon(
+                        onPressed: onOpenAiRecommendationPage,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: deepChocolate,
+                          side: const BorderSide(color: cardBorder),
+                        ),
+                        icon: const Icon(Icons.auto_awesome_outlined),
+                        label: const Text('AI 추천 페이지 테스트'),
+                      ),
                     ),
-                    icon: const Icon(Icons.bug_report_outlined),
-                    label: const Text('개발용 스탬프 테스트'),
-                  ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: OutlinedButton.icon(
+                        onPressed: onOpenStampDevPage,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: deepChocolate,
+                          side: const BorderSide(color: cardBorder),
+                        ),
+                        icon: const Icon(Icons.bug_report_outlined),
+                        label: const Text('개발용 스탬프 테스트'),
+                      ),
+                    ),
+                  ],
                 ),
               ),
           ],

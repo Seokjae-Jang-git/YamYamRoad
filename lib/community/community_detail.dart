@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -6,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../common/data/temp_user_session.dart';
 import '../common/user_data.dart';
 import '../features/emoticon/emoticon_text_controller.dart';
+import '../noti/logic/noti_community_api_client.dart';
 import '../services/auth_service.dart';
 import 'community_post.dart';
 import 'community_comment.dart';
@@ -31,6 +33,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
 
   final EmoticonTextEditingController _commentController = EmoticonTextEditingController();
   final FocusNode _commentFocusNode = FocusNode();
+  final NotiCommunityApiClient _notiApiClient = NotiCommunityApiClient();
 
   CommunityComment? _replyTarget;
   bool _showEmoticonPicker = false;
@@ -246,16 +249,24 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     final likeRef = postRef.collection('post_like').doc(_currentUserId);
 
     try {
-      await FirebaseFirestore.instance.runTransaction((tx) async {
+      final isAdded = await FirebaseFirestore.instance.runTransaction<bool>((tx) async {
         final likeSnap = await tx.get(likeRef);
         if (likeSnap.exists) {
           tx.delete(likeRef);
           tx.update(postRef, {'likeCount': FieldValue.increment(-1)});
+          return false;
         } else {
           tx.set(likeRef, {'likedAt': FieldValue.serverTimestamp()});
           tx.update(postRef, {'likeCount': FieldValue.increment(1)});
+          return true;
         }
       });
+      if (isAdded) {
+        _requestCommunityNotification(
+          event: NotiCommunityEvent.postLike,
+          postId: post.id,
+        );
+      }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('처리에 실패했어요.')));
     }
@@ -267,16 +278,24 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     final scrapRef = postRef.collection('post_scrap').doc(_currentUserId);
 
     try {
-      await FirebaseFirestore.instance.runTransaction((tx) async {
+      final isAdded = await FirebaseFirestore.instance.runTransaction<bool>((tx) async {
         final scrapSnap = await tx.get(scrapRef);
         if (scrapSnap.exists) {
           tx.delete(scrapRef);
           tx.update(postRef, {'scrapCount': FieldValue.increment(-1)});
+          return false;
         } else {
           tx.set(scrapRef, {'scrappedAt': FieldValue.serverTimestamp()});
           tx.update(postRef, {'scrapCount': FieldValue.increment(1)});
+          return true;
         }
       });
+      if (isAdded) {
+        _requestCommunityNotification(
+          event: NotiCommunityEvent.postScrap,
+          postId: post.id,
+        );
+      }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('처리에 실패했어요.')));
     }
@@ -291,17 +310,26 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     final likeRef = commentRef.collection('comment_like').doc(uid);
 
     try {
-      await FirebaseFirestore.instance.runTransaction((tx) async {
+      final isAdded = await FirebaseFirestore.instance.runTransaction<bool>((tx) async {
         final likeSnap = await tx.get(likeRef);
 
         if (likeSnap.exists) {
           tx.delete(likeRef);
           tx.update(commentRef, {'likeCount': FieldValue.increment(-1)});
+          return false;
         } else {
           tx.set(likeRef, {'likedAt': FieldValue.serverTimestamp()});
           tx.update(commentRef, {'likeCount': FieldValue.increment(1)});
+          return true;
         }
       });
+      if (isAdded) {
+        _requestCommunityNotification(
+          event: NotiCommunityEvent.commentLike,
+          postId: widget.postId,
+          commentId: comment.id,
+        );
+      }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('처리에 실패했어요.')));
     }
@@ -324,7 +352,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     }
   }
 
-  Future<void> _submitComment() async {
+  Future<void> _submitComment(CommunityPost post) async {
     final text = _commentController.toStorageText().trim(); // 저장용 토큰으로 변환하여 저장
     if (text.isEmpty) return;
 
@@ -342,8 +370,13 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     );
 
     try {
-      await commentsRef.add(comment.toMap());
+      final commentRef = await commentsRef.add(comment.toMap());
       await postRef.update({'commentCount': FieldValue.increment(1)});
+      _requestCommunityNotification(
+        event: NotiCommunityEvent.postComment,
+        postId: post.id,
+        commentId: commentRef.id,
+      );
       _commentController.clear();
       setState(() {
         _replyTarget = null;
@@ -352,6 +385,36 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
       FocusScope.of(context).unfocus();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('댓글 등록에 실패했어요.')));
+    }
+  }
+
+  void _requestCommunityNotification({
+    required NotiCommunityEvent event,
+    required String postId,
+    String? commentId,
+  }) {
+    unawaited(
+      _sendCommunityNotification(
+        event: event,
+        postId: postId,
+        commentId: commentId,
+      ),
+    );
+  }
+
+  Future<void> _sendCommunityNotification({
+    required NotiCommunityEvent event,
+    required String postId,
+    String? commentId,
+  }) async {
+    try {
+      await _notiApiClient.send(
+        event: event,
+        postId: postId,
+        commentId: commentId,
+      );
+    } catch (error) {
+      debugPrint('커뮤니티 알림 요청 실패: $error');
     }
   }
 
@@ -495,7 +558,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                             onFieldTap: () {
                               if (_showEmoticonPicker) setState(() => _showEmoticonPicker = false);
                             },
-                            onSubmit: _submitComment,
+                            onSubmit: () => _submitComment(post),
                           ),
                         ],
                       );
