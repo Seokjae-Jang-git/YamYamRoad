@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../common/user_data.dart';
+import '../../community/community_detail.dart';
+import '../../mypage/badge/badge_main_screen.dart';
+import '../../mypage/stamp/stamp_main_screen.dart';
+import '../../noti/models/noti_model.dart';
+import '../../noti/models/noti_reference.dart';
+import '../../noti/widgets/noti_list_screen.dart';
+import '../../noti/widgets/noti_unread_badge.dart';
 import '../../services/auth_service.dart';
 
 /// 홈 화면 최상단 헤더 (로고, 알림 버튼, 프로필 아바타 및 계정 메뉴)
@@ -21,9 +28,6 @@ class _HomeHeaderState extends State<HomeHeader> {
   static const Color strawberryPink = Color(0xFFFFA09B);
   static const Color deepChocolate = Color(0xFF4A3225);
   static const Color creamyIvory = Color(0xFFFFFDF9);
-
-  // 새로운 알림 유무 상태 (기본값: true / 탭 시 해제 예시)
-  bool _hasUnreadNotification = true;
 
   @override
   void initState() {
@@ -158,6 +162,46 @@ class _HomeHeaderState extends State<HomeHeader> {
     }
   }
 
+  void _openNotifications() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => NotiListScreen(
+          userId: AuthService.currentUser!.uid,
+          onNotificationTap: _handleNotificationTap,
+        ),
+      ),
+    );
+  }
+
+  void _handleNotificationTap(NotiItem item) {
+    final referenceType = item.referenceType;
+    final referenceId = item.refId;
+    if (referenceType == null || referenceId == null) return;
+
+    switch (referenceType) {
+      case NotiReferenceType.post:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => CommunityDetailScreen(postId: referenceId),
+          ),
+        );
+      case NotiReferenceType.stamp:
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const StampMainScreen()),
+        );
+      case NotiReferenceType.badge:
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const BadgeMainScreen()),
+        );
+      case NotiReferenceType.pointTransaction:
+      case NotiReferenceType.point:
+        Navigator.of(context).pop();
+        widget.onTabChanged(3);
+      case NotiReferenceType.purchase:
+        return;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -195,16 +239,12 @@ class _HomeHeaderState extends State<HomeHeader> {
           Row(
             children: [
               // 디자인 고도화된 원형 알림 버튼 (38x38 규격)
-              _NotificationIconButton(
-                hasNotification: _hasUnreadNotification,
-                onTap: () {
-                  setState(() {
-                    _hasUnreadNotification = false; // 알림 클릭 시 레드닷 해제
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('새로운 알림이 없습니다.')),
-                  );
-                },
+              NotiUnreadBadgeStream(
+                userId: AuthService.currentUser!.uid,
+                offset: const Offset(2, -2),
+                child: _NotificationIconButton(
+                  onTap: _openNotifications,
+                ),
               ),
               const SizedBox(width: 10),
               // 프로필 메뉴 버튼
@@ -246,15 +286,12 @@ class _HomeHeaderState extends State<HomeHeader> {
 
 /// 고도화된 상단 원형 알림 버튼 위젯
 class _NotificationIconButton extends StatelessWidget {
-  final bool hasNotification;
   final VoidCallback onTap;
 
-  static const Color coralRed = Color(0xFFFF6B57);
   static const Color deepChocolate = Color(0xFF4A3225);
   static const Color creamyIvory = Color(0xFFFFFDF9);
 
   const _NotificationIconButton({
-    required this.hasNotification,
     required this.onTap,
   });
 
@@ -270,29 +307,10 @@ class _NotificationIconButton extends StatelessWidget {
           shape: BoxShape.circle,
           border: Border.all(color: const Color(0xFFE8E2D9), width: 1),
         ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            const Icon(
-              Icons.notifications_none_rounded,
-              size: 20,
-              color: deepChocolate,
-            ),
-            // 안 읽은 알림이 있을 경우 우측 상단 코랄 레드 인디케이터 표시
-            if (hasNotification)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                    color: coralRed,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-          ],
+        child: const Icon(
+          Icons.notifications_none_rounded,
+          size: 20,
+          color: deepChocolate,
         ),
       ),
     );

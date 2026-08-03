@@ -2,7 +2,9 @@ enum NotiReferenceType {
   post('post'),
   stamp('stamp'),
   badge('badge'),
-  pointTransaction('point_transaction');
+  pointTransaction('point_transaction'),
+  point('point'),
+  purchase('purchase');
 
   const NotiReferenceType(this.value);
 

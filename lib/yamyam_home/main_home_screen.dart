@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../common/bottom_circle_tab_bar.dart';
+import '../community/community_detail.dart';
 import '../community/community_main.dart';
+import '../noti/models/noti_model.dart';
+import '../noti/models/noti_reference.dart';
+import '../noti/widgets/noti_session_listener.dart';
+import '../mypage/badge/badge_main_screen.dart';
+import '../mypage/stamp/stamp_main_screen.dart';
 import '../road/road_main_screen.dart';
 import '../mypage/mypage_main.dart';
 import 'widgets/home_content_view.dart';
@@ -107,6 +113,35 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     }
   }
 
+  void _handleNotificationTap(NotiItem item) {
+    final referenceType = item.referenceType;
+    final referenceId = item.refId;
+    if (referenceType == null || referenceId == null) return;
+
+    switch (referenceType) {
+      case NotiReferenceType.post:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => CommunityDetailScreen(postId: referenceId),
+          ),
+        );
+      case NotiReferenceType.stamp:
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const StampMainScreen()),
+        );
+      case NotiReferenceType.badge:
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const BadgeMainScreen()),
+        );
+      case NotiReferenceType.pointTransaction:
+      case NotiReferenceType.point:
+        Navigator.of(context).pop();
+        setState(() => _currentTabIndex = 3);
+      case NotiReferenceType.purchase:
+        return;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // 🌟 탈퇴 체크가 끝나기 전까지는 로딩 화면만 보여줍니다. (Creamy Ivory 배경 & Coral Red 로딩)
@@ -119,18 +154,22 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: creamyIvory,
-      body: SafeArea(
-        child: _buildBody(),
-      ),
-      bottomNavigationBar: BottomCircleTabBar(
-        currentIndex: _currentTabIndex,
-        onTap: (index) {
-          setState(() {
-            _currentTabIndex = index;
-          });
-        },
+    return NotiSessionListener(
+      userId: AuthService.currentUser!.uid,
+      onNotificationTap: _handleNotificationTap,
+      child: Scaffold(
+        backgroundColor: creamyIvory,
+        body: SafeArea(
+          child: _buildBody(),
+        ),
+        bottomNavigationBar: BottomCircleTabBar(
+          currentIndex: _currentTabIndex,
+          onTap: (index) {
+            setState(() {
+              _currentTabIndex = index;
+            });
+          },
+        ),
       ),
     );
   }
