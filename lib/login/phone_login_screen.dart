@@ -10,7 +10,10 @@ class PhoneLoginScreen extends StatefulWidget {
 }
 
 class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
-  static const Color primaryColor = Color(0xFFFF9F5A);
+  // ── 로그인 화면과 통일한 브랜드 컬러 토큰 ─────────────
+  static const Color _bgTop = Color(0xFFFEFDFB);
+  static const Color _bgBottom = Color(0xFFFBF4EC);
+  static const Color primaryColor = Color(0xFFE8845A); // 로고 핀 컬러와 통일
   static const Color textDark = Color(0xFF3E2723);
 
   final TextEditingController _phoneController = TextEditingController();
@@ -211,97 +214,235 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4FAF6),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: textDark),
-        title: const Text('휴대폰 번호로 시작하기',
-            style: TextStyle(color: textDark, fontSize: 16, fontWeight: FontWeight.w600)),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_bgTop, _bgBottom],
+          ),
+        ),
+        child: SafeArea(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 20),
-
-              Text('휴대폰 번호', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textDark.withOpacity(0.7))),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      enabled: !_codeSent,
-                      decoration: _inputDecoration('010 1234 5678'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: (_isLoading || _codeSent) ? null : _sendCode,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              _buildAppBar(context),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 12),
+                      _buildIcon(),
+                      const SizedBox(height: 20),
+                      const Text(
+                        '휴대폰 번호로 시작하기',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: textDark),
                       ),
-                      child: Text(_codeSent ? '전송됨' : '인증번호 받기'),
-                    ),
-                  ),
-                ],
-              ),
-
-              if (_codeSent) ...[
-                const SizedBox(height: 24),
-                Text('인증번호', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textDark.withOpacity(0.7))),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _codeController,
-                        keyboardType: TextInputType.number,
-                        maxLength: 6,
-                        decoration: _inputDecoration('6자리 숫자 입력').copyWith(counterText: ''),
+                      const SizedBox(height: 8),
+                      Text(
+                        '본인 명의의 휴대폰 번호를 입력해주세요',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 13, color: textDark.withOpacity(0.5)),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      _formatTimer(_resendSeconds),
-                      style: TextStyle(fontSize: 13, color: primaryColor, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: _resendSeconds == 0 && !_isLoading ? _sendCode : null,
-                  child: const Text('인증번호 재전송'),
-                ),
-              ],
+                      const SizedBox(height: 36),
 
-              const SizedBox(height: 24),
+                      _buildFieldLabel('휴대폰 번호'),
+                      const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _buildTextField(
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                              enabled: !_codeSent,
+                              hint: '010 1234 5678',
+                              icon: Icons.phone_iphone_rounded,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            height: 52,
+                            child: ElevatedButton(
+                              onPressed: (_isLoading || _codeSent) ? null : _sendCode,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryColor,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: primaryColor.withOpacity(0.4),
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              ),
+                              child: Text(
+                                _codeSent ? '전송됨' : '인증번호 받기',
+                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
 
-              ElevatedButton(
-                onPressed: _isLoading ? null : (_codeSent ? _verifyCode : null),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  disabledBackgroundColor: primaryColor.withOpacity(0.4),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 250),
+                        child: _codeSent
+                            ? Padding(
+                          key: const ValueKey('code-section'),
+                          padding: const EdgeInsets.only(top: 28),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildFieldLabel('인증번호'),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildTextField(
+                                      controller: _codeController,
+                                      keyboardType: TextInputType.number,
+                                      maxLength: 6,
+                                      hint: '6자리 숫자 입력',
+                                      icon: Icons.lock_outline_rounded,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                    decoration: BoxDecoration(
+                                      color: primaryColor.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Text(
+                                      _formatTimer(_resendSeconds),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: primaryColor,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: _resendSeconds == 0 && !_isLoading ? _sendCode : null,
+                                  style: TextButton.styleFrom(foregroundColor: primaryColor),
+                                  child: const Text('인증번호 재전송', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                            : const SizedBox(key: ValueKey('empty'), height: 0),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      SizedBox(
+                        height: 54,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : (_codeSent ? _verifyCode : null),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryColor,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            disabledBackgroundColor: primaryColor.withOpacity(0.35),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                              width: 20, height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+                              : const Text('확인', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: _isLoading
-                    ? const SizedBox(
-                    width: 20, height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
-                    : const Text('확인', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: textDark),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIcon() {
+    return Center(
+      child: Container(
+        width: 76,
+        height: 76,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: primaryColor.withOpacity(0.2),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: const Icon(Icons.sms_rounded, color: primaryColor, size: 34),
+      ),
+    );
+  }
+
+  Widget _buildFieldLabel(String text) {
+    return Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textDark.withOpacity(0.6)));
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required TextInputType keyboardType,
+    required String hint,
+    required IconData icon,
+    bool enabled = true,
+    int? maxLength,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      enabled: enabled,
+      maxLength: maxLength,
+      style: const TextStyle(color: textDark, fontSize: 14, fontWeight: FontWeight.w600),
+      decoration: InputDecoration(
+        counterText: '',
+        prefixIcon: Icon(icon, size: 18, color: textDark.withOpacity(0.35)),
+        hintText: hint,
+        hintStyle: TextStyle(color: textDark.withOpacity(0.3), fontWeight: FontWeight.w400),
+        filled: true,
+        fillColor: enabled ? Colors.white : Colors.white.withOpacity(0.5),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: primaryColor, width: 1.5),
         ),
       ),
     );
@@ -311,27 +452,5 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
     final m = (seconds ~/ 60).toString().padLeft(2, '0');
     final s = (seconds % 60).toString().padLeft(2, '0');
     return '$m:$s';
-  }
-
-  InputDecoration _inputDecoration(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: TextStyle(color: textDark.withOpacity(0.3)),
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: textDark.withOpacity(0.1)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: textDark.withOpacity(0.1)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: primaryColor, width: 1.5),
-      ),
-    );
   }
 }

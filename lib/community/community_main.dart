@@ -12,10 +12,12 @@ class CommunityMainScreen extends StatefulWidget {
   const CommunityMainScreen({super.key});
 
   @override
-  State<CommunityMainScreen> createState() => _CommunityMainScreenState();
+  State<CommunityMainScreen> createState() => CommunityMainScreenState();
 }
 
-class _CommunityMainScreenState extends State<CommunityMainScreen> {
+// 🌟 하단 탭 재클릭 시 바깥(MainHomeScreen)에서 scrollToTop()을 호출할 수 있도록
+//    State 클래스를 public으로 노출 (기존 _CommunityMainScreenState → CommunityMainScreenState)
+class CommunityMainScreenState extends State<CommunityMainScreen> {
   static const Color pointCoralRed = Color(0xFFFF6B57);
   static const Color deepChocolate = Color(0xFF4A3225);
   static const Color creamyIvory = Color(0xFFFFFDF9);
@@ -39,6 +41,9 @@ class _CommunityMainScreenState extends State<CommunityMainScreen> {
     _scrollController.dispose();
     super.dispose();
   }
+
+  // 🌟 외부(하단 탭 재클릭)에서 호출할 수 있는 공개 메서드
+  void scrollToTop() => _scrollToTop();
 
   void _scrollToTop() {
     if (!_scrollController.hasClients) return;
