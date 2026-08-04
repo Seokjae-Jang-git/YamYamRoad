@@ -27,6 +27,10 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   int _currentTabIndex = 0;
   bool _checkingWithdrawal = true;
 
+  // 🌟 커뮤니티 탭을 다시 눌렀을 때 최상단으로 스크롤시키기 위한 키
+  final GlobalKey<CommunityMainScreenState> _communityKey =
+  GlobalKey<CommunityMainScreenState>();
+
   // 브랜드 컬러 상수 정의
   static const Color creamyIvory = Color(0xFFFFFDF9);
   static const Color coralRed = Color(0xFFFF6B57);
@@ -82,6 +86,20 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     setState(() => _checkingWithdrawal = false);
   }
 
+  // 🌟 하단 탭 탭 이벤트 처리
+  //    - 이미 커뮤니티 탭(index 1)에 있는 상태에서 커뮤니티 탭을 다시 누르면
+  //      화면 전환 없이 커뮤니티 피드만 최상단으로 스크롤
+  //    - 그 외에는 기존처럼 탭 전환
+  void _handleTabTap(int index) {
+    if (index == _currentTabIndex && index == 1) {
+      _communityKey.currentState?.scrollToTop();
+      return;
+    }
+    setState(() {
+      _currentTabIndex = index;
+    });
+  }
+
   Widget _buildBody() {
     switch (_currentTabIndex) {
       case 0:
@@ -93,7 +111,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
           },
         );
       case 1:
-        return const CommunityMainScreen();
+        return CommunityMainScreen(key: _communityKey);
       case 2:
         return const RoadMainScreen();
       case 3:
@@ -164,11 +182,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         ),
         bottomNavigationBar: BottomCircleTabBar(
           currentIndex: _currentTabIndex,
-          onTap: (index) {
-            setState(() {
-              _currentTabIndex = index;
-            });
-          },
+          onTap: _handleTabTap,
         ),
       ),
     );
