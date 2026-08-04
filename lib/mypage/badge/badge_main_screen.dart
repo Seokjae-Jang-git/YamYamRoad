@@ -53,6 +53,13 @@ class BadgeMainScreen extends StatefulWidget {
 }
 
 class _BadgeMainScreenState extends State<BadgeMainScreen> {
+  // 🌟 얌얌로드 공식 컬러 팔레트
+  static const Color pointCoralRed = Color(0xFFFF6B57);
+  static const Color subStrawberryPink = Color(0xFFFFA09B);
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+  static const Color subTextColor = Color(0xFF7A6B63);
+
   bool _isLoading = true;
   bool _isSaving = false;
   List<BadgeUIModel> _allBadges = [];
@@ -144,9 +151,10 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
       } else {
         if (_selectedBadgeIds.length >= 3) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('대표 뱃지는 최대 3개까지만 선택할 수 있습니다.'),
-              duration: Duration(seconds: 2),
+            SnackBar(
+              content: const Text('대표 뱃지는 최대 3개까지만 선택할 수 있습니다.', style: TextStyle(color: creamyIvory)),
+              backgroundColor: deepChocolate,
+              duration: const Duration(seconds: 2),
             ),
           );
           return;
@@ -220,7 +228,10 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('대표 뱃지가 성공적으로 저장되었습니다!')),
+          SnackBar(
+            content: const Text('대표 뱃지가 성공적으로 저장되었습니다!', style: TextStyle(color: creamyIvory)),
+            backgroundColor: deepChocolate,
+          ),
         );
       }
     } catch (e) {
@@ -233,7 +244,6 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
   Widget build(BuildContext context) {
     List<BadgeUIModel> displayedBadges = List.from(_allBadges);
 
-    // [필터 1] 종류 필터
     if (_selectedFilter == '로드') {
       displayedBadges = displayedBadges.where((b) => b.conditionType == 'road_progress').toList();
     } else if (_selectedFilter == '스탬프') {
@@ -242,12 +252,10 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
       ).toList();
     }
 
-    // [필터 2] 마스터만 보기
     if (_showOnlyMaster) {
       displayedBadges = displayedBadges.where((b) => b.requiredPercent == 100).toList();
     }
 
-    // [정렬] 최신순 / 이름순
     if (_selectedSort == '최신순') {
       displayedBadges.sort((a, b) {
         final aTime = a.earnedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -259,21 +267,22 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory, // 🌟 전체 배경색 적용
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: creamyIvory,
         elevation: 0,
+        scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black, size: 28),
+          icon: const Icon(Icons.arrow_back, color: deepChocolate, size: 28),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           '뱃지',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 22),
+          style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold, fontSize: 22),
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: deepChocolate))
           : Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -286,47 +295,48 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
                 Row(
                   children: [
                     _buildFilterButton('전체', _selectedFilter == '전체', () => setState(() => _selectedFilter = '전체')),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     _buildFilterButton('로드', _selectedFilter == '로드', () => setState(() => _selectedFilter = '로드')),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     _buildFilterButton('스탬프', _selectedFilter == '스탬프', () => setState(() => _selectedFilter = '스탬프')),
                   ],
                 ),
                 Row(
                   children: [
-                    _buildFilterButton('최신순', _selectedSort == '최신순', () => setState(() => _selectedSort = '최신순')),
-                    const SizedBox(width: 6),
-                    _buildFilterButton('이름순', _selectedSort == '이름순', () => setState(() => _selectedSort = '이름순')),
+                    _buildFilterButton('최신순', _selectedSort == '최신순', () => setState(() => _selectedSort = '최신순'), isSort: true),
+                    const SizedBox(width: 8),
+                    _buildFilterButton('이름순', _selectedSort == '이름순', () => setState(() => _selectedSort = '이름순'), isSort: true),
                   ],
                 ),
               ],
             ),
           ),
 
-          // 2. 마스터만 보기 체크박스 (온전히 영역 유지)
+          // 2. 마스터만 보기 체크박스
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4.0),
             child: Row(
               children: [
                 Checkbox(
                   value: _showOnlyMaster,
-                  activeColor: Colors.black,
+                  activeColor: pointCoralRed, // 🌟 체크박스 활성화 색상 변경
+                  side: BorderSide(color: deepChocolate.withOpacity(0.5)),
                   onChanged: (value) {
                     setState(() {
                       _showOnlyMaster = value ?? false;
                     });
                   },
                 ),
-                const Text('마스터만 보기', style: TextStyle(fontSize: 14)),
+                const Text('마스터만 보기', style: TextStyle(fontSize: 14, color: deepChocolate)),
               ],
             ),
           ),
 
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
             child: Text(
               '총 뱃지 ${displayedBadges.length} 개',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: deepChocolate),
             ),
           ),
 
@@ -334,15 +344,15 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
           Expanded(
             child: displayedBadges.isEmpty
                 ? const Center(
-              child: Text('해당하는 뱃지가 없습니다.', style: TextStyle(color: Colors.grey, fontSize: 16)),
+              child: Text('해당하는 뱃지가 없습니다.', style: TextStyle(color: subTextColor, fontSize: 15)),
             )
                 : GridView.builder(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 100.0), // 하단 여백 추가
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 24,
-                childAspectRatio: 0.8,
+                childAspectRatio: 0.75, // 비율 조정으로 텍스트 공간 확보
               ),
               itemCount: displayedBadges.length,
               itemBuilder: (context, index) {
@@ -351,149 +361,153 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
               },
             ),
           ),
+        ],
+      ),
 
-          // 🌟 4. 하단 고정 대표 뱃지 설정 컨트롤 바
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  offset: const Offset(0, -4),
-                  blurRadius: 10,
+      // 🌟 4. 하단 고정 대표 뱃지 설정 컨트롤 바 (BottomSheet 느낌으로 변경)
+      bottomSheet: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: Colors.white, // 바텀 시트는 눈에 띄게 흰색
+          boxShadow: [
+            BoxShadow(
+              color: deepChocolate.withOpacity(0.06),
+              offset: const Offset(0, -4),
+              blurRadius: 10,
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_isEditMode) ...[
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        '대표 뱃지 선택 ',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: deepChocolate),
+                      ),
+                      Text(
+                        '(${_selectedBadgeIds.length}/3)',
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: pointCoralRed),
+                      ),
+                    ],
+                  ),
                 ),
               ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // [편집 모드 전용] 상단 선택된 뱃지 수 안내
-                if (_isEditMode) ...[
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          '대표 뱃지 선택 ',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+              _isEditMode
+                  ? Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 52, // 플랫 버튼 크기 통일
+                      child: OutlinedButton(
+                        onPressed: _cancelEditMode,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: deepChocolate,
+                          side: BorderSide(color: deepChocolate.withOpacity(0.3)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12), // 플랫한 라운드
+                          ),
                         ),
-                        Text(
-                          '(${_selectedBadgeIds.length}/3)',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue),
+                        child: const Text(
+                          '취소',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                         ),
-                      ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: _isSaving ? null : _saveRepresentativeBadges,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: pointCoralRed,
+                          foregroundColor: Colors.white,
+                          elevation: 0, // 🌟 플랫 디자인
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: _isSaving
+                            ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                            : const Text(
+                          '저장하기',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                      ),
                     ),
                   ),
                 ],
-
-                // [버튼 영역] 일반 모드: 넓은 버튼 1개 / 편집 모드: 취소 & 저장 버튼 2개
-                _isEditMode
-                    ? Row(
-                  children: [
-                    // 취소 버튼
-                    Expanded(
-                      child: SizedBox(
-                        height: 48,
-                        child: OutlinedButton(
-                          onPressed: _cancelEditMode,
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.grey),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text(
-                            '취소',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // 저장 버튼
-                    Expanded(
-                      child: SizedBox(
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: _isSaving ? null : _saveRepresentativeBadges,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: _isSaving
-                              ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                          )
-                              : const Text(
-                            '저장하기',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                )
-                    : SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _isEditMode = true;
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      '대표 뱃지 설정',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+              )
+                  : SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _isEditMode = true;
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: pointCoralRed,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
+                  child: const Text(
+                    '대표 뱃지 설정',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildFilterButton(String text, bool isSelected, VoidCallback onTap) {
+  // 🌟 필터 및 정렬 버튼 알약 형태(Pill Shape) 디자인
+  Widget _buildFilterButton(String text, bool isSelected, VoidCallback onTap, {bool isSort = false}) {
+    Color activeColor = isSort ? deepChocolate : pointCoralRed;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.black : Colors.white,
-          border: Border.all(color: isSelected ? Colors.black : Colors.grey.shade400),
+          color: isSelected ? activeColor : Colors.white,
+          border: Border.all(
+            color: isSelected ? activeColor : deepChocolate.withOpacity(0.15),
+          ),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
             text,
             style: TextStyle(
               fontSize: 12,
-              color: isSelected ? Colors.white : Colors.black,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              color: isSelected ? Colors.white : subTextColor,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             )
         ),
       ),
     );
   }
 
-  // 개별 뱃지 아이템 (편집 모드 시 ①, ②, ③ 배지 표시)
+  // 🌟 뱃지 아이템 디자인 정리
   Widget _buildBadgeItem(BadgeUIModel badge) {
     final int selectedIndex = _selectedBadgeIds.indexOf(badge.id);
     final bool isSelectedInEdit = selectedIndex != -1;
@@ -504,40 +518,54 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
           _toggleBadgeSelection(badge.id);
         }
       },
-      child: Column(
-        children: [
-          Expanded(
-            child: AspectRatio(
-              aspectRatio: 1,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: (_isEditMode && isSelectedInEdit) ? pointCoralRed : Colors.transparent,
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: deepChocolate.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            Expanded(
               child: Stack(
+                alignment: Alignment.center,
                 children: [
-                  Positioned.fill(
-                    child: Image.network(
-                      badge.imageUrl,
-                      fit: BoxFit.contain,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-                      },
-                      errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.broken_image, color: Colors.grey, size: 40),
-                    ),
+                  Image.network(
+                    badge.imageUrl,
+                    fit: BoxFit.contain,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                    },
+                    errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.broken_image, color: Colors.grey, size: 40),
                   ),
 
-                  // 편집 모드에서 선택 순서 동그라미 배지 표시 (①, ②, ③)
+                  // 편집 모드 선택 순서 뱃지
                   if (_isEditMode)
                     Positioned(
                       top: 0,
                       right: 0,
                       child: Container(
-                        width: 26,
-                        height: 26,
+                        width: 24,
+                        height: 24,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: isSelectedInEdit ? Colors.black : Colors.white,
+                          color: isSelectedInEdit ? pointCoralRed : Colors.white,
                           border: Border.all(
-                            color: isSelectedInEdit ? Colors.black : Colors.grey.shade400,
-                            width: 2,
+                            color: isSelectedInEdit ? pointCoralRed : deepChocolate.withOpacity(0.3),
+                            width: 1.5,
                           ),
                         ),
                         child: Center(
@@ -555,22 +583,16 @@ class _BadgeMainScreenState extends State<BadgeMainScreen> {
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 36,
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: Text(
-                badge.name,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black),
-              ),
+            const SizedBox(height: 8),
+            Text(
+              badge.name,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: deepChocolate, height: 1.2),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

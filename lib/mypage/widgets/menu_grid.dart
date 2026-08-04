@@ -38,17 +38,17 @@ class MenuGrid extends StatelessWidget {
       {
         'icon': Icons.book_outlined,
         'label': '다이어리',
-        'bgColor': subStrawberryPink.withOpacity(0.18),
+        'bgColor': mint.withOpacity(0.22),
       },
       {
         'icon': Icons.people_outlined,
         'label': '얌얌북',
-        'bgColor': pointCoralRed.withOpacity(0.15),
+        'bgColor': mint.withOpacity(0.22),
       },
       {
         'icon': Icons.verified_outlined,
         'label': '스탬프',
-        'bgColor': subStrawberryPink.withOpacity(0.18),
+        'bgColor': yellow.withOpacity(0.25),
       },
       {
         'icon': Icons.military_tech_outlined,
@@ -56,19 +56,19 @@ class MenuGrid extends StatelessWidget {
         'bgColor': yellow.withOpacity(0.25),
       },
       {
-        'icon': Icons.monetization_on_outlined,
-        'label': '포인트',
-        'bgColor': yellow.withOpacity(0.28),
-      },
-      {
         'icon': Icons.help_outlined,
         'label': '문의',
-        'bgColor': mint.withOpacity(0.22),
+        'bgColor': pointCoralRed.withOpacity(0.12),
       },
       {
         'icon': Icons.report_problem_outlined,
         'label': '신고',
         'bgColor': pointCoralRed.withOpacity(0.12),
+      },
+      {
+        'icon': Icons.monetization_on_outlined,
+        'label': '포인트',
+        'bgColor': deepChocolate.withOpacity(0.08),
       },
       {
         'icon': Icons.settings_outlined,

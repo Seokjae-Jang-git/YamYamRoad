@@ -14,8 +14,15 @@ class ReportDetailScreen extends StatefulWidget {
 }
 
 class _ReportDetailScreenState extends State<ReportDetailScreen> {
+  // 공통 색상 팔레트
+  static const Color pointCoralRed = Color(0xFFFF6B57);
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+  static const Color subTextColor = Color(0xFF7A6B63);
+
   bool _isCanceling = false;
 
+  // 원본 대상(게시글/댓글/유저) 데이터 로드
   Future<Map<String, dynamic>> _fetchTargetData(String targetType, String targetId) async {
     if (targetId.isEmpty) {
       return {'nickname': '알 수 없음', 'content': '내용이 없습니다.', 'imageUrls': <String>[], 'emoticonUrl': null};
@@ -59,22 +66,23 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     return {'nickname': '알 수 없음(삭제됨)', 'content': '삭제되었거나 찾을 수 없는 콘텐츠입니다.', 'imageUrls': <String>[], 'emoticonUrl': null};
   }
 
+  // 신고 취소 처리
   Future<void> _onCancelReport() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: creamyIvory,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('신고 취소', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('접수하신 신고를 취소하시겠습니까?'),
+        title: const Text('신고 취소', style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold)),
+        content: const Text('접수하신 신고를 취소하시겠습니까?', style: TextStyle(color: deepChocolate)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('닫기', style: TextStyle(color: Colors.grey)),
+            child: const Text('닫기', style: TextStyle(color: subTextColor)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('신고 취소', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            child: const Text('신고 취소', style: TextStyle(color: pointCoralRed, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -101,62 +109,53 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
 
   String _getDisplayStatus(String status) {
     switch (status.trim().toLowerCase()) {
-      case 'pending':
-        return '접수 완료';
-      case 'in_review':
-        return '처리 중';
-      case 'completed':
-        return '처리 완료';
-      case 'canceled':
-        return '신고 취소';
-      default:
-        return status;
+      case 'pending': return '접수 완료';
+      case 'in_review': return '처리 중';
+      case 'completed': return '처리 완료';
+      case 'canceled': return '신고 취소';
+      default: return status;
     }
   }
 
   String _getDisplayResolution(String? resolution) {
     if (resolution == null || resolution.isEmpty) return '-';
     switch (resolution.toLowerCase()) {
-      case 'content_deleted':
-        return '게시물 삭제';
-      case 'dismissed':
-        return '반려';
-      case 'user_suspended':
-        return '계정 정지';
-      default:
-        return resolution;
+      case 'content_deleted': return '게시물 삭제';
+      case 'dismissed': return '반려';
+      case 'user_suspended': return '계정 정지';
+      default: return resolution;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: creamyIvory,
         elevation: 0,
+        scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: deepChocolate, size: 28),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
           '신고 상세',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
+          style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold, fontSize: 22),
         ),
       ),
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance.collection('reports').doc(widget.reportId).snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: Colors.black));
+            return const Center(child: CircularProgressIndicator(color: deepChocolate));
           }
 
           if (!snapshot.hasData || !snapshot.data!.exists) {
-            return const Center(child: Text('존재하지 않거나 삭제된 신고입니다.', style: TextStyle(color: Colors.grey)));
+            return const Center(child: Text('존재하지 않거나 삭제된 신고입니다.', style: TextStyle(color: subTextColor)));
           }
 
           final report = ReportModel.fromFirestore(snapshot.data! as DocumentSnapshot<Map<String, dynamic>>);
-
           final bool isPending = report.status.toLowerCase() == 'pending';
           final bool isCompleted = report.status.toLowerCase() == 'completed';
 
@@ -164,7 +163,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               future: _fetchTargetData(report.targetType, report.targetId),
               builder: (context, targetSnapshot) {
                 if (targetSnapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: Colors.black));
+                  return const Center(child: CircularProgressIndicator(color: deepChocolate));
                 }
 
                 final targetData = targetSnapshot.data ?? {};
@@ -178,60 +177,66 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 1. 신고 정보 및 원본 게시물 정보 (간격 동일하게 맞춤)
-                      _infoRow('신고번호', report.id),
-                      _infoRow('신고사유', report.reason),
-                      _infoRow('신고일시', report.formattedCreatedAt),
-                      _infoRow('상태', _getDisplayStatus(report.status), isHighlight: true),
-
-                      if (isCompleted) ...[
-                        _infoRow('처리결과', _getDisplayResolution(report.resolution)),
-                        _infoRow('처리일시', report.formattedResolvedAt),
-                      ],
-
-                      // 🌟 기존에 있던 불필요한 SizedBox(height: 12) 제거됨
-                      _infoRow('타입', report.targetTypeLabel),
-                      _infoRow('닉네임', nickname),
-
-                      // 🌟 기존에 있던 불필요한 SizedBox(height: 24) 제거됨
-
-                      // 2. 본문 내용 (점 추가 및 폰트 크기 변경)
-                      const Text('• 내용', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
-                      const SizedBox(height: 8),
+                      // 1. 신고 상세 정보 카드
                       Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
+                        padding: const EdgeInsets.all(20),
+                        decoration: _cardDecoration(),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(content, style: const TextStyle(fontSize: 15, color: Colors.black87, height: 1.5)),
+                            _infoRow('신고번호', report.id),
+                            _infoRow('신고사유', report.reason),
+                            _infoRow('신고일시', report.formattedCreatedAt),
+                            _infoRow('상    태', _getDisplayStatus(report.status), isHighlight: true),
+
+                            if (isCompleted) ...[
+                              _infoRow('처리결과', _getDisplayResolution(report.resolution)),
+                              _infoRow('처리일시', report.formattedResolvedAt),
+                            ],
+
+                            _infoRow('타    입', report.targetTypeLabel),
+                            _infoRow('닉네임', nickname),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // 2. 본문 내용 카드
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 8),
+                        child: Text('• 원본 내용', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: subTextColor)),
+                      ),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: _cardDecoration(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(content, style: const TextStyle(fontSize: 15, color: deepChocolate, height: 1.5)),
 
                             if (emoticonUrl != null) ...[
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 16),
                               Image.network(emoticonUrl, height: 100, fit: BoxFit.contain),
                             ]
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
 
                       // 3. 첨부 이미지 리스트 미리보기
                       if (imageUrls.isNotEmpty) ...[
+                        const Padding(
+                          padding: EdgeInsets.only(left: 4, bottom: 8),
+                          child: Text('• 첨부 이미지', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: subTextColor)),
+                        ),
                         ...imageUrls.map((url) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: Container(
                             width: double.infinity,
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade300),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                            decoration: _cardDecoration(),
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(16),
                               child: Image.network(
                                 url,
                                 fit: BoxFit.contain,
@@ -239,14 +244,14 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                                   if (progress == null) return child;
                                   return const Padding(
                                     padding: EdgeInsets.all(40.0),
-                                    child: Center(child: CircularProgressIndicator(color: Colors.black)),
+                                    child: Center(child: CircularProgressIndicator(color: deepChocolate)),
                                   );
                                 },
                               ),
                             ),
                           ),
                         )).toList(),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 24),
                       ],
 
                       // 4. 신고 취소 버튼
@@ -256,17 +261,18 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                           child: OutlinedButton(
                             onPressed: _isCanceling ? null : _onCancelReport,
                             style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              side: BorderSide(color: Colors.grey.shade400),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              backgroundColor: Colors.white,
+                              side: BorderSide(color: deepChocolate.withOpacity(0.15)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                             child: _isCanceling
                                 ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: subTextColor),
                             )
-                                : const Text('신고 취소', style: TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.bold)),
+                                : const Text('신고 취소', style: TextStyle(fontSize: 16, color: subTextColor, fontWeight: FontWeight.bold)),
                           ),
                         ),
                       const SizedBox(height: 40),
@@ -280,21 +286,37 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     );
   }
 
-  // 🌟 텍스트 크기 확대(14 -> 16) 및 행간 간격 확대(6 -> 12)
+  // 공통 카드 데코레이션
+  BoxDecoration _cardDecoration() {
+    return BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: deepChocolate.withOpacity(0.08)),
+      boxShadow: [
+        BoxShadow(
+          color: deepChocolate.withOpacity(0.04),
+          blurRadius: 8,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    );
+  }
+
+  // 리스트 UI와 통일된 Row 스타일
   Widget _infoRow(String label, String value, {bool isHighlight = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('• $label: ', style: const TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.bold)),
+          Text('• $label: ', style: const TextStyle(fontSize: 14, color: subTextColor, fontWeight: FontWeight.bold)),
           Expanded(
             child: Text(
               value,
               style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: isHighlight ? FontWeight.bold : FontWeight.normal,
-                  color: isHighlight && value == '처리 완료' ? Colors.orange : Colors.black87
+                fontSize: 14,
+                fontWeight: isHighlight ? FontWeight.bold : FontWeight.w600,
+                color: isHighlight && value == '처리 완료' ? pointCoralRed : deepChocolate,
               ),
               softWrap: true,
             ),

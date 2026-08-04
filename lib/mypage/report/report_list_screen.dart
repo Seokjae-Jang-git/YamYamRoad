@@ -13,16 +13,58 @@ class ReportListScreen extends StatefulWidget {
 }
 
 class _ReportListScreenState extends State<ReportListScreen> {
+  static const Color pointCoralRed = Color(0xFFFF6B57);
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+  static const Color subTextColor = Color(0xFF7A6B63);
+
   String get _currentUserId => AuthService.currentUser?.uid ?? UserData.uid ?? 'unknown_uid';
 
-  // 필터 및 정렬 상태 관리
-  String _selectedStatusFilter = 'ALL'; // ALL / pending / completed (DB 값과 매칭)
-  String _selectedSortType = 'CREATED_DESC'; // CREATED_DESC / RESOLVED_DESC / ID_ASC
+  String _selectedStatusFilter = 'ALL';
+  String _selectedSortType = 'CREATED_DESC';
 
-  // targetId 기반 닉네임 캐시
   final Map<String, String> _reportedNicknameCache = {};
 
-  // targetId를 이용해 posts(또는 users, comments) 컬렉션에서 피신고자 닉네임 조회
+  // 스크롤 컨트롤러 및 최상단 이동 버튼 상태
+  final ScrollController _scrollController = ScrollController();
+  bool _showBackToTopButton = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 스크롤이 400픽셀 이상 내려가면 위로가기 버튼 표시
+    _scrollController.addListener(() {
+      if (_scrollController.offset >= 400 && !_showBackToTopButton) {
+        setState(() => _showBackToTopButton = true);
+      } else if (_scrollController.offset < 400 && _showBackToTopButton) {
+        setState(() => _showBackToTopButton = false);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  // 최상단으로 부드럽게 이동
+  void _scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  // 당겨서 새로고침
+  Future<void> _onRefresh() async {
+    setState(() {});
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
+
   Future<String> _getReportedNickname(String targetType, String targetId) async {
     if (targetId.isEmpty) return '알 수 없음';
 
@@ -68,7 +110,6 @@ class _ReportListScreenState extends State<ReportListScreen> {
         .collection('reports')
         .where('userId', isEqualTo: _currentUserId);
 
-    // 🌟 정렬 기준: DB 스키마에 맞춰 'resolved_at'으로 수정
     if (_selectedSortType == 'CREATED_DESC') {
       query = query.orderBy('createdAt', descending: true);
     } else if (_selectedSortType == 'RESOLVED_DESC') {
@@ -78,88 +119,134 @@ class _ReportListScreenState extends State<ReportListScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: creamyIvory,
         elevation: 0,
+        scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: deepChocolate, size: 28),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('신고', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20)),
+        title: GestureDetector(
+          onTap: _scrollToTop, // 타이틀 터치 시 최상단 이동
+          child: const Text(
+              '신고 내역',
+              style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold, fontSize: 22)
+          ),
+        ),
       ),
+      // 최상단 이동 플로팅 버튼
+      floatingActionButton: _showBackToTopButton
+          ? FloatingActionButton(
+        backgroundColor: pointCoralRed,
+        elevation: 3,
+        onPressed: _scrollToTop,
+        child: const Icon(Icons.arrow_upward, color: Colors.white),
+      )
+          : null,
       body: Column(
         children: [
-          // 상단 필터 및 정렬 영역 (가로 스크롤 적용 및 겹침 방지)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // 좌측: 상태 필터 (스크롤 영역)
                 Expanded(
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
                         _filterChip('전체', 'ALL'),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         _filterChip('접수 완료', 'pending'),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         _filterChip('처리 중', 'in_review'),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         _filterChip('처리 완료', 'completed'),
-                        const SizedBox(width: 6),
-                        // 🌟 '신고 취소' 필터 칩 추가
+                        const SizedBox(width: 8),
                         _filterChip('신고 취소', 'canceled'),
                       ],
                     ),
                   ),
                 ),
-
-                // 🌟 스크롤 영역과 정렬 버튼 사이의 안전 여백
                 const SizedBox(width: 12),
-
-                // 우측: 정렬 드롭다운 (고정 영역)
                 _buildRecentSortDropdown(),
               ],
             ),
           ),
-          const Divider(height: 1),
 
-          // 신고 내역 리스트
+          Divider(height: 1, color: deepChocolate.withOpacity(0.08)),
+
           Expanded(
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: query.snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: Colors.orange));
+                  return const Center(child: CircularProgressIndicator(color: deepChocolate));
                 }
 
+                // 데이터가 없을 때도 당겨서 새로고침 유지
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(child: Text('신고 내역이 없습니다.', style: TextStyle(color: Colors.grey)));
+                  return RefreshIndicator(
+                    color: pointCoralRed,
+                    backgroundColor: Colors.white,
+                    onRefresh: _onRefresh,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.5,
+                          child: const Center(
+                              child: Text('신고 내역이 없습니다.', style: TextStyle(color: subTextColor))
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
                 }
 
                 List<ReportModel> reports = snapshot.data!.docs
                     .map((d) => ReportModel.fromFirestore(d))
                     .toList();
 
-                // 🌟 필터링 적용 (대소문자 일치)
                 if (_selectedStatusFilter != 'ALL') {
                   reports = reports.where((r) => r.status == _selectedStatusFilter).toList();
                 }
 
                 if (reports.isEmpty) {
-                  return const Center(child: Text('해당하는 신고 내역이 없습니다.', style: TextStyle(color: Colors.grey)));
+                  return RefreshIndicator(
+                    color: pointCoralRed,
+                    backgroundColor: Colors.white,
+                    onRefresh: _onRefresh,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.5,
+                          child: const Center(
+                              child: Text('해당하는 신고 내역이 없습니다.', style: TextStyle(color: subTextColor))
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: reports.length,
-                  itemBuilder: (context, index) {
-                    final r = reports[index];
-                    return _buildReportCard(r);
-                  },
+                return RefreshIndicator(
+                  color: pointCoralRed,
+                  backgroundColor: Colors.white,
+                  onRefresh: _onRefresh,
+                  child: ListView.builder(
+                    controller: _scrollController, // 컨트롤러 연결
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 80),
+                    itemCount: reports.length,
+                    itemBuilder: (context, index) {
+                      final r = reports[index];
+                      return _buildReportCard(r);
+                    },
+                  ),
                 );
               },
             ),
@@ -169,13 +256,36 @@ class _ReportListScreenState extends State<ReportListScreen> {
     );
   }
 
-  // 최신순 드롭다운 버튼
-  Widget _buildRecentSortDropdown() {
-    final isRecentActive = _selectedSortType == 'CREATED_DESC' || _selectedSortType == 'RESOLVED_DESC';
+  Widget _filterChip(String label, String value) {
+    final isSelected = _selectedStatusFilter == value;
+    return InkWell(
+      onTap: () => setState(() => _selectedStatusFilter = value),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? deepChocolate : Colors.white,
+          border: Border.all(color: isSelected ? deepChocolate : deepChocolate.withOpacity(0.15)),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              color: isSelected ? Colors.white : subTextColor,
+            )
+        ),
+      ),
+    );
+  }
 
+  Widget _buildRecentSortDropdown() {
     String displayLabel = '접수 최신순';
     if (_selectedSortType == 'RESOLVED_DESC') {
       displayLabel = '처리 최신순';
+    } else if (_selectedSortType == 'ID_ASC') {
+      displayLabel = '번호순';
     }
 
     return PopupMenuButton<String>(
@@ -184,92 +294,66 @@ class _ReportListScreenState extends State<ReportListScreen> {
           _selectedSortType = value;
         });
       },
-      offset: const Offset(0, 32),
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      color: const Color(0xFFF3EEF8),
+      offset: const Offset(0, 40),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Colors.white,
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        const PopupMenuItem<String>(
+        PopupMenuItem<String>(
           value: 'CREATED_DESC',
           height: 40,
-          child: Text('접수 최신순', style: TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w500)),
+          child: Text('접수 최신순', style: TextStyle(fontSize: 13, color: deepChocolate, fontWeight: _selectedSortType == 'CREATED_DESC' ? FontWeight.bold : FontWeight.w500)),
         ),
-        const PopupMenuItem<String>(
-          value: 'RESOLVED_DESC', // 🌟 명칭 동기화
+        PopupMenuItem<String>(
+          value: 'RESOLVED_DESC',
           height: 40,
-          child: Text('처리 최신순', style: TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w500)),
+          child: Text('처리 최신순', style: TextStyle(fontSize: 13, color: deepChocolate, fontWeight: _selectedSortType == 'RESOLVED_DESC' ? FontWeight.bold : FontWeight.w500)),
         ),
       ],
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isRecentActive ? Colors.black : Colors.white,
-          border: isRecentActive ? null : Border.all(color: Colors.grey.shade400),
-          borderRadius: BorderRadius.circular(4),
+          color: Colors.white,
+          border: Border.all(color: deepChocolate.withOpacity(0.15)),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              displayLabel,
-              style: TextStyle(
-                fontSize: 11,
-                color: isRecentActive ? Colors.white : Colors.black87,
-                fontWeight: isRecentActive ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-            const SizedBox(width: 2),
-            Icon(
-              Icons.arrow_drop_down,
-              color: isRecentActive ? Colors.white : Colors.black87,
-              size: 16,
-            ),
+            Text(displayLabel, style: const TextStyle(fontSize: 12, color: subTextColor, fontWeight: FontWeight.bold)),
+            const SizedBox(width: 4),
+            const Icon(Icons.keyboard_arrow_down, color: subTextColor, size: 16),
           ],
         ),
       ),
     );
   }
 
-  // 상태 영문 -> 한글 변환
   String _getDisplayStatus(String status) {
     switch (status.trim().toLowerCase()) {
-      case 'pending':
-        return '접수 완료';
-      case 'in_review':
-        return '처리 중';
-      case 'completed':
-        return '처리 완료';
-      case 'canceled': // 🌟 canceled 상태 추가
-        return '신고 취소';
-      default:
-        return status;
+      case 'pending': return '접수 완료';
+      case 'in_review': return '처리 중';
+      case 'completed': return '처리 완료';
+      case 'canceled': return '신고 취소';
+      default: return status;
     }
   }
 
-  // 처리 결과 영문 -> 한글 변환
   String _getDisplayResolution(String? resolution) {
     if (resolution == null || resolution.isEmpty) return '-';
 
     switch (resolution.toLowerCase()) {
-      case 'content_deleted':
-        return '게시물 삭제';
-      case 'dismissed':
-        return '반려';
-      case 'user_suspended':
-        return '계정 정지';
-      default:
-        return resolution;
+      case 'content_deleted': return '게시물 삭제';
+      case 'dismissed': return '반려';
+      case 'user_suspended': return '계정 정지';
+      default: return resolution;
     }
   }
 
-  // 신고 내역 카드
   Widget _buildReportCard(ReportModel r) {
     String displayStatus = _getDisplayStatus(r.status);
     String displayResolution = _getDisplayResolution(r.resolution);
 
-    // 🌟 GestureDetector를 추가하여 터치 시 상세 페이지로 이동하도록 처리
     return GestureDetector(
       onTap: () {
         Navigator.of(context).push(
@@ -279,43 +363,42 @@ class _ReportListScreenState extends State<ReportListScreen> {
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 14),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: deepChocolate.withOpacity(0.08)),
+          boxShadow: [
+            BoxShadow(
+              color: deepChocolate.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 왼쪽 컬럼
             Expanded(
               flex: 6,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _infoRow('신고번호', r.id),
-                  const SizedBox(height: 4),
                   _infoRow('신고사유', r.reason),
-                  const SizedBox(height: 4),
                   _infoRow('신고일시', r.formattedCreatedAt),
-                  const SizedBox(height: 4),
                   _infoRow('처리일시', r.formattedResolvedAt),
                 ],
               ),
             ),
             const SizedBox(width: 8),
-
-            // 오른쪽 컬럼
             Expanded(
               flex: 4,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _infoRow('타입', r.targetTypeLabel),
-                  const SizedBox(height: 4),
-
+                  _infoRow('타   입', r.targetTypeLabel),
                   FutureBuilder<String>(
                     future: _getReportedNickname(r.targetType, r.targetId),
                     builder: (context, snapshot) {
@@ -323,11 +406,8 @@ class _ReportListScreenState extends State<ReportListScreen> {
                       return _infoRow('닉네임', nickname);
                     },
                   ),
-                  const SizedBox(height: 4),
-
-                  _infoRow('상태', displayStatus, isHighlight: true),
-                  const SizedBox(height: 4),
-                  _infoRow('처리결과', displayResolution),
+                  _infoRow('상   태', displayStatus, isHighlight: true),
+                  _infoRow('결   과', displayResolution),
                 ],
               ),
             ),
@@ -337,43 +417,28 @@ class _ReportListScreenState extends State<ReportListScreen> {
     );
   }
 
-  // 텍스트 줄바꿈 허용 처리 추가
   Widget _infoRow(String label, String value, {bool isHighlight = false}) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '• $label: ',
-          style: const TextStyle(fontSize: 13, color: Colors.black87, fontWeight: FontWeight.w500),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: isHighlight ? FontWeight.bold : FontWeight.normal,
-              // 🌟 '처리 완료'와 정확히 매칭되어 오렌지색으로 표시됨
-              color: isHighlight && value == '처리 완료' ? Colors.orange : Colors.black87,
-            ),
-            softWrap: true,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '• $label: ',
+            style: const TextStyle(fontSize: 13, color: subTextColor, fontWeight: FontWeight.bold),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _filterChip(String label, String value) {
-    final isSelected = _selectedStatusFilter == value;
-    return InkWell(
-      onTap: () => setState(() => _selectedStatusFilter = value),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.grey.shade200 : Colors.white,
-          border: Border.all(color: Colors.grey.shade400),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(label, style: const TextStyle(fontSize: 11, color: Colors.black87)),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isHighlight ? FontWeight.bold : FontWeight.w500,
+                color: isHighlight && value == '처리 완료' ? pointCoralRed : deepChocolate,
+              ),
+              softWrap: true,
+            ),
+          ),
+        ],
       ),
     );
   }

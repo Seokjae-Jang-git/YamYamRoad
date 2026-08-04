@@ -30,7 +30,8 @@ class StampBoardModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<dynamic> placeIds = roadData['roadPlace'] ?? [];
+    // 🌟 핵심 수정: 지역 로드(placeIds)와 메뉴 로드(roadPlace)를 모두 대응하도록 수정
+    final List<dynamic> placeIds = roadData['placeIds'] ?? roadData['roadPlace'] ?? [];
 
     return FutureBuilder<List<dynamic>>(
       future: Future.wait([

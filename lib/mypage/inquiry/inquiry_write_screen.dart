@@ -18,12 +18,18 @@ class InquiryWriteScreen extends StatefulWidget {
 }
 
 class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
+  // 🌟 얌얌로드 공식 컬러 팔레트
+  static const Color pointCoralRed = Color(0xFFFF6B57);
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+  static const Color subTextColor = Color(0xFF7A6B63);
+
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
   final _emailController = TextEditingController();
 
-  String _selectedType = 'general'; // 'general' 또는 'partnership'
+  String _selectedType = 'general';
   String? _imagePath;
   bool _submitting = false;
 
@@ -59,7 +65,7 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('이미지를 불러오지 못했습니다.')),
+        const SnackBar(content: Text('이미지를 불러오지 못했습니다.', style: TextStyle(color: creamyIvory)), backgroundColor: deepChocolate),
       );
     }
   }
@@ -73,7 +79,6 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
 
     try {
       if (widget.isEditMode) {
-        // 수정 모드
         await repo.update(
           id: widget.editTarget!.id,
           type: _selectedType,
@@ -84,9 +89,8 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
         );
         if (!mounted) return;
         setState(() => _submitting = false);
-        Navigator.of(context).pop(true); // 수정 성공 신호 전달
+        Navigator.of(context).pop(true);
       } else {
-        // 신규 등록 모드 (Repository에서 INQ- 문의번호 반환)
         final inquiryId = await repo.add(
           type: _selectedType,
           title: _titleController.text.trim(),
@@ -97,7 +101,6 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
         if (!mounted) return;
         setState(() => _submitting = false);
 
-        // 작성 완료 시 성공 화면으로 이동 (생성된 ID와 데이터 전달)
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (_) => InquirySuccessScreen(
@@ -111,7 +114,7 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
       if (!mounted) return;
       setState(() => _submitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('문의 처리에 실패했습니다: $e')),
+        SnackBar(content: Text('문의 처리에 실패했습니다: $e', style: const TextStyle(color: creamyIvory)), backgroundColor: pointCoralRed),
       );
     }
   }
@@ -121,17 +124,18 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
     final isEdit = widget.isEditMode;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: creamyIvory,
         elevation: 0,
+        scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: deepChocolate, size: 28),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
           isEdit ? '문의 수정' : '문의하기',
-          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
+          style: const TextStyle(color: deepChocolate, fontWeight: FontWeight.bold, fontSize: 22),
         ),
       ),
       body: Form(
@@ -155,36 +159,40 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
 
             _buildLabel('내용'),
             const SizedBox(height: 10),
-            // 🌟 실시간 글자수 카운팅 (0/150자) 텍스트 필드
+            // 🌟 실시간 글자수 카운팅 적용 텍스트 필드
             TextFormField(
               controller: _contentController,
               maxLength: 150,
               maxLines: 6,
-              style: const TextStyle(color: Colors.black87),
+              style: const TextStyle(color: deepChocolate, fontSize: 14),
               validator: (v) => (v == null || v.trim().isEmpty) ? '내용을 입력해주세요' : null,
               decoration: InputDecoration(
                 hintText: '문의 하실 내용을 자세히 작성해주세요',
-                hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+                hintStyle: const TextStyle(color: subTextColor, fontSize: 14),
                 filled: true,
                 fillColor: Colors.white,
                 contentPadding: const EdgeInsets.all(16),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: deepChocolate.withOpacity(0.15)),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: deepChocolate.withOpacity(0.15)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Colors.black),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: pointCoralRed, width: 1.5),
+                ),
+                errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: pointCoralRed),
                 ),
               ),
               buildCounter: (context, {required currentLength, required isFocused, maxLength}) {
                 return Text(
                   '$currentLength/${maxLength}자',
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  style: const TextStyle(color: subTextColor, fontSize: 12),
                 );
               },
             ),
@@ -210,6 +218,7 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
             const SizedBox(height: 40),
 
             _buildSubmitButton(isEdit),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -218,14 +227,14 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
 
   Widget _buildLabel(String text) => Text(
     text,
-    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: deepChocolate),
   );
 
   Widget _buildTypeSelector() {
     return Row(
       children: [
         Expanded(child: _typeChip('general', '일반')),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         Expanded(child: _typeChip('partnership', '광고/제휴')),
       ],
     );
@@ -239,15 +248,15 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
         padding: const EdgeInsets.symmetric(vertical: 14),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? Colors.black : Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: selected ? Colors.black : Colors.grey.shade300),
+          color: selected ? deepChocolate : Colors.white,
+          borderRadius: BorderRadius.circular(20), // 🌟 알약 형태
+          border: Border.all(color: selected ? deepChocolate : deepChocolate.withOpacity(0.15)),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : Colors.black87,
-            fontWeight: FontWeight.bold,
+            color: selected ? Colors.white : subTextColor,
+            fontWeight: selected ? FontWeight.bold : FontWeight.w500,
           ),
         ),
       ),
@@ -264,28 +273,28 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
       controller: controller,
       keyboardType: keyboardType,
       validator: validator,
-      style: const TextStyle(color: Colors.black87),
+      style: const TextStyle(color: deepChocolate, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+        hintStyle: const TextStyle(color: subTextColor, fontSize: 14),
         filled: true,
         fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: deepChocolate.withOpacity(0.15)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: deepChocolate.withOpacity(0.15)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Colors.black),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: pointCoralRed, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Colors.redAccent),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: pointCoralRed),
         ),
       ),
     );
@@ -301,13 +310,13 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
         height: 80,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: deepChocolate.withOpacity(0.15)),
         ),
         child: _imagePath == null
-            ? const Icon(Icons.add_photo_alternate_outlined, color: Colors.grey, size: 30)
+            ? Icon(Icons.add_photo_alternate_outlined, color: subTextColor.withOpacity(0.5), size: 32)
             : ClipRRect(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(16),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -315,13 +324,13 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
                   ? Image.network(_imagePath!, fit: BoxFit.cover)
                   : Image.file(File(_imagePath!), fit: BoxFit.cover),
               Positioned(
-                top: 4,
-                right: 4,
+                top: 6,
+                right: 6,
                 child: GestureDetector(
                   onTap: () => setState(() => _imagePath = null),
                   child: const CircleAvatar(
                     radius: 12,
-                    backgroundColor: Colors.black54,
+                    backgroundColor: pointCoralRed, // 🌟 삭제 버튼 코랄 레드 포인트
                     child: Icon(Icons.close, size: 14, color: Colors.white),
                   ),
                 ),
@@ -337,21 +346,23 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
     return SizedBox(
       width: double.infinity,
       height: 52,
-      child: OutlinedButton(
+      child: ElevatedButton(
         onPressed: _submitting ? null : _submit,
-        style: OutlinedButton.styleFrom(
-          side: BorderSide(color: Colors.grey.shade400),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: pointCoralRed,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         child: _submitting
             ? const SizedBox(
           width: 22,
           height: 22,
-          child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
+          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
         )
             : Text(
           isEdit ? '수정 완료' : '문의 등록',
-          style: const TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );

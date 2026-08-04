@@ -16,9 +16,14 @@ class InquiryDetailScreen extends StatefulWidget {
 }
 
 class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
-  bool _isProcessing = false; // 취소/종료 처리 중 플래그
+  // 🌟 얌얌로드 공식 컬러 팔레트
+  static const Color pointCoralRed = Color(0xFFFF6B57);
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+  static const Color subTextColor = Color(0xFF7A6B63);
 
-  // 수정 화면으로 이동
+  bool _isProcessing = false;
+
   Future<void> _onEdit(InquiryModel inquiry) async {
     final edited = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -38,16 +43,16 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('문의 취소', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('취소한 문의는 다시 되돌릴 수 없어요.\n정말 취소하시겠어요?'),
+        title: const Text('문의 취소', style: TextStyle(fontWeight: FontWeight.bold, color: deepChocolate)),
+        content: const Text('취소한 문의는 다시 되돌릴 수 없어요.\n정말 취소하시겠어요?', style: TextStyle(color: deepChocolate)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('닫기', style: TextStyle(color: Colors.grey)),
+            child: const Text('닫기', style: TextStyle(color: subTextColor, fontWeight: FontWeight.bold)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('문의 취소', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            child: const Text('문의 취소', style: TextStyle(color: pointCoralRed, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -61,12 +66,16 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
       await InquiryRepository.instance.cancelInquiry(widget.inquiryId);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('문의가 취소되었습니다.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('문의가 취소되었습니다.', style: TextStyle(color: creamyIvory)), backgroundColor: deepChocolate),
+      );
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('문의 취소에 실패했습니다: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('문의 취소에 실패했습니다: $e', style: TextStyle(color: creamyIvory)), backgroundColor: pointCoralRed),
+      );
     }
   }
 
@@ -77,16 +86,16 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('문의 종료', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('답변에 만족하셨나요?\n문의를 종료 상태로 변경합니다.'),
+        title: const Text('문의 종료', style: TextStyle(fontWeight: FontWeight.bold, color: deepChocolate)),
+        content: const Text('답변에 만족하셨나요?\n문의를 종료 상태로 변경합니다.', style: TextStyle(color: deepChocolate)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('취소', style: TextStyle(color: Colors.grey)),
+            child: const Text('취소', style: TextStyle(color: subTextColor, fontWeight: FontWeight.bold)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('문의 종료', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+            child: const Text('문의 종료', style: TextStyle(color: pointCoralRed, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -100,12 +109,16 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
       await InquiryRepository.instance.closeInquiry(widget.inquiryId);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('문의가 종료되었습니다.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('문의가 종료되었습니다.', style: TextStyle(color: creamyIvory)), backgroundColor: deepChocolate),
+      );
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('문의 종료에 실패했습니다: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('문의 종료에 실패했습니다: $e', style: TextStyle(color: creamyIvory)), backgroundColor: pointCoralRed),
+      );
     }
   }
 
@@ -117,28 +130,29 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: creamyIvory,
         elevation: 0,
+        scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: deepChocolate, size: 28),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
           '문의상세',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
+          style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold, fontSize: 22),
         ),
       ),
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance.collection('inquiry').doc(widget.inquiryId).snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: Colors.black));
+            return const Center(child: CircularProgressIndicator(color: deepChocolate));
           }
 
           if (!snapshot.hasData || !snapshot.data!.exists) {
-            return const Center(child: Text('존재하지 않거나 삭제된 문의입니다.', style: TextStyle(color: Colors.grey)));
+            return const Center(child: Text('존재하지 않거나 삭제된 문의입니다.', style: TextStyle(color: subTextColor)));
           }
 
           final inquiry = InquiryModel.fromFirestore(snapshot.data!);
@@ -146,7 +160,6 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
           final bool isCanceled = inquiry.status == 'canceled';
           final bool isClosed = inquiry.status == 'closed';
 
-          // 💡 화면 표시용 상태 라벨
           String displayStatusText = inquiry.displayStatus;
           if (isCanceled) {
             displayStatusText = '문의 취소';
@@ -158,12 +171,11 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
             displayStatusText = '문의 종료';
           }
 
-          // 💡 상태별 텍스트 색상
-          Color statusColor = Colors.black87;
+          Color statusColor = deepChocolate;
           if (inquiry.status == 'pending') {
-            statusColor = Colors.orange;
+            statusColor = pointCoralRed;
           } else if (isCanceled || isClosed) {
-            statusColor = Colors.grey.shade600;
+            statusColor = subTextColor;
           }
 
           return SingleChildScrollView(
@@ -171,66 +183,67 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. 제목
                 Text(
                   inquiry.title,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: deepChocolate, height: 1.3),
                 ),
                 const SizedBox(height: 12),
 
-                // 2. 문의 정보 (문의번호, 작성일, 상태 등)
                 Text(
                   '문의번호: ${inquiry.id}  |  ${_formatDate(inquiry.createdAt)}',
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  style: const TextStyle(color: subTextColor, fontSize: 12, fontWeight: FontWeight.w500),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Row(
                   children: [
                     Text(
                       displayStatusText,
-                      style: TextStyle(
-                        color: statusColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
                     ),
                     if ((isAnswered || isClosed) && inquiry.answeredAt != null) ...[
-                      const Text('  |  ', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      const Text('  |  ', style: TextStyle(color: subTextColor, fontSize: 12)),
                       Text(
                         _formatDate(inquiry.answeredAt),
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        style: const TextStyle(color: subTextColor, fontSize: 12, fontWeight: FontWeight.w500),
                       ),
                     ],
                   ],
                 ),
                 const SizedBox(height: 24),
 
-                // 3. 본문 내용
+                // 🌟 본문 영역
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: deepChocolate.withOpacity(0.08)),
+                    boxShadow: [
+                      BoxShadow(color: deepChocolate.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 4)),
+                    ],
                   ),
                   child: Text(
                     inquiry.content,
-                    style: const TextStyle(color: Colors.black87, height: 1.5, fontSize: 14),
+                    style: TextStyle(color: deepChocolate.withOpacity(0.9), height: 1.6, fontSize: 14),
                   ),
                 ),
                 const SizedBox(height: 16),
 
-                // 4. 첨부 이미지 미리보기
+                // 🌟 이미지 미리보기 영역
                 if (inquiry.imageUrl != null && inquiry.imageUrl!.isNotEmpty) ...[
                   Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.white,
+                      border: Border.all(color: deepChocolate.withOpacity(0.08)),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(color: deepChocolate.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 4)),
+                      ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(16),
                       child: Image.network(
                         inquiry.imageUrl!,
                         fit: BoxFit.contain,
@@ -238,12 +251,12 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
                           if (progress == null) return child;
                           return const Padding(
                             padding: EdgeInsets.all(40.0),
-                            child: Center(child: CircularProgressIndicator(color: Colors.black)),
+                            child: Center(child: CircularProgressIndicator(color: deepChocolate)),
                           );
                         },
                         errorBuilder: (context, error, stackTrace) => const Padding(
                           padding: EdgeInsets.all(40.0),
-                          child: Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                          child: Center(child: Icon(Icons.broken_image, color: subTextColor)),
                         ),
                       ),
                     ),
@@ -251,7 +264,7 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
                   const SizedBox(height: 24),
                 ],
 
-                // 5. 버튼 영역 (답변 대기 상태일 때만 노출 / 취소 또는 답변완료 건은 버튼 비노출)
+                // 🌟 버튼 영역 (수정 / 문의 취소)
                 if (inquiry.status == 'pending')
                   Row(
                     children: [
@@ -260,10 +273,10 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
                           onPressed: () => _onEdit(inquiry),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            side: BorderSide(color: Colors.grey.shade400),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            side: BorderSide(color: deepChocolate.withOpacity(0.3)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          child: const Text('수정', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+                          child: const Text('수정', style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold)),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -272,66 +285,62 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
                           onPressed: _isProcessing ? null : _onCancel,
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            side: BorderSide(color: Colors.grey.shade400),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            side: BorderSide(color: deepChocolate.withOpacity(0.3)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           child: _isProcessing
                               ? const SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: deepChocolate),
                           )
-                              : const Text('문의 취소', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+                              : const Text('문의 취소', style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],
                   ),
 
-                // 🌟 (기존에 중복된 답변 코드는 지우고, 이 블록 하나만 남겨주세요!)
-                // 6. 답변 내용 및 문의 종료 버튼 (답변 완료/종료 상태일 때 노출)
+                // 🌟 답변 영역 및 문의 종료 버튼
                 if ((isAnswered || isClosed) && inquiry.adminMemo != null) ...[
                   const SizedBox(height: 32),
-                  const Text('답변', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
+                  const Text('답변', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: deepChocolate)),
                   const SizedBox(height: 12),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF9F9F9),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade200),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: pointCoralRed.withOpacity(0.3)), // 관리자 답변은 테두리 색상으로 포인트
+                      boxShadow: [
+                        BoxShadow(color: pointCoralRed.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 4)),
+                      ],
                     ),
                     child: Text(
                       inquiry.adminMemo!,
-                      style: const TextStyle(color: Colors.black87, height: 1.5, fontSize: 14),
+                      style: TextStyle(color: deepChocolate.withOpacity(0.9), height: 1.6, fontSize: 14),
                     ),
                   ),
 
-                  // 🌟 답변이 완료된 상태(answered)에서만 안내 문구 및 [문의 종료] 버튼 노출
                   if (isAnswered) ...[
-                    const SizedBox(height: 24),
-
-                    // 💡 문의 종료 안내 텍스트
+                    const SizedBox(height: 32),
                     const Center(
                       child: Text(
                         '답변이 만족스러우셨다면 문의 종료를 눌러주시기 바랍니다.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: TextStyle(fontSize: 12, color: subTextColor, fontWeight: FontWeight.w500),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
 
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: _isProcessing ? null : _onCloseInquiry,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
+                          backgroundColor: pointCoralRed,
+                          elevation: 0,
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         child: _isProcessing
                             ? const SizedBox(

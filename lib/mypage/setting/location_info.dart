@@ -3,23 +3,41 @@ import 'package:flutter/material.dart';
 class LocationInfoScreen extends StatelessWidget {
   const LocationInfoScreen({super.key});
 
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       appBar: AppBar(
         title: const Text(
           '위치기반서비스 이용약관',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold, fontSize: 22),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: creamyIvory,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
+        scrolledUnderElevation: 0,
+        iconTheme: const IconThemeData(color: deepChocolate, size: 28),
       ),
       body: SingleChildScrollView(
-        child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
+        child: Container(
+          width: double.infinity,
           padding: const EdgeInsets.all(24.0),
-          child: Text(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: deepChocolate.withOpacity(0.08)),
+            boxShadow: [
+              BoxShadow(
+                color: deepChocolate.withOpacity(0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const SelectableText(
             '''[얌얌로드(YamYamRoad)] 위치기반서비스 이용약관
 제 1 조 (목적)
 본 약관은 [회사명/팀명](이하 "회사"라 합니다)이 제공하는 위치기반서비스와 관련하여 회사와 개인위치기반서비스주체(이하 "회원"이라 합니다) 간의 권리, 의무 및 책임사항, 기타 필요한 사항을 규정함을 목적으로 합니다.
@@ -74,7 +92,12 @@ class LocationInfoScreen extends StatelessWidget {
 직책: 프로젝트 팀장 / 개발자
 
 이메일: xxx@xxx.com''',
-            style: const TextStyle(fontSize: 14, height: 1.6, color: Colors.black87), // 줄간격(height)을 넓혀 가독성을 높였습니다.
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.6,
+              color: deepChocolate,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ),
       ),

@@ -37,11 +37,11 @@ class StampRepository {
         final data = doc.data();
         data['roadId'] = doc.id;
 
-        // road 컬렉션의 placeIds (해당 로드에 속한 매장 ID 리스트)
-        final List<dynamic> placeIds = data['placeIds'] ?? [];
+        // 🌟 핵심 수정: 지역별(placeIds)과 메뉴별(roadPlace) 필드를 모두 검사하도록 통합!
+        final List<dynamic> placeIds = data['placeIds'] ?? data['roadPlace'] ?? [];
         final int totalCount = data['placeCount'] ?? placeIds.length;
 
-        // 🌟 교집합 계산: 내 스탬프 목록 중 이 로드의 placeIds에 속한 매장이 몇 개인가?
+        // 교집합 계산: 내 스탬프 목록 중 이 로드의 placeIds에 속한 매장이 몇 개인가?
         int myCount = 0;
         for (var pId in placeIds) {
           if (myStamps.containsKey(pId.toString())) {

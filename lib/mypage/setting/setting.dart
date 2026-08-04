@@ -8,37 +8,50 @@ import 'withdrawn.dart';
 class SettingScreen extends StatelessWidget {
   const SettingScreen({super.key});
 
+  // 공통 색상 팔레트
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+  static const Color subTextColor = Color(0xFF7A6B63);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       appBar: AppBar(
         title: const Text(
           '설정',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold, fontSize: 22),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: creamyIvory,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black), // 뒤로가기 화살표 색상
+        scrolledUnderElevation: 0,
+        iconTheme: const IconThemeData(color: deepChocolate, size: 28),
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 1. 계정 섹션
               _buildSectionTitle('계정'),
-              _buildListItem(context, '내 정보 수정'),
-              _buildListItem(context, '계정 삭제'),
+              _buildSectionCard([
+                _buildListItem(context, '내 정보 수정'),
+                _buildDivider(),
+                _buildListItem(context, '계정 삭제'),
+              ]),
 
-              const SizedBox(height: 40), // 섹션 간 간격
+              const SizedBox(height: 32),
 
               // 2. 기타 섹션
               _buildSectionTitle('기타'),
-              _buildListItem(context, '이용약관'),
-              _buildListItem(context, '개인정보 처리방침'),
-              _buildListItem(context, '위치기반서비스 이용약관'),
+              _buildSectionCard([
+                _buildListItem(context, '이용약관'),
+                _buildDivider(),
+                _buildListItem(context, '개인정보 처리방침'),
+                _buildDivider(),
+                _buildListItem(context, '위치기반서비스 이용약관'),
+              ]),
             ],
           ),
         ),
@@ -46,22 +59,54 @@ class SettingScreen extends StatelessWidget {
     );
   }
 
-  // 섹션 타이틀 (예: 계정, 기타) 렌더링 위젯
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+  // 섹션 그룹 카드 (둥근 모서리 및 그림자)
+  Widget _buildSectionCard(List<Widget> children) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: deepChocolate.withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: deepChocolate.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: Material(
+        color: Colors.white,
+        child: Column(children: children),
       ),
     );
   }
 
-  // 리스트 아이템 (예: 내 정보 수정 >) 렌더링 위젯
+  // 리스트 아이템 간 구분선
+  Widget _buildDivider() {
+    return Divider(
+      height: 1,
+      thickness: 1,
+      color: deepChocolate.withOpacity(0.08),
+      indent: 20,
+      endIndent: 20,
+    );
+  }
+
+  // 섹션 타이틀
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8.0, bottom: 12.0),
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: subTextColor),
+      ),
+    );
+  }
+
+  // 개별 리스트 아이템
   Widget _buildListItem(BuildContext context, String title) {
     return InkWell(
       onTap: () {
-        // 🌟 수정된 부분: title이 '이용약관'일 경우 화면 이동
         if (title == '내 정보 수정') {
           Navigator.push(
             context,
@@ -77,30 +122,32 @@ class SettingScreen extends StatelessWidget {
             context,
             MaterialPageRoute(builder: (context) => const AgreementScreen()),
           );
-        } else if(title == '개인정보 처리방침') {
+        } else if (title == '개인정보 처리방침') {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const PrivacyScreen()),
           );
-        } else if(title == '위치기반서비스 이용약관') {
+        } else if (title == '위치기반서비스 이용약관') {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const LocationInfoScreen()),
           );
         } else {
-          // 다른 메뉴는 기존처럼 스낵바 띄우기
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('$title 페이지 준비중'), duration: const Duration(seconds: 1)),
           );
         }
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
+        padding: const EdgeInsets.symmetric(vertical: 18.0, horizontal: 20.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(title, style: const TextStyle(fontSize: 15)),
-            const Icon(Icons.chevron_right, color: Colors.black87),
+            Text(
+                title,
+                style: const TextStyle(fontSize: 15, color: deepChocolate, fontWeight: FontWeight.w500)
+            ),
+            const Icon(Icons.chevron_right, color: subTextColor, size: 22),
           ],
         ),
       ),

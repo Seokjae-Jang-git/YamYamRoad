@@ -3,23 +3,41 @@ import 'package:flutter/material.dart';
 class PrivacyScreen extends StatelessWidget {
   const PrivacyScreen({super.key});
 
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       appBar: AppBar(
         title: const Text(
           '개인정보 처리방침',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold, fontSize: 22),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: creamyIvory,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
+        scrolledUnderElevation: 0,
+        iconTheme: const IconThemeData(color: deepChocolate, size: 28),
       ),
       body: SingleChildScrollView(
-        child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
+        child: Container(
+          width: double.infinity,
           padding: const EdgeInsets.all(24.0),
-          child: Text(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: deepChocolate.withOpacity(0.08)),
+            boxShadow: [
+              BoxShadow(
+                color: deepChocolate.withOpacity(0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const SelectableText(
             '''[얌얌로드(YamYamRoad)] 개인정보 처리방침
 회사명/팀명는 「개인정보 보호법」 등 관련 법령에 따라 이용자의 개인정보를 보호하고, 이와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 다음과 같이 개인정보 처리방침을 수립·공개합니다.
 
@@ -37,7 +55,6 @@ class PrivacyScreen extends StatelessWidget {
 소셜 로그인 연동을 통한 수집
 
 서비스 이용 과정에서 이용자의 동의를 통한 수집(위치 정보, 카메라 등)
-
 앱 내 마이페이지, 프로필 수정 등을 통한 수집
 
 제 2 조 (개인정보의 수집 및 이용 목적)
@@ -104,7 +121,12 @@ class PrivacyScreen extends StatelessWidget {
 직책: 프로젝트 팀장 / 개발자
 
 이메일: xxx@xxx.com''',
-            style: const TextStyle(fontSize: 14, height: 1.6, color: Colors.black87), // 줄간격(height)을 넓혀 가독성을 높였습니다.
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.6,
+              color: deepChocolate,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ),
       ),
