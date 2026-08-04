@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import '../AI/ai_recommendation_page.dart';
-import '../providers/user_location_provider.dart';
 import 'logic/point_purchase_service.dart';
 import 'logic/point_repository.dart';
 import 'logic/point_usage_calculator.dart';
@@ -192,14 +190,9 @@ class _PointMainScreenState extends State<PointMainScreen> {
   }
 
   Future<void> _openAiRecommendationPage() {
-    final location = context.read<UserLocationProvider>();
     return Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => AiRecommendationPage(
-          userId: widget.userId,
-          userLat: location.userLat,
-          userLng: location.userLng,
-        ),
+        builder: (_) => AiRecommendationPage(userId: widget.userId),
       ),
     );
   }

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
 import 'logic/recommendation_api_client.dart';
 import 'models/recommendation_models.dart';
@@ -156,12 +159,6 @@ class _AiRecommendationPageState extends State<AiRecommendationPage> {
   RecommendationResult? _result;
   String? _errorMessage;
 
-  bool get _hasCurrentLocation {
-    final regionId = widget.currentRegionId?.trim() ?? '';
-    final hasCoordinates = widget.userLat != null && widget.userLng != null;
-    return regionId.isNotEmpty || hasCoordinates;
-  }
-
   @override
   void dispose() {
     _scrollController.dispose();
@@ -174,12 +171,7 @@ class _AiRecommendationPageState extends State<AiRecommendationPage> {
       _messages
         ..add(_ChatMessage(text: _scopePrompt(scope), isUser: true))
         ..add(
-          _ChatMessage(
-            text: _hasCurrentLocation
-                ? '좋아요. 어떤 기준을 더 중요하게 볼까요?'
-                : '현재 위치 정보가 없어서 방문 기록을 중심으로 추천할 수 있어요.',
-            isUser: false,
-          ),
+          const _ChatMessage(text: '좋아요. 어떤 기준을 더 중요하게 볼까요?', isUser: false),
         );
       _step = _ConversationStep.chooseBasis;
     });
@@ -200,20 +192,21 @@ class _AiRecommendationPageState extends State<AiRecommendationPage> {
 
     try {
       final useCurrentLocation = basis == _RecommendationBasis.currentLocation;
-      final hasCoordinatePair =
-          widget.userLat != null && widget.userLng != null;
+      var userLat = widget.userLat;
+      var userLng = widget.userLng;
+      if (useCurrentLocation && (userLat == null || userLng == null)) {
+        final position = await _loadCurrentPosition();
+        userLat = position.latitude;
+        userLng = position.longitude;
+      }
       final recommendationLoader =
           widget.recommendationLoader ??
           RecommendationApiClient().fetchRecommendations;
       final result = await recommendationLoader(
         userId: widget.userId,
         currentRegionId: useCurrentLocation ? widget.currentRegionId : null,
-        userLat: useCurrentLocation && hasCoordinatePair
-            ? widget.userLat
-            : null,
-        userLng: useCurrentLocation && hasCoordinatePair
-            ? widget.userLng
-            : null,
+        userLat: useCurrentLocation ? userLat : null,
+        userLng: useCurrentLocation ? userLng : null,
       );
       if (!mounted) return;
 
@@ -221,7 +214,7 @@ class _AiRecommendationPageState extends State<AiRecommendationPage> {
         _result = result;
         _messages.add(
           const _ChatMessage(
-            text: '추천을 준비했어요. 계산 점수 대신 추천한 이유를 알려드릴게요.',
+            text: '추천을 준비했어요. 추천한 이유를 알려드릴게요.',
             isUser: false,
           ),
         );
@@ -233,6 +226,47 @@ class _AiRecommendationPageState extends State<AiRecommendationPage> {
       _showRecommendationError('추천을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
     }
     _scrollToBottom();
+  }
+
+  Future<Position> _loadCurrentPosition() async {
+    final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!isServiceEnabled) {
+      throw const RecommendationException(
+        'location_service_disabled',
+        '현재 위치 추천을 사용하려면 휴대폰의 위치 서비스를 켜 주세요.',
+      );
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied) {
+      throw const RecommendationException(
+        'location_permission_denied',
+        '현재 위치 추천을 사용하려면 위치 권한이 필요합니다.',
+      );
+    }
+    if (permission == LocationPermission.deniedForever) {
+      throw const RecommendationException(
+        'location_permission_denied_forever',
+        '앱 설정에서 위치 권한을 허용한 후 다시 시도해 주세요.',
+      );
+    }
+
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+    } on TimeoutException {
+      throw const RecommendationException(
+        'location_timeout',
+        '현재 위치를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+      );
+    }
   }
 
   void _showRecommendationError(String message) {
@@ -288,7 +322,7 @@ class _AiRecommendationPageState extends State<AiRecommendationPage> {
 
   String _basisPrompt(_RecommendationBasis basis) {
     return switch (basis) {
-      _RecommendationBasis.currentLocation => '현재 위치까지 반영해 줘.',
+      _RecommendationBasis.currentLocation => '현재 위치를 기반으로 추천해 줘.',
       _RecommendationBasis.visitHistory => '내 방문 기록을 중심으로 추천해 줘.',
     };
   }
@@ -392,14 +426,12 @@ class _AiRecommendationPageState extends State<AiRecommendationPage> {
         _ConversationStep.chooseBasis => _ChoiceWrap(
           label: '추천 기준을 골라주세요',
           choices: [
-            if (_hasCurrentLocation)
-              _ConversationChoice(
-                label: '현재 위치도 반영',
-                icon: Icons.near_me_outlined,
-                onTap: () => _requestRecommendations(
-                  _RecommendationBasis.currentLocation,
-                ),
-              ),
+            _ConversationChoice(
+              label: '현재 위치 중심',
+              icon: Icons.near_me_outlined,
+              onTap: () =>
+                  _requestRecommendations(_RecommendationBasis.currentLocation),
+            ),
             _ConversationChoice(
               label: '방문 기록 중심',
               icon: Icons.history_rounded,
