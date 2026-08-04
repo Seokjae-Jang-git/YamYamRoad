@@ -27,6 +27,46 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
   String _selectedStatusFilter = 'ALL';
   String _selectedSortType = 'CREATED_DESC';
 
+  // 스크롤 컨트롤러 및 최상단 이동 버튼 상태
+  final ScrollController _scrollController = ScrollController();
+  bool _showBackToTopButton = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 스크롤이 400픽셀 이상 내려가면 위로가기 버튼 표시
+    _scrollController.addListener(() {
+      if (_scrollController.offset >= 400 && !_showBackToTopButton) {
+        setState(() => _showBackToTopButton = true);
+      } else if (_scrollController.offset < 400 && _showBackToTopButton) {
+        setState(() => _showBackToTopButton = false);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  // 최상단으로 부드럽게 이동하는 함수
+  void _scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  // 당겨서 새로고침 처리
+  Future<void> _onRefresh() async {
+    setState(() {});
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
+
   @override
   Widget build(BuildContext context) {
     Query<Map<String, dynamic>> query = FirebaseFirestore.instance
@@ -49,21 +89,49 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
           icon: const Icon(Icons.arrow_back, color: deepChocolate, size: 28),
           onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
         ),
-        title: const Text(
-          '문의 내역',
-          style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold, fontSize: 22),
+        title: GestureDetector(
+          onTap: _scrollToTop,
+          child: const Text(
+            '문의 내역',
+            style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold, fontSize: 22),
+          ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: pointCoralRed,
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const InquiryWriteScreen()),
-          );
-        },
-        child: const Icon(Icons.edit, color: Colors.white),
+      // 좌측 최상단 이동 버튼, 우측 글쓰기 버튼 배치
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // 좌측: 최상단 가기 버튼
+            AnimatedOpacity(
+              opacity: _showBackToTopButton ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              child: FloatingActionButton(
+                heroTag: 'inquiry_top_btn',
+                backgroundColor: pointCoralRed,
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                onPressed: _showBackToTopButton ? _scrollToTop : null,
+                child: const Icon(Icons.arrow_upward, color: Colors.white),
+              ),
+            ),
+            // 우측: 글쓰기 버튼
+            FloatingActionButton(
+              heroTag: 'inquiry_write_btn',
+              backgroundColor: pointCoralRed,
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const InquiryWriteScreen()),
+                );
+              },
+              child: const Icon(Icons.edit, color: Colors.white),
+            ),
+          ],
+        ),
       ),
       body: Column(
         children: [
@@ -107,8 +175,21 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(
-                    child: Text('등록된 문의가 없어요', style: TextStyle(color: subTextColor)),
+                  return RefreshIndicator(
+                    color: pointCoralRed,
+                    backgroundColor: Colors.white,
+                    onRefresh: _onRefresh,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.5,
+                          child: const Center(
+                            child: Text('등록된 문의가 없어요', style: TextStyle(color: subTextColor)),
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 }
 
@@ -121,18 +202,38 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
                 }
 
                 if (inquiries.isEmpty) {
-                  return const Center(
-                    child: Text('해당하는 문의 내역이 없습니다.', style: TextStyle(color: subTextColor)),
+                  return RefreshIndicator(
+                    color: pointCoralRed,
+                    backgroundColor: Colors.white,
+                    onRefresh: _onRefresh,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.5,
+                          child: const Center(
+                            child: Text('해당하는 문의 내역이 없습니다.', style: TextStyle(color: subTextColor)),
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: inquiries.length,
-                  itemBuilder: (context, index) {
-                    final inquiry = inquiries[index];
-                    return _buildInquiryCard(inquiry);
-                  },
+                return RefreshIndicator(
+                  color: pointCoralRed,
+                  backgroundColor: Colors.white,
+                  onRefresh: _onRefresh,
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 80), // 버튼과 겹치지 않도록 하단 여백 추가
+                    itemCount: inquiries.length,
+                    itemBuilder: (context, index) {
+                      final inquiry = inquiries[index];
+                      return _buildInquiryCard(inquiry);
+                    },
+                  ),
                 );
               },
             ),

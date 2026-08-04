@@ -23,6 +23,48 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
   String _selectedFilter = '전체';
   String _selectedSort = '최신순';
 
+  final ScrollController _scrollController = ScrollController();
+  bool _showBackToTopButton = false;
+
+  late Future<List<Map<String, dynamic>>> _feedsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _feedsFuture = _loadMyFeeds();
+
+    _scrollController.addListener(() {
+      if (_scrollController.offset >= 400 && !_showBackToTopButton) {
+        setState(() => _showBackToTopButton = true);
+      } else if (_scrollController.offset < 400 && _showBackToTopButton) {
+        setState(() => _showBackToTopButton = false);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refetch() async {
+    setState(() {
+      _feedsFuture = _loadMyFeeds();
+    });
+    await _feedsFuture;
+  }
+
+  void _scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
   Future<List<Map<String, dynamic>>> _loadMyFeeds() async {
     List<Map<String, dynamic>> combinedFeeds = [];
     Set<String> uniqueIds = {};
@@ -34,7 +76,6 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
     }
 
     try {
-      // 1. '내 피드' 로드
       if (_selectedFilter == '전체' || _selectedFilter == '내 피드') {
         final myPostsSnapshot = await FirebaseFirestore.instance
             .collection('posts')
@@ -54,7 +95,6 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
         }
       }
 
-      // 2. '내 스크랩' 로드
       if (_selectedFilter == '전체' || _selectedFilter == '스크랩') {
         final scrapSnapshot = await FirebaseFirestore.instance
             .collection('users')
@@ -90,7 +130,6 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
         }
       }
 
-      // 3. 리스트 정렬
       if (_selectedSort == '최신순') {
         combinedFeeds.sort((a, b) {
           final aTime = (a['scrapedAt'] as Timestamp?)?.toDate() ?? (a['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
@@ -124,11 +163,35 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
     return Scaffold(
       backgroundColor: creamyIvory,
       appBar: AppBar(
-        title: const Text('내 얌얌북', style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold)),
+        title: GestureDetector(
+          onTap: _scrollToTop,
+          child: const Text('내 얌얌북', style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold)),
+        ),
         backgroundColor: creamyIvory,
         elevation: 0,
         scrolledUnderElevation: 0,
         iconTheme: const IconThemeData(color: deepChocolate),
+      ),
+      // 🌟 좌측 하단에 최상단 이동 버튼 배치
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start, // 왼쪽 정렬
+          children: [
+            AnimatedOpacity(
+              opacity: _showBackToTopButton ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              child: FloatingActionButton(
+                heroTag: 'my_community_top_btn',
+                backgroundColor: pointCoralRed,
+                elevation: 3,
+                onPressed: _showBackToTopButton ? _scrollToTop : null,
+                child: const Icon(Icons.arrow_upward, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,7 +210,7 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
 
           Expanded(
             child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: _loadMyFeeds(),
+              future: _feedsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator(color: deepChocolate));
@@ -180,104 +243,119 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
                     ),
                     const SizedBox(height: 8),
                     Expanded(
-                      child: feeds.isEmpty
-                          ? const Center(child: Text('조건에 맞는 피드가 없습니다.', style: TextStyle(color: subTextColor)))
-                          : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        itemCount: feeds.length,
-                        itemBuilder: (context, index) {
-                          final feed = feeds[index];
-
-                          final bool isHidden = feed['status'] == 'hidden';
-                          final bool isAdminDeleted = feed['status'] == 'admin_deleted';
-                          final bool isRestricted = isHidden || isAdminDeleted;
-
-                          // CommunityPost 객체 생성
-                          final post = CommunityPost.fromMap(feed, feed['postId'] ?? feed['id'] ?? '');
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 14.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                if (isHidden)
-                                  Container(
-                                    margin: const EdgeInsets.only(bottom: 8.0),
-                                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-                                    decoration: BoxDecoration(
-                                      color: Colors.orange.shade50,
-                                      borderRadius: BorderRadius.circular(12.0),
-                                      border: Border.all(color: Colors.orange.shade200),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.visibility_off, size: 16, color: Colors.orange.shade700),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            '신고 누적으로 인해 관리자에 의해 비공개 처리되었습니다.',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.orange.shade800,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                if (isAdminDeleted)
-                                  Container(
-                                    margin: const EdgeInsets.only(bottom: 8.0),
-                                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.shade50,
-                                      borderRadius: BorderRadius.circular(12.0),
-                                      border: Border.all(color: Colors.red.shade200),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.delete_outline, size: 16, color: Colors.red.shade400),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            '커뮤니티 가이드라인 위반으로 관리자에 의해 삭제된 게시글입니다.',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.red.shade600,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                // community_main.dart와 동일한 CommunityPostCard 사용
-                                Opacity(
-                                  opacity: isRestricted ? 0.6 : 1.0,
-                                  child: CommunityPostCard(
-                                    post: post,
-                                    onTap: () async {
-                                      final String postId = post.id;
-                                      if (postId.isNotEmpty) {
-                                        await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => CommunityDetailScreen(postId: postId),
-                                          ),
-                                        );
-                                        setState(() {});
-                                      }
-                                    },
-                                    onTagTap: _openTagSearch,
-                                  ),
-                                ),
-                              ],
+                      child: RefreshIndicator(
+                        color: pointCoralRed,
+                        backgroundColor: Colors.white,
+                        onRefresh: _refetch,
+                        child: feeds.isEmpty
+                            ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            SizedBox(
+                              height: MediaQuery.of(context).size.height * 0.5,
+                              child: const Center(
+                                child: Text('조건에 맞는 피드가 없습니다.', style: TextStyle(color: subTextColor)),
+                              ),
                             ),
-                          );
-                        },
+                          ],
+                        )
+                            : ListView.builder(
+                          controller: _scrollController,
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 80.0), // 버튼과 겹치지 않도록 하단 여백 추가
+                          itemCount: feeds.length,
+                          itemBuilder: (context, index) {
+                            final feed = feeds[index];
+
+                            final bool isHidden = feed['status'] == 'hidden';
+                            final bool isAdminDeleted = feed['status'] == 'admin_deleted';
+                            final bool isRestricted = isHidden || isAdminDeleted;
+
+                            final post = CommunityPost.fromMap(feed, feed['postId'] ?? feed['id'] ?? '');
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 14.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (isHidden)
+                                    Container(
+                                      margin: const EdgeInsets.only(bottom: 8.0),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.shade50,
+                                        borderRadius: BorderRadius.circular(12.0),
+                                        border: Border.all(color: Colors.orange.shade200),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.visibility_off, size: 16, color: Colors.orange.shade700),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              '신고 누적으로 인해 관리자에 의해 비공개 처리되었습니다.',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.orange.shade800,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                  if (isAdminDeleted)
+                                    Container(
+                                      margin: const EdgeInsets.only(bottom: 8.0),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade50,
+                                        borderRadius: BorderRadius.circular(12.0),
+                                        border: Border.all(color: Colors.red.shade200),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.delete_outline, size: 16, color: Colors.red.shade400),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              '커뮤니티 가이드라인 위반으로 관리자에 의해 삭제된 게시글입니다.',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.red.shade600,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                  Opacity(
+                                    opacity: isRestricted ? 0.6 : 1.0,
+                                    child: CommunityPostCard(
+                                      post: post,
+                                      onTap: () async {
+                                        final String postId = post.id;
+                                        if (postId.isNotEmpty) {
+                                          await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => CommunityDetailScreen(postId: postId),
+                                            ),
+                                          );
+                                          _refetch();
+                                        }
+                                      },
+                                      onTagTap: _openTagSearch,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ],
@@ -301,7 +379,14 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
             padding: const EdgeInsets.only(right: 8.0),
             child: InkWell(
               borderRadius: BorderRadius.circular(20),
-              onTap: () => setState(() => _selectedFilter = filter),
+              onTap: () {
+                if (_selectedFilter != filter) {
+                  setState(() {
+                    _selectedFilter = filter;
+                  });
+                  _refetch();
+                }
+              },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
@@ -338,7 +423,14 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
             padding: const EdgeInsets.only(right: 8.0),
             child: InkWell(
               borderRadius: BorderRadius.circular(20),
-              onTap: () => setState(() => _selectedSort = sort),
+              onTap: () {
+                if (_selectedSort != sort) {
+                  setState(() {
+                    _selectedSort = sort;
+                  });
+                  _refetch();
+                }
+              },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(

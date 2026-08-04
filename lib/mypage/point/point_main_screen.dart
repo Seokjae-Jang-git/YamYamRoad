@@ -1,24 +1,39 @@
 import 'package:flutter/material.dart';
-// 각 탭 화면 파일 import
+
 import 'emoticon/emoticon_tab.dart';
 import 'giftcon/gifticon_tab.dart';
 import 'point_history/point_history_tab.dart';
 
-class PointMainScreen extends StatelessWidget {
+class PointMainScreen extends StatefulWidget {
   const PointMainScreen({Key? key}) : super(key: key);
 
-  // 🌟 얌얌로드 공식 컬러 팔레트
+  @override
+  State<PointMainScreen> createState() => _PointMainScreenState();
+}
+
+class _PointMainScreenState extends State<PointMainScreen> {
   static const Color pointCoralRed = Color(0xFFFF6B57);
   static const Color deepChocolate = Color(0xFF4A3225);
   static const Color creamyIvory = Color(0xFFFFFDF9);
   static const Color subTextColor = Color(0xFF7A6B63);
 
+  // 🌟 각 탭의 스크롤을 제어할 컨트롤러 생성
+  final ScrollController _pointScrollController = ScrollController();
+  final ScrollController _gifticonScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _pointScrollController.dispose();
+    _gifticonScrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3, // 탭 개수
+      length: 3,
       child: Scaffold(
-        backgroundColor: creamyIvory, // 🌟 전체 배경색 적용
+        backgroundColor: creamyIvory,
         appBar: AppBar(
           backgroundColor: creamyIvory,
           elevation: 0,
@@ -31,18 +46,34 @@ class PointMainScreen extends StatelessWidget {
             '포인트',
             style: TextStyle(
               color: deepChocolate,
-              fontSize: 22, // 🌟 다른 메인 화면들과 폰트 크기 통일
+              fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
           ),
-          centerTitle: false, // 🌟 다른 페이지들과 동일하게 좌측 정렬
+          centerTitle: false,
           bottom: TabBar(
-            labelColor: pointCoralRed, // 🌟 활성화된 탭 글자색
-            unselectedLabelColor: subTextColor, // 🌟 비활성화된 탭 글자색
-            indicatorColor: pointCoralRed, // 🌟 활성화 인디케이터 색상
+            onTap: (index) {
+              // 🌟 현재 선택된 탭을 다시 눌렀을 때 최상단 이동 처리
+              if (index == 0 && _pointScrollController.hasClients) {
+                _pointScrollController.animateTo(
+                  0,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
+                );
+              } else if (index == 2 && _gifticonScrollController.hasClients) {
+                _gifticonScrollController.animateTo(
+                  0,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
+                );
+              }
+            },
+            labelColor: pointCoralRed,
+            unselectedLabelColor: subTextColor,
+            indicatorColor: pointCoralRed,
             indicatorWeight: 3.0,
-            indicatorSize: TabBarIndicatorSize.tab, // 탭 전체 너비만큼 인디케이터 표시
-            dividerColor: deepChocolate.withOpacity(0.12), // 🌟 탭바 하단 연한 가로선
+            indicatorSize: TabBarIndicatorSize.tab,
+            dividerColor: deepChocolate.withOpacity(0.12),
             labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
             unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
             tabs: const [
@@ -52,16 +83,12 @@ class PointMainScreen extends StatelessWidget {
             ],
           ),
         ),
-        body: const TabBarView(
+        body: TabBarView(
           children: [
-            // 1. 포인트 내역 조회 탭
-            PointHistoryTab(),
-
-            // 2. 이모티콘 탭
-            EmoticonTab(),
-
-            // 3. 기프티콘 탭
-            GifticonTab()
+            PointHistoryTab(scrollController: _pointScrollController),
+            const EmoticonTab(),
+            // 🌟 컨트롤러 주입
+            GifticonTab(scrollController: _gifticonScrollController),
           ],
         ),
       ),

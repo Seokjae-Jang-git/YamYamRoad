@@ -1,24 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-import '../../../common/user_data.dart'; // 경로에 맞게 수정해주세요.
+import '../../../common/user_data.dart';
 
 class GifticonTab extends StatefulWidget {
-  const GifticonTab({Key? key}) : super(key: key);
+  // 🌟 부모로부터 스크롤 컨트롤러를 전달받음
+  final ScrollController scrollController;
+
+  const GifticonTab({Key? key, required this.scrollController}) : super(key: key);
 
   @override
   State<GifticonTab> createState() => _GifticonTabState();
 }
 
 class _GifticonTabState extends State<GifticonTab> {
-  // 🌟 얌얌로드 공식 컬러 팔레트
   static const Color pointCoralRed = Color(0xFFFF6B57);
   static const Color deepChocolate = Color(0xFF4A3225);
   static const Color creamyIvory = Color(0xFFFFFDF9);
   static const Color subTextColor = Color(0xFF7A6B63);
 
-  String _selectedFilter = '전체'; // 전체, 미사용, 사용완료
-  String _selectedSort = '구매 최신순'; // 구매 최신순, 사용 최신순, 이름순
+  String _selectedFilter = '전체';
+  String _selectedSort = '구매 최신순';
+
+  // 🌟 당겨서 새로고침 상태 변경 트리거 (FutureBuilder 재실행)
+  Future<void> _onRefresh() async {
+    setState(() {});
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +35,7 @@ class _GifticonTabState extends State<GifticonTab> {
     }
 
     return Container(
-      color: creamyIvory, // 🌟 전체 배경색 적용
+      color: creamyIvory,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -40,14 +48,12 @@ class _GifticonTabState extends State<GifticonTab> {
     );
   }
 
-  // 🎛️ 필터 및 정렬 바 UI (알약 형태 칩 디자인 적용)
   Widget _buildFilterAndSortBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // 왼쪽: 상태 필터
           Row(
             children: ['전체', '미사용', '사용완료'].map((filter) {
               final isSelected = _selectedFilter == filter;
@@ -61,8 +67,6 @@ class _GifticonTabState extends State<GifticonTab> {
               );
             }).toList(),
           ),
-
-          // 오른쪽: 정렬 버튼
           Row(
             children: [
               _buildDateSortDropdown(),
@@ -80,7 +84,6 @@ class _GifticonTabState extends State<GifticonTab> {
     );
   }
 
-  // 🌟 공통 알약(Pill) 버튼 헬퍼 위젯
   Widget _buildPillButton({required String text, required bool isSelected, required VoidCallback onTap, bool isSort = false}) {
     Color activeColor = isSort ? deepChocolate : pointCoralRed;
     return InkWell(
@@ -105,7 +108,6 @@ class _GifticonTabState extends State<GifticonTab> {
     );
   }
 
-  // 📅 최신순 드롭다운 메뉴 (구매 / 사용) 디자인 적용
   Widget _buildDateSortDropdown() {
     final isDateSort = _selectedSort.contains('최신순');
 
@@ -143,15 +145,16 @@ class _GifticonTabState extends State<GifticonTab> {
     );
   }
 
-  // 📋 기프티콘 목록 리스트
+  // 🌟 기프티콘 목록 (새로고침 & 최상단 스크롤 컨트롤러 적용)
   Widget _buildGifticonList() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
+    return FutureBuilder<QuerySnapshot>(
+      // 🌟 당겨서 새로고침 시 이 부분이 다시 호출됩니다.
+      future: FirebaseFirestore.instance
           .collection('users')
           .doc(UserData.uid)
           .collection('users_purchase')
           .where('purchaseType', isEqualTo: 'gifticon')
-          .snapshots(),
+          .get(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Center(child: Text('에러 발생:\n${snapshot.error}', textAlign: TextAlign.center, style: const TextStyle(color: pointCoralRed)));
@@ -162,7 +165,6 @@ class _GifticonTabState extends State<GifticonTab> {
 
         List<DocumentSnapshot> docs = snapshot.data?.docs ?? [];
 
-        // 1. Client-side 필터링 (미사용 / 사용완료)
         docs = docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
           final bool isUsed = data['usedAt'] != null;
@@ -172,7 +174,6 @@ class _GifticonTabState extends State<GifticonTab> {
           return true;
         }).toList();
 
-        // 2. Client-side 정렬 (구매일 / 사용일 기준)
         if (_selectedSort == '구매 최신순') {
           docs.sort((a, b) {
             final aTime = (a.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
@@ -185,32 +186,56 @@ class _GifticonTabState extends State<GifticonTab> {
             final bTime = (b.data() as Map<String, dynamic>)['usedAt'] as Timestamp?;
             return (bTime?.seconds ?? 0).compareTo(aTime?.seconds ?? 0);
           });
+        } else if (_selectedSort == '이름순') {
+          // 이름순 정렬이 필요하면 데이터 구조에 따라 별도 구현 필요
         }
 
+        // 🌟 데이터가 없어도 새로고침 및 스크롤 컨트롤 적용
         if (docs.isEmpty) {
-          return const Center(child: Text('기프티콘 내역이 없습니다.', style: TextStyle(color: subTextColor)));
+          return RefreshIndicator(
+            color: pointCoralRed,
+            backgroundColor: Colors.white,
+            onRefresh: _onRefresh,
+            child: ListView(
+              controller: widget.scrollController,
+              physics: const AlwaysScrollableScrollPhysics(), // 항상 스크롤 가능
+              children: [
+                SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.5,
+                  child: const Center(
+                    child: Text('기프티콘 내역이 없습니다.', style: TextStyle(color: subTextColor)),
+                  ),
+                ),
+              ],
+            ),
+          );
         }
 
-        return ListView.separated(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          itemCount: docs.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            return GifticonItemCard(purchaseDoc: docs[index]);
-          },
+        return RefreshIndicator(
+          color: pointCoralRed,
+          backgroundColor: Colors.white,
+          onRefresh: _onRefresh,
+          child: ListView.separated(
+            controller: widget.scrollController, // 🌟 부모의 스크롤 컨트롤러 연결
+            physics: const AlwaysScrollableScrollPhysics(), // 항상 스크롤 가능
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            itemCount: docs.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              return GifticonItemCard(purchaseDoc: docs[index]);
+            },
+          ),
         );
       },
     );
   }
 }
 
-// 🎁 개별 기프티콘 카드 위젯 (카드 디자인 적용)
 class GifticonItemCard extends StatelessWidget {
   final DocumentSnapshot purchaseDoc;
 
   const GifticonItemCard({Key? key, required this.purchaseDoc}) : super(key: key);
 
-  // 🌟 색상 상수 재정의
   static const Color pointCoralRed = Color(0xFFFF6B57);
   static const Color deepChocolate = Color(0xFF4A3225);
   static const Color subTextColor = Color(0xFF7A6B63);
@@ -232,7 +257,7 @@ class GifticonItemCard extends StatelessWidget {
       future: FirebaseFirestore.instance.collection('gifticon').doc(itemId).get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildSkeletonCard(); // 로딩 중 UI
+          return _buildSkeletonCard();
         }
 
         final gifticonData = snapshot.data?.data() as Map<String, dynamic>? ?? {};
@@ -245,11 +270,11 @@ class GifticonItemCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16), // 🌟 둥근 모서리 16
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: deepChocolate.withOpacity(0.08)),
             boxShadow: [
               BoxShadow(
-                color: deepChocolate.withOpacity(0.04), // 🌟 부드러운 그림자
+                color: deepChocolate.withOpacity(0.04),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -258,14 +283,13 @@ class GifticonItemCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 🖼️ 썸네일 영역
               Container(
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
                   color: Colors.grey.shade50,
                   border: Border.all(color: deepChocolate.withOpacity(0.05)),
-                  borderRadius: BorderRadius.circular(12), // 🌟 이미지 모서리 12
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: imageUrl.isNotEmpty
                     ? ClipRRect(
@@ -276,7 +300,6 @@ class GifticonItemCard extends StatelessWidget {
               ),
               const SizedBox(width: 16),
 
-              // 📝 상세 정보 영역
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,13 +314,12 @@ class GifticonItemCard extends StatelessWidget {
                             style: const TextStyle(fontSize: 12, color: subTextColor, fontWeight: FontWeight.bold),
                           ),
                         ),
-                        // 🌟 상태 뱃지 리디자인 (미사용은 코랄 레드, 사용완료는 옅은 색)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: isUsed ? Colors.grey.shade100 : Colors.white,
                             border: Border.all(color: isUsed ? Colors.transparent : pointCoralRed),
-                            borderRadius: BorderRadius.circular(20), // 🌟 알약 형태 뱃지
+                            borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             isUsed ? '사용완료' : '미사용',
@@ -313,7 +335,7 @@ class GifticonItemCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start, // 여러 줄일 때 정렬 맞춤
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: Text(
@@ -344,7 +366,6 @@ class GifticonItemCard extends StatelessWidget {
     );
   }
 
-  // 로딩 시 보여줄 스켈레톤 UI
   Widget _buildSkeletonCard() {
     return Container(
       height: 130,

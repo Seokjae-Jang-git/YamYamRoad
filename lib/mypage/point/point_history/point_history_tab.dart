@@ -4,14 +4,17 @@ import 'package:intl/intl.dart';
 import 'package:yamyam_road/common/user_data.dart';
 
 class PointHistoryTab extends StatefulWidget {
-  const PointHistoryTab({Key? key}) : super(key: key);
+  // 🌟 부모로부터 스크롤 컨트롤러를 전달받음
+  final ScrollController scrollController;
+
+  const PointHistoryTab({Key? key, required this.scrollController}) : super(key: key);
 
   @override
+  // 🌟 다시 프라이빗(private) 상태 클래스로 안전하게 변경
   State<PointHistoryTab> createState() => _PointHistoryTabState();
 }
 
 class _PointHistoryTabState extends State<PointHistoryTab> {
-  // 🌟 얌얌로드 공식 컬러 팔레트
   static const Color pointCoralRed = Color(0xFFFF6B57);
   static const Color deepChocolate = Color(0xFF4A3225);
   static const Color creamyIvory = Color(0xFFFFFDF9);
@@ -19,7 +22,6 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
 
   final String uid = UserData.uid ?? '';
 
-  // --- 필터 UI 선택 상태 변수 ---
   bool _isFilterExpanded = false;
   String _selectedPeriod = '1개월';
   DateTime _startDate = DateTime.now().subtract(const Duration(days: 30));
@@ -28,7 +30,6 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
   String _selectedType = '전체';
   String _selectedSort = '최신순';
 
-  // --- 실제 조회(적용)된 필터 상태 변수 ---
   DateTime _appliedStartDate = DateTime.now().subtract(const Duration(days: 30));
   DateTime _appliedEndDate = DateTime.now();
   String _appliedType = '전체';
@@ -40,6 +41,14 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
   void initState() {
     super.initState();
     _updateStream();
+  }
+
+  // 🌟 당겨서 새로고침 메서드
+  Future<void> _onRefresh() async {
+    setState(() {
+      _updateStream();
+    });
+    await Future.delayed(const Duration(milliseconds: 500));
   }
 
   void _updateStream() {
@@ -89,7 +98,7 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
     if (uid.isEmpty) return const Center(child: Text('로그인 정보가 없습니다.', style: TextStyle(color: deepChocolate)));
 
     return Container(
-      color: creamyIvory, // 🌟 전체 배경색 적용
+      color: creamyIvory,
       child: Column(
         children: [
           _buildPointSummaryCard(uid),
@@ -102,7 +111,6 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
     );
   }
 
-  // 🌟 상단 내 보유 포인트 요약 카드 (플로팅 카드 스타일로 변경)
   Widget _buildPointSummaryCard(String uid) {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
@@ -163,7 +171,6 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
     );
   }
 
-  // 🌟 아코디언 및 필터 UI 디자인
   Widget _buildFilterAccordion() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -237,7 +244,7 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
                       _buildSelectButton('최신순', _selectedSort == '최신순', () => setState(() => _selectedSort = '최신순')),
                       const SizedBox(width: 8),
                       _buildSelectButton('과거순', _selectedSort == '과거순', () => setState(() => _selectedSort = '과거순')),
-                      const Spacer(flex: 2), // 버튼 정렬용 여백
+                      const Spacer(flex: 2),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -250,7 +257,7 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             side: BorderSide(color: deepChocolate.withOpacity(0.3)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), // 🌟 플랫 라운드
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           child: const Text('초기화', style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold)),
                         ),
@@ -260,7 +267,7 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
                         child: ElevatedButton(
                           onPressed: _applyFilter,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: pointCoralRed, // 🌟 코랄 레드
+                            backgroundColor: pointCoralRed,
                             foregroundColor: Colors.white,
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(vertical: 14),
@@ -279,7 +286,6 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
     );
   }
 
-  // 거래 내역 리스트
   Widget _buildTransactionList(String uid) {
     return StreamBuilder<QuerySnapshot>(
       stream: _transactionStream,
@@ -288,8 +294,28 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
           return Center(child: Text('데이터 로드 오류:\n${snapshot.error}', style: const TextStyle(color: pointCoralRed), textAlign: TextAlign.center));
         }
 
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: deepChocolate));
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return const Center(child: Text('포인트 거래 내역이 없습니다.', style: TextStyle(color: subTextColor)));
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: deepChocolate));
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return RefreshIndicator(
+            color: pointCoralRed,
+            backgroundColor: Colors.white,
+            onRefresh: _onRefresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.4,
+                  child: const Center(
+                    child: Text('포인트 거래 내역이 없습니다.', style: TextStyle(color: subTextColor)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
 
         num parseToNum(dynamic value) {
           if (value == null) return 0;
@@ -308,21 +334,45 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
           return true;
         }).toList();
 
-        if (docs.isEmpty) return const Center(child: Text('조건에 맞는 내역이 없습니다.', style: TextStyle(color: subTextColor)));
+        if (docs.isEmpty) {
+          return RefreshIndicator(
+            color: pointCoralRed,
+            backgroundColor: Colors.white,
+            onRefresh: _onRefresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.4,
+                  child: const Center(
+                    child: Text('조건에 맞는 내역이 없습니다.', style: TextStyle(color: subTextColor)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
 
-        return ListView.builder(
-          padding: const EdgeInsets.only(top: 8, bottom: 40),
-          itemCount: docs.length,
-          itemBuilder: (context, index) {
-            final txData = docs[index].data() as Map<String, dynamic>;
-            return TransactionItemWidget(uid: uid, txData: txData);
-          },
+        return RefreshIndicator(
+          color: pointCoralRed,
+          backgroundColor: Colors.white,
+          onRefresh: _onRefresh,
+          child: ListView.builder(
+            // 🌟 부모로부터 받아온 컨트롤러를 리스트뷰에 연결
+            controller: widget.scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(top: 8, bottom: 40),
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+              final txData = docs[index].data() as Map<String, dynamic>;
+              return TransactionItemWidget(uid: uid, txData: txData);
+            },
+          ),
         );
       },
     );
   }
 
-  // --- UI Helper 메서드들 ---
   String get _appliedPeriodText {
     int days = _appliedEndDate.difference(_appliedStartDate).inDays;
     if (days <= 31) return '1개월';
@@ -339,7 +389,6 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
     );
   }
 
-  // 🌟 필터 옵션 버튼 (Pill Shape)
   Widget _buildSelectButton(String text, bool isSelected, VoidCallback onTap) {
     return Expanded(
       child: InkWell(
@@ -359,7 +408,6 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
     );
   }
 
-  // 🌟 날짜 표시 박스 (Round Shape)
   Widget _buildDateBox(DateTime date) {
     return Container(
       height: 38,
@@ -374,7 +422,6 @@ class _PointHistoryTabState extends State<PointHistoryTab> {
   }
 }
 
-// 🌟 개별 거래 내역 아이템 위젯 (카드 형태 리디자인)
 class TransactionItemWidget extends StatefulWidget {
   final String uid;
   final Map<String, dynamic> txData;
@@ -386,7 +433,6 @@ class TransactionItemWidget extends StatefulWidget {
 }
 
 class _TransactionItemWidgetState extends State<TransactionItemWidget> {
-  // 🌟 색상 상수 재정의
   static const Color pointCoralRed = Color(0xFFFF6B57);
   static const Color deepChocolate = Color(0xFF4A3225);
   static const Color creamyIvory = Color(0xFFFFFDF9);
@@ -488,7 +534,6 @@ class _TransactionItemWidgetState extends State<TransactionItemWidget> {
     final bool isEarn = amount > 0;
     final String amountStr = '${isEarn ? '+' : '-'} ${NumberFormat('#,###').format(amount.abs())} P';
 
-    // 🌟 획득은 코랄 레드, 사용은 딥 초콜릿
     final Color amountColor = isEarn ? pointCoralRed : deepChocolate;
 
     final num paidBalance = parseToNum(txData['paidPointBalanceAfter']);
@@ -580,12 +625,11 @@ class _TransactionItemWidgetState extends State<TransactionItemWidget> {
             ),
           ),
 
-          // 🌟 결제 상세 아코디언 영역 리디자인
           if (_isExpanded && showPaymentDetails)
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: creamyIvory, // 아코디언 열리면 크리미 아이보리 배경
+                color: creamyIvory,
                 borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
                 border: Border(top: BorderSide(color: deepChocolate.withOpacity(0.05))),
               ),
@@ -656,7 +700,7 @@ class _TransactionItemWidgetState extends State<TransactionItemWidget> {
             value,
             style: TextStyle(
               fontSize: 13,
-              color: isBold ? pointCoralRed : deepChocolate, // 금액(isBold)은 코랄 레드로 강조
+              color: isBold ? pointCoralRed : deepChocolate,
               fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
             ),
           ),

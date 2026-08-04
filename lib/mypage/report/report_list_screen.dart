@@ -13,7 +13,6 @@ class ReportListScreen extends StatefulWidget {
 }
 
 class _ReportListScreenState extends State<ReportListScreen> {
-  // 공통 색상 팔레트
   static const Color pointCoralRed = Color(0xFFFF6B57);
   static const Color deepChocolate = Color(0xFF4A3225);
   static const Color creamyIvory = Color(0xFFFFFDF9);
@@ -25,6 +24,46 @@ class _ReportListScreenState extends State<ReportListScreen> {
   String _selectedSortType = 'CREATED_DESC';
 
   final Map<String, String> _reportedNicknameCache = {};
+
+  // 스크롤 컨트롤러 및 최상단 이동 버튼 상태
+  final ScrollController _scrollController = ScrollController();
+  bool _showBackToTopButton = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 스크롤이 400픽셀 이상 내려가면 위로가기 버튼 표시
+    _scrollController.addListener(() {
+      if (_scrollController.offset >= 400 && !_showBackToTopButton) {
+        setState(() => _showBackToTopButton = true);
+      } else if (_scrollController.offset < 400 && _showBackToTopButton) {
+        setState(() => _showBackToTopButton = false);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  // 최상단으로 부드럽게 이동
+  void _scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  // 당겨서 새로고침
+  Future<void> _onRefresh() async {
+    setState(() {});
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
 
   Future<String> _getReportedNickname(String targetType, String targetId) async {
     if (targetId.isEmpty) return '알 수 없음';
@@ -89,14 +128,25 @@ class _ReportListScreenState extends State<ReportListScreen> {
           icon: const Icon(Icons.arrow_back, color: deepChocolate, size: 28),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-            '신고',
-            style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold, fontSize: 22)
+        title: GestureDetector(
+          onTap: _scrollToTop, // 타이틀 터치 시 최상단 이동
+          child: const Text(
+              '신고 내역',
+              style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold, fontSize: 22)
+          ),
         ),
       ),
+      // 최상단 이동 플로팅 버튼
+      floatingActionButton: _showBackToTopButton
+          ? FloatingActionButton(
+        backgroundColor: pointCoralRed,
+        elevation: 3,
+        onPressed: _scrollToTop,
+        child: const Icon(Icons.arrow_upward, color: Colors.white),
+      )
+          : null,
       body: Column(
         children: [
-          // 상단 필터 및 정렬 영역
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
@@ -128,7 +178,6 @@ class _ReportListScreenState extends State<ReportListScreen> {
 
           Divider(height: 1, color: deepChocolate.withOpacity(0.08)),
 
-          // 신고 내역 리스트
           Expanded(
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: query.snapshots(),
@@ -137,9 +186,23 @@ class _ReportListScreenState extends State<ReportListScreen> {
                   return const Center(child: CircularProgressIndicator(color: deepChocolate));
                 }
 
+                // 데이터가 없을 때도 당겨서 새로고침 유지
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(
-                      child: Text('신고 내역이 없습니다.', style: TextStyle(color: subTextColor))
+                  return RefreshIndicator(
+                    color: pointCoralRed,
+                    backgroundColor: Colors.white,
+                    onRefresh: _onRefresh,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.5,
+                          child: const Center(
+                              child: Text('신고 내역이 없습니다.', style: TextStyle(color: subTextColor))
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 }
 
@@ -152,18 +215,38 @@ class _ReportListScreenState extends State<ReportListScreen> {
                 }
 
                 if (reports.isEmpty) {
-                  return const Center(
-                      child: Text('해당하는 신고 내역이 없습니다.', style: TextStyle(color: subTextColor))
+                  return RefreshIndicator(
+                    color: pointCoralRed,
+                    backgroundColor: Colors.white,
+                    onRefresh: _onRefresh,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.5,
+                          child: const Center(
+                              child: Text('해당하는 신고 내역이 없습니다.', style: TextStyle(color: subTextColor))
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: reports.length,
-                  itemBuilder: (context, index) {
-                    final r = reports[index];
-                    return _buildReportCard(r);
-                  },
+                return RefreshIndicator(
+                  color: pointCoralRed,
+                  backgroundColor: Colors.white,
+                  onRefresh: _onRefresh,
+                  child: ListView.builder(
+                    controller: _scrollController, // 컨트롤러 연결
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 80),
+                    itemCount: reports.length,
+                    itemBuilder: (context, index) {
+                      final r = reports[index];
+                      return _buildReportCard(r);
+                    },
+                  ),
                 );
               },
             ),
@@ -173,7 +256,6 @@ class _ReportListScreenState extends State<ReportListScreen> {
     );
   }
 
-  // 필터 칩 버튼
   Widget _filterChip(String label, String value) {
     final isSelected = _selectedStatusFilter == value;
     return InkWell(
@@ -198,7 +280,6 @@ class _ReportListScreenState extends State<ReportListScreen> {
     );
   }
 
-  // 정렬 드롭다운 버튼
   Widget _buildRecentSortDropdown() {
     String displayLabel = '접수 최신순';
     if (_selectedSortType == 'RESOLVED_DESC') {
@@ -269,7 +350,6 @@ class _ReportListScreenState extends State<ReportListScreen> {
     }
   }
 
-  // 신고 내역 카드
   Widget _buildReportCard(ReportModel r) {
     String displayStatus = _getDisplayStatus(r.status);
     String displayResolution = _getDisplayResolution(r.resolution);
