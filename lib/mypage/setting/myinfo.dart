@@ -1,7 +1,7 @@
-import 'dart:io'; // 🌟 File 객체를 사용하기 위한 임포트
-import 'package:image_picker/image_picker.dart'; // 🌟 앨범 접근용 패키지 임포트
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/services.dart'; // 🌟 Clipboard 사용을 위해 필요
 
 import 'package:flutter/material.dart';
 import '../../common/storage_service.dart';
@@ -21,11 +21,12 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
   final TextEditingController _socialController = TextEditingController(text: 'Google');
+  late final TextEditingController _uidController; // 🌟 사용자 ID 표시용 컨트롤러 추가
 
   // 상태 관리 변수들
   late bool _isDefaultImage;
-  File? _selectedImage; // 🌟 갤러리에서 선택한 사진 파일을 담을 변수
-  final ImagePicker _picker = ImagePicker(); // 🌟 이미지 픽커 도구
+  File? _selectedImage;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -33,6 +34,8 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
     _nicknameController = TextEditingController(text: UserData.nickname);
     _nameController = TextEditingController(text: UserData.name);
     _phoneController = TextEditingController(text: UserData.phone);
+    // 🌟 사용자 ID 초기화 (값이 없을 경우 대비)
+    _uidController = TextEditingController(text: UserData.uid ?? '알 수 없음');
     _isDefaultImage = UserData.isDefaultProfileImage;
   }
 
@@ -42,22 +45,19 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
     _nameController.dispose();
     _phoneController.dispose();
     _socialController.dispose();
+    _uidController.dispose(); // 🌟 컨트롤러 해제 추가
     super.dispose();
   }
 
-  // 🌟 앨범에서 사진을 고르는 비동기 함수
+  // 앨범에서 사진을 고르는 비동기 함수
   Future<void> _pickImageFromGallery() async {
-    // 1. 열려있는 팝업창(Dialog)을 먼저 닫습니다.
     Navigator.pop(context);
-
-    // 2. 갤러리를 띄워서 사용자가 사진을 고를 때까지 기다립니다.
     final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
 
-    // 3. 사진을 정상적으로 골랐다면 화면 상태를 업데이트합니다.
     if (pickedFile != null) {
       setState(() {
         _selectedImage = File(pickedFile.path);
-        _isDefaultImage = false; // 기본 이미지 상태 해제
+        _isDefaultImage = false;
       });
     }
   }
@@ -74,13 +74,12 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 🌟 버튼 클릭 시 사진 고르기 함수 연결
                 _buildPopupButton('사진 앨범에서 선택', _pickImageFromGallery),
                 const SizedBox(height: 16),
                 _buildPopupButton('기본 이미지 사용', () {
                   setState(() {
                     _isDefaultImage = true;
-                    _selectedImage = null; // 기본 이미지로 돌아가면 선택된 이미지도 초기화
+                    _selectedImage = null;
                   });
                   Navigator.pop(dialogContext);
                 }),
@@ -134,7 +133,6 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                       radius: 60,
                       backgroundColor: const Color(0xFFF5F5F5),
                       child: _selectedImage != null
-                      // 1. 사용자가 방금 갤러리에서 새로운 사진을 선택한 경우 (로컬 파일 표시)
                           ? ClipOval(
                         child: Image.file(
                           _selectedImage!,
@@ -143,7 +141,6 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                           fit: BoxFit.cover,
                         ),
                       )
-                      // 2. 새로운 사진은 안 골랐지만, 기존에 저장된 클라우드 프로필 이미지(URL)가 있는 경우 (인터넷 이미지 표시)
                           : (!_isDefaultImage && UserData.profileImagePath != null)
                           ? ClipOval(
                         child: Image.network(
@@ -156,7 +153,6 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                           },
                         ),
                       )
-                      // 3. 기본 이미지 상태이거나 프로필 이미지가 없는 경우 (기본 아이콘 표시)
                           : const Icon(Icons.person, size: 80, color: Colors.grey),
                     ),
                     Positioned(
@@ -181,22 +177,43 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
               const SizedBox(height: 40),
 
               // 2. 입력 폼 영역
+              _buildInputField(
+                '사용자 ID',
+                _uidController,
+                readOnly: true,
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.copy, size: 18, color: Colors.grey),
+                  onPressed: () {
+                    // 클립보드에 사용자 ID 복사
+                    Clipboard.setData(ClipboardData(text: _uidController.text));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('사용자 ID가 복사되었습니다.'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              _buildInputField('이름', _nameController, readOnly: true),
+              const SizedBox(height: 16),
+
               _buildInputField('닉네임', _nicknameController),
               const SizedBox(height: 16),
-              _buildInputField('이름', _nameController),
-              const SizedBox(height: 16),
+
               _buildInputField(
                 '휴대폰번호',
                 _phoneController,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
-                  PhoneNumberFormatter(), // 파일 맨 아래에 추가했던 클래스
+                  PhoneNumberFormatter(),
                 ],
               ),
               const SizedBox(height: 16),
               _buildInputField('소셜로그인', _socialController, readOnly: true),
-
               const SizedBox(height: 40),
 
               // 3. 저장 버튼
@@ -204,7 +221,6 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: () async {
-                    // 1) 화면에 로딩 인디케이터(빙글빙글 도는 창)를 띄워 유저의 중복 클릭을 막습니다.
                     showDialog(
                       context: context,
                       barrierDismissible: false,
@@ -214,13 +230,9 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                     String? downloadUrl;
 
                     try {
-                      // 2) 만약 사용자가 사진을 새로 선택했다면, 먼저 Firebase Storage에 업로드합니다.
                       if (_selectedImage != null) {
-                        // 파일명이 겹치지 않게 타임스탬프를 붙여 고유하게 만들어 줍니다.
-                        // 🌟 파일명에도 현재 접속 중인 유저의 UID가 동적으로 들어가도록 수정합니다.
                         String fileName = 'profile_${UserData.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-                        // 아까 만들어둔 공통 스토리지 서비스 호출 (profile_img 폴더로 분류)
                         downloadUrl = await StorageService.uploadImage(
                           imageFile: _selectedImage!,
                           folderName: 'profile_img',
@@ -233,20 +245,12 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                       final String newNickname = _nicknameController.text;
                       final bool nicknameChanged = newNickname != UserData.nickname;
 
-                      debugPrint('🔍 [1단계] newNickname: $newNickname / old: ${UserData.nickname} / changed: $nicknameChanged');
-
-                      try {
-                        await userDocRef.update({
-                          'nickname': newNickname,
-                          'name': _nameController.text,
-                          'phone': _phoneController.text,
-                          'profileImageUrl': _isDefaultImage ? null : (downloadUrl ?? UserData.profileImagePath),
-                        });
-                        debugPrint('✅ [1단계] users 업데이트 성공');
-                      } catch (e) {
-                        debugPrint('🔴 [1단계] users 업데이트 실패: $e');
-                        rethrow;
-                      }
+                      // 🌟 이름(name) 필드는 더 이상 화면에서 수정되지 않으므로 업데이트 항목에서 제외하거나 기존 값을 그대로 넘깁니다.
+                      await userDocRef.update({
+                        'nickname': newNickname,
+                        'phone': _phoneController.text,
+                        'profileImageUrl': _isDefaultImage ? null : (downloadUrl ?? UserData.profileImagePath),
+                      });
 
                       if (nicknameChanged) {
                         try {
@@ -254,7 +258,6 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                               .collection('posts')
                               .where('userId', isEqualTo: UserData.uid)
                               .get();
-                          debugPrint('🔍 [2단계] posts 개수: ${postsSnapshot.docs.length}');
 
                           if (postsSnapshot.docs.isNotEmpty) {
                             const chunkSize = 500;
@@ -268,9 +271,8 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                               await batch.commit();
                             }
                           }
-                          debugPrint('✅ [2단계] posts 동기화 성공');
                         } catch (e) {
-                          debugPrint('🔴 [2단계] posts 동기화 실패: $e');
+                          debugPrint('🔴 posts 동기화 실패: $e');
                           rethrow;
                         }
 
@@ -279,7 +281,6 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                               .collectionGroup('comments')
                               .where('userId', isEqualTo: UserData.uid)
                               .get();
-                          debugPrint('🔍 [3단계] comments 개수: ${commentsSnapshot.docs.length}');
 
                           if (commentsSnapshot.docs.isNotEmpty) {
                             const chunkSize = 500;
@@ -293,34 +294,30 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                               await batch.commit();
                             }
                           }
-                          debugPrint('✅ [3단계] comments 동기화 성공');
                         } catch (e) {
-                          debugPrint('🔴 [3단계] comments 동기화 실패: $e');
+                          debugPrint('🔴 comments 동기화 실패: $e');
                           rethrow;
                         }
                       }
 
-                      // 4) 로컬 전역 변수(UserData)도 현재 수정한 값으로 동기화합니다.
                       UserData.nickname = _nicknameController.text;
-                      UserData.name = _nameController.text;
                       UserData.phone = _phoneController.text;
                       UserData.isDefaultProfileImage = _isDefaultImage;
                       if (_isDefaultImage) {
                         UserData.profileImagePath = null;
                       } else if (downloadUrl != null) {
-                        UserData.profileImagePath = downloadUrl; // 로컬 경로 대신 스토리지 웹 URL을 저장!
+                        UserData.profileImagePath = downloadUrl;
                       }
 
-                      // 5) 정상적으로 처리가 완료되면 로딩 창을 닫고 이전 화면(마이페이지 메인)으로 돌아갑니다.
-                      Navigator.pop(context); // 로딩 다이얼로그 닫기
-                      Navigator.pop(context); // 내 정보 수정 화면 닫기
+                      Navigator.pop(context);
+                      Navigator.pop(context);
 
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('정보가 클라우드에 성공적으로 저장되었습니다.')),
+                        const SnackBar(content: Text('정보가 성공적으로 저장되었습니다.')),
                       );
 
                     } catch (e) {
-                      Navigator.pop(context); // 에러 발생 시 로딩 다이얼로그는 닫아줍니다.
+                      Navigator.pop(context);
                       print("DB 및 스토리지 저장 오류: $e");
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('저장 실패: $e')),
@@ -350,6 +347,7 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
         bool readOnly = false,
         TextInputType? keyboardType,
         List<TextInputFormatter>? inputFormatters,
+        Widget? suffixIcon, // 🌟 아이콘을 받을 수 있도록 파라미터 추가
       }
       ) {
     return Row(
@@ -362,18 +360,16 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
           child: TextField(
             controller: controller,
             readOnly: readOnly,
-
-            // 🌟 추가된 부분: 위에서 전달받은 키보드 타입과 포맷터를 TextField에 연결!
             keyboardType: keyboardType,
             inputFormatters: inputFormatters,
-
             textAlign: TextAlign.center,
             style: TextStyle(color: readOnly ? Colors.grey : Colors.black, fontSize: 14),
             decoration: InputDecoration(
               contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              suffixIcon: suffixIcon, // 🌟 우측 복사 아이콘 추가 반영
               enabledBorder: const OutlineInputBorder(
                 borderSide: BorderSide(color: Colors.grey),
-                borderRadius: BorderRadius.zero, // 깔끔한 플랫 디자인
+                borderRadius: BorderRadius.zero,
               ),
               focusedBorder: const OutlineInputBorder(
                 borderSide: BorderSide(color: Colors.blue),
@@ -394,23 +390,18 @@ class PhoneNumberFormatter extends TextInputFormatter {
   TextEditingValue formatEditUpdate(
       TextEditingValue oldValue, TextEditingValue newValue) {
     var text = newValue.text;
-
-    // 1. 숫자만 남기고 나머지 기호(기존 하이픈 등)는 전부 제거합니다.
     text = text.replaceAll(RegExp(r'\D'), '');
 
-    // 2. 최대 11자리(01012345678)까지만 입력되도록 제한합니다.
     if (text.length > 11) {
       text = text.substring(0, 11);
     }
 
     var buffer = StringBuffer();
 
-    // 3. 숫자 길이에 따라 자동으로 하이픈을 결합합니다.
     for (int i = 0; i < text.length; i++) {
       buffer.write(text[i]);
       var nonZeroIndex = i + 1;
 
-      // 010-xxxx-xxxx 패턴 대응
       if (nonZeroIndex == 3 && text.length > 3) {
         buffer.write('-');
       } else if (nonZeroIndex == 7 && text.length > 7) {

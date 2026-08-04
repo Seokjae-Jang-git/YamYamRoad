@@ -22,48 +22,66 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
     List<Map<String, dynamic>> combinedFeeds = [];
     Set<String> uniqueIds = {}; // 내 피드를 내가 스크랩했을 경우 중복 표출 방지
 
+    // UID 안정성 체크
+    final String uid = UserData.uid ?? '';
+    if (uid.isEmpty) {
+      debugPrint('유저 UID가 없습니다.');
+      return [];
+    }
+
     try {
       // 1. '내 피드' 로드 (필터가 '전체' 이거나 '내 피드' 일 때)
       if (_selectedFilter == '전체' || _selectedFilter == '내 피드') {
         final myPostsSnapshot = await FirebaseFirestore.instance
             .collection('posts')
-            .where('userId', isEqualTo: UserData.uid)
-            .where('status', isEqualTo: 'active')
+            .where('userId', isEqualTo: uid)
+        // 🌟 수정됨: active, hidden, admin_deleted 상태 모두 불러오기
+            .where('status', whereIn: ['active', 'hidden', 'admin_deleted'])
             .get();
 
         for (var doc in myPostsSnapshot.docs) {
-          if (!uniqueIds.contains(doc.id)) {
-            combinedFeeds.add({...doc.data(), 'postId': doc.id});
-            uniqueIds.add(doc.id);
+          final data = doc.data();
+
+          // 🌟 방어 코드: 허용된 3가지 상태만 확실하게 필터링
+          if (data['status'] == 'active' || data['status'] == 'hidden' || data['status'] == 'admin_deleted') {
+            if (!uniqueIds.contains(doc.id)) {
+              combinedFeeds.add({...data, 'postId': doc.id});
+              uniqueIds.add(doc.id);
+            }
           }
         }
       }
 
-      // 2. '내 스크랩' 로드 (필터가 '전체' 이거나 '스크랩' 일 때)
+      // 2. '내 스크랩' 로드 (users_myscrap 활용)
       if (_selectedFilter == '전체' || _selectedFilter == '스크랩') {
         final scrapSnapshot = await FirebaseFirestore.instance
             .collection('users')
-            .doc(UserData.uid)
+            .doc(uid)
             .collection('users_myscrap')
             .get();
 
         for (var scrapDoc in scrapSnapshot.docs) {
-          if (!uniqueIds.contains(scrapDoc.id)) {
+          final String postId = scrapDoc.id;
+
+          if (!uniqueIds.contains(postId)) {
             final postDoc = await FirebaseFirestore.instance
                 .collection('posts')
-                .doc(scrapDoc.id)
+                .doc(postId)
                 .get();
 
             if (postDoc.exists) {
-              final data = postDoc.data() as Map<String, dynamic>;
-              if (data['status'] == 'active') {
-                // 스크랩 정렬을 위해 스크랩한 시간 정보 추가
+              final postData = postDoc.data() as Map<String, dynamic>;
+
+              // 🌟 내 스크랩은 오직 'active' 상태일 때만 리스트에 추가
+              if (postData['status'] == 'active') {
+                final scrapData = scrapDoc.data();
+
                 combinedFeeds.add({
-                  ...data,
-                  'postId': postDoc.id,
-                  'scrapedAt': scrapDoc.data()['scrapedAt']
+                  ...postData,
+                  'postId': postId,
+                  'scrapedAt': scrapData['scrapedAt'] // 정렬을 위해 스크랩한 시간 기록
                 });
-                uniqueIds.add(scrapDoc.id);
+                uniqueIds.add(postId);
               }
             }
           }
@@ -73,8 +91,9 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
       // 3. 선택된 정렬 기준에 따라 리스트 정렬
       if (_selectedSort == '최신순') {
         combinedFeeds.sort((a, b) {
-          final aTime = (a['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
-          final bTime = (b['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
+          // 스크랩된 글은 스크랩 시간 기준, 내 피드는 작성 시간 기준으로 정렬
+          final aTime = (a['scrapedAt'] as Timestamp?)?.toDate() ?? (a['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
+          final bTime = (b['scrapedAt'] as Timestamp?)?.toDate() ?? (b['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
           return bTime.compareTo(aTime);
         });
       } else if (_selectedSort == '좋아요순') {
@@ -161,6 +180,11 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
                         itemBuilder: (context, index) {
                           final feed = feeds[index];
 
+                          // 🌟 상태 체크 (hidden 및 admin_deleted 분리)
+                          final bool isHidden = feed['status'] == 'hidden';
+                          final bool isAdminDeleted = feed['status'] == 'admin_deleted';
+                          final bool isRestricted = isHidden || isAdminDeleted;
+
                           return GestureDetector(
                             onTap: () {
                               final String postId = feed['postId'] ?? '';
@@ -173,7 +197,75 @@ class _CommunityMyScreenState extends State<CommunityMyScreen> {
                                 );
                               }
                             },
-                            child: FeedCardWidget(feed: feed),
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 16.0), // 카드 간격
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // 🌟 1-1. 비공개 안내 배너 (hidden일 때)
+                                  if (isHidden)
+                                    Container(
+                                      margin: const EdgeInsets.only(bottom: 8.0),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(8.0),
+                                        border: Border.all(color: Colors.orange.shade200),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.visibility_off, size: 16, color: Colors.orange.shade700),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              '신고 누적으로 인해 관리자에 의해 비공개 처리되었습니다.',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.orange.shade800,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                  // 🌟 1-2. 삭제 안내 배너 (admin_deleted일 때)
+                                  if (isAdminDeleted)
+                                    Container(
+                                      margin: const EdgeInsets.only(bottom: 8.0),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(8.0),
+                                        border: Border.all(color: Colors.red.shade100),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.delete_outline, size: 16, color: Colors.red.shade400),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              '커뮤니티 가이드라인 위반으로 관리자에 의해 삭제된 게시글입니다.',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.red.shade600,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                  // 🌟 2. 원본 피드 카드 (비정상 상태일 경우 투명도를 낮춰 비활성화 느낌 강조)
+                                  Opacity(
+                                    opacity: isRestricted ? 0.6 : 1.0,
+                                    child: FeedCardWidget(feed: feed),
+                                  ),
+                                ],
+                              ),
+                            ),
                           );
                         },
                       ),

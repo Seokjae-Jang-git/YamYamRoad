@@ -12,6 +12,13 @@ class DiaryScreen extends StatefulWidget {
 }
 
 class _DiaryScreenState extends State<DiaryScreen> {
+  // 🌟 얌얌로드 공식 컬러 팔레트 적용
+  // 🌟 얌얌로드 공식 컬러 팔레트 적용
+  static const Color pointCoralRed = Color(0xFFFF6B57);
+  static const Color subStrawberryPink = Color(0xFFFFA09B); // ✅ FF를 추가하여 불투명한 핑크색으로 수정!
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
@@ -66,7 +73,11 @@ class _DiaryScreenState extends State<DiaryScreen> {
     } else {
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('해당 날짜에 작성된 기록이 없습니다.'), duration: Duration(seconds: 1)),
+        SnackBar(
+          content: const Text('해당 날짜에 작성된 기록이 없습니다.', style: TextStyle(color: creamyIvory)),
+          backgroundColor: deepChocolate,
+          duration: const Duration(seconds: 1),
+        ),
       );
     }
   }
@@ -77,25 +88,18 @@ class _DiaryScreenState extends State<DiaryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory, // 🌟 전체 배경색 적용
       appBar: AppBar(
-        title: const Text('다이어리', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        title: const Text('다이어리', style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold)),
+        backgroundColor: creamyIvory,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1.0),
-          child: Container(color: Colors.grey.shade300, height: 1.0),
-        ),
+        iconTheme: const IconThemeData(color: deepChocolate),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: DiaryRepository.getDiaryStream(),
         builder: (context, snapshot) {
-          // 🌟 [핵심 수정 1]
-          // 로딩 상태(waiting)이더라도 기존 데이터(snapshot.hasData)가 있다면 로딩 스피너를 띄우지 않습니다.
-          // 오직 앱을 처음 켰을 때(데이터가 아예 없을 때)만 로딩 스피너를 보여줍니다.
           if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator(color: Colors.black));
+            return const Center(child: CircularProgressIndicator(color: deepChocolate));
           }
 
           final allEntries = snapshot.data ?? [];
@@ -119,9 +123,9 @@ class _DiaryScreenState extends State<DiaryScreen> {
 
           return Column(
             children: [
-              // 1. 필터 영역
+              // 1. 필터 및 추가 버튼 영역
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -135,21 +139,41 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     GestureDetector(
                       onTap: _showAddDialog,
                       child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.grey)),
-                        child: const Icon(Icons.add, size: 20, color: Colors.black87),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: pointCoralRed, // 🌟 얌얌로드 포인트 컬러
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: pointCoralRed.withOpacity(0.3),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.add, size: 20, color: Colors.white),
                       ),
                     ),
                   ],
                 ),
               ),
 
-              // 2. 캘린더 영역
+              // 2. 캘린더 영역 (마이페이지 카드 스타일 적용)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Container(
-                  decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300)),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: deepChocolate.withOpacity(0.12)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: deepChocolate.withOpacity(0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
                   child: TableCalendar(
                     firstDay: DateTime.utc(2020, 1, 1),
                     lastDay: DateTime.utc(2030, 12, 31),
@@ -161,9 +185,6 @@ class _DiaryScreenState extends State<DiaryScreen> {
                       return eventsMap[normalizedDay] ?? [];
                     },
                     onDaySelected: (selectedDay, focusedDay) {
-                      // 🌟 [핵심 수정 2]
-                      // setState로 날짜가 바뀔 때 달력이 즉시 리빌드되므로
-                      // 렌더링이 완전히 완료된 후 스크롤을 부드럽게 이동시킵니다.
                       setState(() {
                         _selectedDay = selectedDay;
                         _focusedDay = focusedDay;
@@ -174,11 +195,24 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     },
                     onPageChanged: (focusedDay) => setState(() => _focusedDay = focusedDay),
                     onFormatChanged: (format) => setState(() => _calendarFormat = format),
-                    headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
-                    calendarStyle: const CalendarStyle(
-                      selectedDecoration: BoxDecoration(color: Colors.black87, shape: BoxShape.circle),
-                      todayDecoration: BoxDecoration(color: Colors.black26, shape: BoxShape.circle),
-                      markerDecoration: BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
+                    headerStyle: const HeaderStyle(
+                      formatButtonVisible: false,
+                      titleCentered: true,
+                      titleTextStyle: TextStyle(color: deepChocolate, fontSize: 16, fontWeight: FontWeight.bold),
+                      leftChevronIcon: Icon(Icons.chevron_left, color: deepChocolate),
+                      rightChevronIcon: Icon(Icons.chevron_right, color: deepChocolate),
+                    ),
+                    daysOfWeekStyle: DaysOfWeekStyle(
+                      weekdayStyle: const TextStyle(color: deepChocolate),
+                      weekendStyle: const TextStyle(color: pointCoralRed), // 🌟 주말은 포인트 컬러
+                    ),
+                    calendarStyle: CalendarStyle(
+                      defaultTextStyle: const TextStyle(color: deepChocolate),
+                      weekendTextStyle: const TextStyle(color: pointCoralRed),
+                      outsideTextStyle: TextStyle(color: deepChocolate.withOpacity(0.3)),
+                      selectedDecoration: const BoxDecoration(color: pointCoralRed, shape: BoxShape.circle),
+                      todayDecoration: BoxDecoration(color: subStrawberryPink.withOpacity(0.6), shape: BoxShape.circle),
+                      markerDecoration: const BoxDecoration(color: subStrawberryPink, shape: BoxShape.circle),
                       markersMaxCount: 1,
                     ),
                   ),
@@ -189,10 +223,10 @@ class _DiaryScreenState extends State<DiaryScreen> {
               // 3. 리스트 영역
               Expanded(
                 child: displayList.isEmpty
-                    ? const Center(child: Text('이번 달에 작성된 다이어리가 없습니다.', style: TextStyle(color: Colors.grey)))
+                    ? Center(child: Text('이번 달에 작성된 다이어리가 없습니다.', style: TextStyle(color: deepChocolate.withOpacity(0.5))))
                     : ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 450.0),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 100.0), // 하단 여백 조절
                   itemCount: displayList.length,
                   itemBuilder: (context, index) {
                     final entry = displayList[index];
@@ -208,9 +242,21 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     return AnimatedContainer(
                       key: _itemKeys[diaryId],
                       duration: const Duration(milliseconds: 300),
+                      margin: const EdgeInsets.only(bottom: 12.0),
                       decoration: BoxDecoration(
-                        color: isTargetHighlight ? Colors.orange.shade50.withOpacity(0.5) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.white, // 카드 배경
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isTargetHighlight ? pointCoralRed : deepChocolate.withOpacity(0.12),
+                          width: isTargetHighlight ? 1.5 : 1.0,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isTargetHighlight ? pointCoralRed.withOpacity(0.1) : deepChocolate.withOpacity(0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
                       child: _buildDiaryItem(entry),
                     );
@@ -224,59 +270,66 @@ class _DiaryScreenState extends State<DiaryScreen> {
     );
   }
 
+  // 🌟 라디오 버튼 디자인 적용
   Widget _buildRadioFilter(int value, String label) {
+    bool isSelected = _filterType == value;
     return GestureDetector(
       onTap: () => setState(() => _filterType = value),
       child: Row(
         children: [
           Container(
-            width: 16,
-            height: 16,
-            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.grey)),
-            child: _filterType == value
-                ? Center(child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.black87, shape: BoxShape.circle)))
+            width: 18,
+            height: 18,
+            decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? pointCoralRed : deepChocolate.withOpacity(0.3),
+                  width: 2,
+                )
+            ),
+            child: isSelected
+                ? Center(child: Container(width: 10, height: 10, decoration: const BoxDecoration(color: pointCoralRed, shape: BoxShape.circle)))
                 : null,
           ),
           const SizedBox(width: 8),
-          Text(label, style: const TextStyle(fontSize: 14)),
+          Text(label, style: TextStyle(fontSize: 14, color: deepChocolate, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
         ],
       ),
     );
   }
 
-  // 🌟 [수정된 다이어리 아이템 렌더링 위젯]
+  // 🌟 다이어리 리스트 아이템 디자인 적용
   Widget _buildDiaryItem(Map<String, dynamic> entry) {
     bool hasStamp = entry['stampId'] != null && entry['stampId'].toString().isNotEmpty;
-
-    // 날짜 및 가게 이름 정리
     String dateStr = entry['date']?.split(' ')[0] ?? '';
     String storeName = entry['storeName'] ?? '';
 
-    return GestureDetector(
+    return InkWell(
       onTap: () => _showEditDialog(entry),
+      borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Text('•', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                Icon(Icons.edit_calendar, size: 18, color: deepChocolate.withOpacity(0.7)),
                 const SizedBox(width: 8),
-                Text('$dateStr $storeName', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                const SizedBox(width: 8),
-
-                // 🌟 [핵심 변경] 회색 더미 텍스트 대신 붉은색 미니 도장 아이콘 뱃지 출력!
+                Expanded(
+                  child: Text(
+                    '$dateStr  $storeName',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: deepChocolate),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
                 if (hasStamp) _buildRedStampBadge(),
               ],
             ),
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.only(left: 16.0),
-              child: Text(
-                entry['note'] ?? '',
-                style: const TextStyle(fontSize: 14, color: Colors.black87),
-              ),
+            const SizedBox(height: 8),
+            Text(
+              entry['note'] ?? '',
+              style: TextStyle(fontSize: 14, color: deepChocolate.withOpacity(0.8), height: 1.4),
             ),
           ],
         ),
@@ -284,26 +337,27 @@ class _DiaryScreenState extends State<DiaryScreen> {
     );
   }
 
+  // 🌟 스탬프 뱃지 얌얌로드 스타일로 변경
   Widget _buildRedStampBadge() {
     return Container(
       margin: const EdgeInsets.only(left: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.red.shade50,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.red.shade200),
+        color: creamyIvory,
+        borderRadius: BorderRadius.circular(20), // 둥근 알약 형태
+        border: Border.all(color: pointCoralRed),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.verified, size: 12, color: Colors.red.shade700), // 또는 Icons.check_circle
-          const SizedBox(width: 3),
-          Text(
+          const Icon(Icons.verified, size: 12, color: pointCoralRed),
+          const SizedBox(width: 4),
+          const Text(
             '스탬프',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
-              color: Colors.red.shade700,
+              color: pointCoralRed,
             ),
           ),
         ],

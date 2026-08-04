@@ -6,6 +6,8 @@ import '../setting/myinfo.dart';
 
 class ProfileSection extends StatelessWidget {
   final VoidCallback onRefresh;
+  final int totalLikes;
+  final int totalScraps;
 
   // YamYamRoad 브랜드 공식 컬러 상수 정의
   static const Color coralRed = Color(0xFFFF6B57);
@@ -13,7 +15,12 @@ class ProfileSection extends StatelessWidget {
   static const Color subTextColor = Color(0xFF7A6B63);
   static const Color buttonBorderColor = Color(0xFFD0C4B8);
 
-  const ProfileSection({Key? key, required this.onRefresh}) : super(key: key);
+  const ProfileSection({
+    Key? key,
+    required this.onRefresh,
+    this.totalLikes = 0,   // 🌟 기본값 설정
+    this.totalScraps = 0,  // 🌟 기본값 설정
+  }) : super(key: key);
 
   // 🌟 로그아웃 다이얼로그 함수
   void _showLogoutDialog(BuildContext context) {
@@ -97,22 +104,13 @@ class ProfileSection extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                UserData.nickname ?? '로딩중...',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: deepChocolate,
-                  letterSpacing: -0.3,
-                ),
+                UserData.nickname ?? '이름없음',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 4), // 닉네임과 좋아요 사이 간격
-              const Text(
-                '좋아요 0   스크랩 0',
-                style: TextStyle(
-                  color: subTextColor,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
+              const SizedBox(height: 4),
+              Text(
+                '좋아요 $totalLikes   스크랩 $totalScraps',
+                style: const TextStyle(fontSize: 13, color: Colors.grey),
               ),
             ],
           ),

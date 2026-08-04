@@ -38,6 +38,10 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
 
   bool _isLoading = true;
 
+  // 🌟 좋아요와 스크랩 총합을 담을 상태 변수 추가
+  int _totalLikes = 0;
+  int _totalScraps = 0;
+
   @override
   void initState() {
     super.initState();
@@ -52,8 +56,37 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
     }
 
     try {
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection(
-          'users').doc(currentUid).get();
+      // 1. 기존 유저 정보 로드
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUid).get();
+
+      int tempLikes = 0;
+      int tempScraps = 0;
+
+      // 🌟 2-1. 사용자가 작성한 피드(posts)의 좋아요, 스크랩 합산
+      final postsSnapshot = await FirebaseFirestore.instance
+          .collection('posts')
+          .where('userId', isEqualTo: currentUid)
+          .where('status', isEqualTo: 'active')
+          .get();
+
+      for (var doc in postsSnapshot.docs) {
+        final postData = doc.data();
+        tempLikes += (postData['likeCount'] as num?)?.toInt() ?? 0;
+        tempScraps += (postData['scrapCount'] as num?)?.toInt() ?? 0;
+      }
+
+      // 🌟 2-2. 사용자가 작성한 댓글(comments)의 좋아요 합산 추가
+      final commentsSnapshot = await FirebaseFirestore.instance
+          .collectionGroup('comments') // posts 하위의 모든 comments 컬렉션을 통째로 검색
+          .where('userId', isEqualTo: currentUid)
+          .get();
+
+      for (var doc in commentsSnapshot.docs) {
+        final commentData = doc.data();
+        // 댓글에 받은 좋아요 수를 기존 tempLikes에 누적
+        tempLikes += (commentData['likeCount'] as num?)?.toInt() ?? 0;
+      }
+
       if (userDoc.exists) {
         Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
         setState(() {
@@ -63,9 +96,12 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
           UserData.phone = data['phone'] ?? '';
           UserData.profileImagePath = data['profileImageUrl'];
           UserData.isDefaultProfileImage =
-          (data['profileImageUrl'] == null || data['profileImageUrl']
-              .toString()
-              .isEmpty);
+          (data['profileImageUrl'] == null || data['profileImageUrl'].toString().isEmpty);
+
+          // 🌟 3. 피드 좋아요 + 댓글 좋아요가 모두 합산된 최종 데이터를 상태에 반영
+          _totalLikes = tempLikes;
+          _totalScraps = tempScraps;
+
           _isLoading = false;
         });
       } else {
@@ -134,11 +170,15 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 🌟 분리된 프로필 섹션 (새로고침 콜백 연동)
-              ProfileSection(onRefresh: () {
-                setState(() => _isLoading = true);
-                _loadUserData();
-              }),
+              // 🌟 분리된 프로필 섹션 (새로고침 콜백 및 통계 연동)
+              ProfileSection(
+                totalLikes: _totalLikes,     // 🌟 합산된 좋아요 수 전달
+                totalScraps: _totalScraps,   // 🌟 합산된 스크랩 수 전달
+                onRefresh: () {
+                  setState(() => _isLoading = true);
+                  _loadUserData();
+                },
+              ),
               const SizedBox(height: 16),
 
               // 스탬프 발행 후 다이어리에 기록 안된 것 동기화 임시 버튼
@@ -205,7 +245,7 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
               _buildCardSection(
                   '신고', buildReportContent(), onDetailTap: _openReport),
               const SizedBox(height: 32),
-              const BadgeRealCheckDebugButton(),
+              // const BadgeRealCheckDebugButton(),
             ],
           ),
         ),
