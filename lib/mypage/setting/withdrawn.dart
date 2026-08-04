@@ -11,22 +11,26 @@ class WithdrawnScreen extends StatefulWidget {
 }
 
 class _WithdrawnScreenState extends State<WithdrawnScreen> {
-  // 화면에 띄울 정보들을 담을 컨트롤러 (읽기 전용)
+  // 공통 색상 팔레트
+  static const Color pointCoralRed = Color(0xFFFF6B57);
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+  static const Color subTextColor = Color(0xFF7A6B63);
+
   final TextEditingController _nicknameController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _socialController = TextEditingController();
 
-  bool _isLoading = false; // 탈퇴 처리 중 로딩 상태
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    // 🌟 로컬 전역 변수(UserData)에 있는 현재 유저 정보를 컨트롤러에 세팅합니다.
     _nicknameController.text = UserData.nickname ?? '로딩중...';
     _nameController.text = UserData.name ?? '로딩중...';
     _phoneController.text = UserData.phone ?? '로딩중...';
-    _socialController.text = 'Google'; // 소셜 로그인 제공자는 임시로 고정
+    _socialController.text = 'Google';
   }
 
   @override
@@ -38,25 +42,22 @@ class _WithdrawnScreenState extends State<WithdrawnScreen> {
     super.dispose();
   }
 
-  // 🌟 실제 DB(Firestore) 탈퇴 처리 (Soft Delete 로직)
-  // ※ status: 'paused', pausedAt 필드로 통일 (30일 이내 복구 로직과 연동됨)
+  // 실제 DB(Firestore) 탈퇴 처리 (Soft Delete)
   Future<void> _processWithdrawal() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Hard Delete(문서 삭제)가 아닌 Soft Delete(상태 변경 및 시간 기록)를 수행
       await FirebaseFirestore.instance.collection('users').doc(UserData.uid).update({
-        'status': 'paused', // 상태를 '탈퇴 신청(복구 가능)'으로 변경
-        'pausedAt': FieldValue.serverTimestamp(), // 서버의 현재 시간을 탈퇴 신청 시간으로 기록
+        'status': 'paused',
+        'pausedAt': FieldValue.serverTimestamp(),
       });
 
       setState(() {
         _isLoading = false;
       });
 
-      // 완료 팝업 띄우기
       if (mounted) {
         _showCompletionDialog();
       }
@@ -64,54 +65,57 @@ class _WithdrawnScreenState extends State<WithdrawnScreen> {
       setState(() {
         _isLoading = false;
       });
-      print("탈퇴 처리 에러: $e");
+      debugPrint("탈퇴 처리 에러: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('탈퇴 처리 중 오류가 발생했습니다.')),
       );
     }
   }
 
-  // 🌟 완료 팝업 및 로그인 화면 이동 로직
+  // 완료 팝업 및 로그인 화면 이동
   void _showCompletionDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false, // 팝업 바깥을 눌러서 닫히지 않게 고정
+      barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)), // 기획서의 플랫 디자인
-          contentPadding: const EdgeInsets.only(top: 32, bottom: 16, left: 24, right: 24),
-          content: const Column(
+          backgroundColor: creamyIvory,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          contentPadding: const EdgeInsets.only(top: 32, bottom: 24, left: 24, right: 24),
+          content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('삭제 처리 되었습니다.', style: TextStyle(fontSize: 15)),
-              SizedBox(height: 8),
-              Text('로그인 화면으로 이동합니다.', style: TextStyle(fontSize: 15)),
+              Icon(Icons.check_circle_outline, color: pointCoralRed, size: 48),
+              const SizedBox(height: 16),
+              const Text('삭제 처리 되었습니다.', style: TextStyle(fontSize: 16, color: deepChocolate, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Text('로그인 화면으로 이동합니다.', style: TextStyle(fontSize: 14, color: subTextColor)),
             ],
           ),
           actionsAlignment: MainAxisAlignment.center,
+          actionsPadding: const EdgeInsets.only(bottom: 24),
           actions: [
-            OutlinedButton(
+            ElevatedButton(
               onPressed: () {
-                // 1. 임시로 내부에 저장된 UserData 초기화
                 UserData.nickname = '';
                 UserData.name = '';
                 UserData.phone = '';
                 UserData.profileImagePath = null;
 
-                // 2. 🌟 앱에 켜져있던 모든 화면 기록(스택)을 지우고, 실제 로그인 화면으로 이동!
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (context) => const LoginScreen()), // 🌟 실제 LoginScreen 장착!
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
                       (route) => false,
                 );
               },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.black,
-                side: const BorderSide(color: Colors.grey),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
-                minimumSize: const Size(100, 40),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: deepChocolate,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                minimumSize: const Size(120, 48),
+                elevation: 0,
               ),
-              child: const Text('확인'),
+              child: const Text('확인', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -122,75 +126,100 @@ class _WithdrawnScreenState extends State<WithdrawnScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       appBar: AppBar(
         title: const Text(
           '계정 삭제',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold, fontSize: 22),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: creamyIvory,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: false,
-        iconTheme: const IconThemeData(color: Colors.black),
+        iconTheme: const IconThemeData(color: deepChocolate, size: 28),
       ),
-      // 바텀바 없음! 온전히 화면만 덮습니다.
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.black))
+          ? const Center(child: CircularProgressIndicator(color: pointCoralRed))
           : SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildReadOnlyField('닉네임', _nicknameController),
-            const SizedBox(height: 16),
-            _buildReadOnlyField('이름', _nameController),
-            const SizedBox(height: 16),
-            _buildReadOnlyField('휴대폰번호', _phoneController),
-            const SizedBox(height: 16),
-            _buildReadOnlyField('소셜로그인', _socialController),
-
-            const SizedBox(height: 48),
+            // 정보 확인 카드 영역
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: deepChocolate.withOpacity(0.08)),
+                boxShadow: [
+                  BoxShadow(
+                    color: deepChocolate.withOpacity(0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, size: 40, color: pointCoralRed),
+                  const SizedBox(height: 16),
+                  const Text('삭제할 계정 정보를 확인해주세요.', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: deepChocolate)),
+                  const SizedBox(height: 24),
+                  _buildReadOnlyField('닉네임', _nicknameController),
+                  const SizedBox(height: 16),
+                  _buildReadOnlyField('이름', _nameController),
+                  const SizedBox(height: 16),
+                  _buildReadOnlyField('휴대폰번호', _phoneController),
+                  const SizedBox(height: 16),
+                  _buildReadOnlyField('소셜로그인', _socialController),
+                ],
+              ),
+            ),
+            const SizedBox(height: 40),
 
             // 경고 텍스트 영역
-            const Text(
-              '삭제 후 30일 이내 계정 복구가 가능하며,\n30일 이후 해당 계정 및 데이터가 모두 삭제됩니다.\n상기 계정을 삭제하겠습니까?',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, height: 1.6, color: Colors.black87),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: pointCoralRed.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: pointCoralRed.withOpacity(0.2)),
+              ),
+              child: const Text(
+                '삭제 후 30일 이내 계정 복구가 가능하며,\n30일 이후 해당 계정 및 데이터가 모두 영구 삭제됩니다.\n\n정말로 이 계정을 삭제하시겠습니까?',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, height: 1.6, color: pointCoralRed, fontWeight: FontWeight.w600),
+              ),
             ),
+            const SizedBox(height: 40),
 
-            const SizedBox(height: 32),
-
-            // 버튼 2개 영역 (삭제 / 취소)
+            // 버튼 영역
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(
-                  width: 100,
+                Expanded(
                   child: OutlinedButton(
-                    onPressed: _processWithdrawal, // 삭제 로직 실행
+                    onPressed: () => Navigator.pop(context),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: const BorderSide(color: Colors.grey),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Colors.white,
+                      side: BorderSide(color: deepChocolate.withOpacity(0.15)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('삭제'),
+                    child: const Text('취소', style: TextStyle(color: subTextColor, fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
                 const SizedBox(width: 16),
-                SizedBox(
-                  width: 100,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.pop(context); // 취소 시 이전 화면으로 돌아감
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: const BorderSide(color: Colors.grey),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _processWithdrawal,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: pointCoralRed,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('취소'),
+                    child: const Text('삭제', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -201,33 +230,29 @@ class _WithdrawnScreenState extends State<WithdrawnScreen> {
     );
   }
 
-  // 🌟 읽기 전용 입력 필드 공통 위젯 (회색 배경, 수정 불가)
+  // 읽기 전용 폼 레이아웃 (위-아래 구조로 통일)
   Widget _buildReadOnlyField(String label, TextEditingController controller) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 90,
-          child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-        ),
-        Expanded(
-          child: TextField(
-            controller: controller,
-            readOnly: true, // 수정 불가 처리
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.black87, fontSize: 14),
-            decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              enabledBorder: const OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.grey),
-                borderRadius: BorderRadius.zero,
-              ),
-              focusedBorder: const OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.grey),
-                borderRadius: BorderRadius.zero,
-              ),
-              filled: true,
-              fillColor: Colors.grey.shade100, // 입력 불가 느낌을 주는 옅은 회색 배경
+        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: subTextColor)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          readOnly: true,
+          style: const TextStyle(color: subTextColor, fontSize: 15, fontWeight: FontWeight.w500),
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: deepChocolate.withOpacity(0.1)),
+              borderRadius: BorderRadius.circular(12),
             ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: deepChocolate.withOpacity(0.1)),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            filled: true,
+            fillColor: deepChocolate.withOpacity(0.04),
           ),
         ),
       ],

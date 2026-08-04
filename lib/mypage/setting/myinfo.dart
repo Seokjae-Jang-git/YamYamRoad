@@ -1,12 +1,11 @@
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/services.dart'; // 🌟 Clipboard 사용을 위해 필요
-
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
+
 import '../../common/storage_service.dart';
 import '../../common/user_data.dart';
-
 
 class MyInfoScreen extends StatefulWidget {
   const MyInfoScreen({super.key});
@@ -16,14 +15,20 @@ class MyInfoScreen extends StatefulWidget {
 }
 
 class _MyInfoScreenState extends State<MyInfoScreen> {
+  // 공통 색상 팔레트
+  static const Color pointCoralRed = Color(0xFFFF6B57);
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+  static const Color subTextColor = Color(0xFF7A6B63);
+
   // 텍스트 필드 컨트롤러
   late final TextEditingController _nicknameController;
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
   final TextEditingController _socialController = TextEditingController(text: 'Google');
-  late final TextEditingController _uidController; // 🌟 사용자 ID 표시용 컨트롤러 추가
+  late final TextEditingController _uidController;
 
-  // 상태 관리 변수들
+  // 상태 관리 변수
   late bool _isDefaultImage;
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
@@ -34,7 +39,6 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
     _nicknameController = TextEditingController(text: UserData.nickname);
     _nameController = TextEditingController(text: UserData.name);
     _phoneController = TextEditingController(text: UserData.phone);
-    // 🌟 사용자 ID 초기화 (값이 없을 경우 대비)
     _uidController = TextEditingController(text: UserData.uid ?? '알 수 없음');
     _isDefaultImage = UserData.isDefaultProfileImage;
   }
@@ -45,11 +49,11 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
     _nameController.dispose();
     _phoneController.dispose();
     _socialController.dispose();
-    _uidController.dispose(); // 🌟 컨트롤러 해제 추가
+    _uidController.dispose();
     super.dispose();
   }
 
-  // 앨범에서 사진을 고르는 비동기 함수
+  // 앨범에서 사진 선택
   Future<void> _pickImageFromGallery() async {
     Navigator.pop(context);
     final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
@@ -62,21 +66,24 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
     }
   }
 
-  // 프로필 이미지 수정 팝업 띄우기
+  // 프로필 이미지 수정 팝업
   void _showImageEditPopup() {
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+          backgroundColor: creamyIvory,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildPopupButton('사진 앨범에서 선택', _pickImageFromGallery),
-                const SizedBox(height: 16),
-                _buildPopupButton('기본 이미지 사용', () {
+                const Text('프로필 사진 변경', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: deepChocolate)),
+                const SizedBox(height: 24),
+                _buildPopupButton('사진 앨범에서 선택', Icons.photo_library, _pickImageFromGallery),
+                const SizedBox(height: 12),
+                _buildPopupButton('기본 이미지 사용', Icons.account_circle, () {
                   setState(() {
                     _isDefaultImage = true;
                     _selectedImage = null;
@@ -91,18 +98,19 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
     );
   }
 
-  Widget _buildPopupButton(String text, VoidCallback onPressed) {
+  Widget _buildPopupButton(String text, IconData icon, VoidCallback onPressed) {
     return SizedBox(
       width: double.infinity,
-      child: OutlinedButton(
+      child: OutlinedButton.icon(
         onPressed: onPressed,
+        icon: Icon(icon, color: deepChocolate, size: 20),
+        label: Text(text, style: const TextStyle(color: deepChocolate, fontSize: 15, fontWeight: FontWeight.w600)),
         style: OutlinedButton.styleFrom(
-          foregroundColor: Colors.black,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          side: const BorderSide(color: Colors.grey),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          backgroundColor: Colors.white,
+          side: BorderSide(color: deepChocolate.withOpacity(0.15)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        child: Text(text),
       ),
     );
   }
@@ -110,50 +118,64 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       appBar: AppBar(
         title: const Text(
           '내 정보 수정',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold, fontSize: 22),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: creamyIvory,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
+        scrolledUnderElevation: 0,
+        iconTheme: const IconThemeData(color: deepChocolate, size: 28),
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 1. 프로필 이미지 영역
               Center(
                 child: Stack(
                   children: [
-                    CircleAvatar(
-                      radius: 60,
-                      backgroundColor: const Color(0xFFF5F5F5),
-                      child: _selectedImage != null
-                          ? ClipOval(
-                        child: Image.file(
-                          _selectedImage!,
-                          width: 120,
-                          height: 120,
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                          : (!_isDefaultImage && UserData.profileImagePath != null)
-                          ? ClipOval(
-                        child: Image.network(
-                          UserData.profileImagePath!,
-                          width: 120,
-                          height: 120,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(Icons.person, size: 80, color: Colors.grey);
-                          },
-                        ),
-                      )
-                          : const Icon(Icons.person, size: 80, color: Colors.grey),
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: deepChocolate.withOpacity(0.1),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: CircleAvatar(
+                        radius: 60,
+                        backgroundColor: Colors.white,
+                        child: _selectedImage != null
+                            ? ClipOval(
+                          child: Image.file(
+                            _selectedImage!,
+                            width: 120,
+                            height: 120,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                            : (!_isDefaultImage && UserData.profileImagePath != null)
+                            ? ClipOval(
+                          child: Image.network(
+                            UserData.profileImagePath!,
+                            width: 120,
+                            height: 120,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(Icons.person, size: 60, color: Colors.grey.shade400);
+                            },
+                          ),
+                        )
+                            : Icon(Icons.person, size: 60, color: Colors.grey.shade400),
+                      ),
                     ),
                     Positioned(
                       bottom: 0,
@@ -161,13 +183,13 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                       child: GestureDetector(
                         onTap: _showImageEditPopup,
                         child: Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: deepChocolate,
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.grey.shade400),
+                            border: Border.all(color: Colors.white, width: 3),
                           ),
-                          child: const Text('수정', style: TextStyle(fontSize: 12)),
+                          child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
                         ),
                       ),
                     ),
@@ -182,9 +204,8 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                 _uidController,
                 readOnly: true,
                 suffixIcon: IconButton(
-                  icon: const Icon(Icons.copy, size: 18, color: Colors.grey),
+                  icon: const Icon(Icons.copy, size: 20, color: subTextColor),
                   onPressed: () {
-                    // 클립보드에 사용자 ID 복사
                     Clipboard.setData(ClipboardData(text: _uidController.text));
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -195,13 +216,10 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 16),
 
               _buildInputField('이름', _nameController, readOnly: true),
-              const SizedBox(height: 16),
 
               _buildInputField('닉네임', _nicknameController),
-              const SizedBox(height: 16),
 
               _buildInputField(
                 '휴대폰번호',
@@ -212,19 +230,20 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                   PhoneNumberFormatter(),
                 ],
               ),
-              const SizedBox(height: 16),
+
               _buildInputField('소셜로그인', _socialController, readOnly: true),
-              const SizedBox(height: 40),
+
+              const SizedBox(height: 32),
 
               // 3. 저장 버튼
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton(
+                child: ElevatedButton(
                   onPressed: () async {
                     showDialog(
                       context: context,
                       barrierDismissible: false,
-                      builder: (context) => const Center(child: CircularProgressIndicator()),
+                      builder: (context) => const Center(child: CircularProgressIndicator(color: deepChocolate)),
                     );
 
                     String? downloadUrl;
@@ -245,13 +264,13 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                       final String newNickname = _nicknameController.text;
                       final bool nicknameChanged = newNickname != UserData.nickname;
 
-                      // 🌟 이름(name) 필드는 더 이상 화면에서 수정되지 않으므로 업데이트 항목에서 제외하거나 기존 값을 그대로 넘깁니다.
                       await userDocRef.update({
                         'nickname': newNickname,
                         'phone': _phoneController.text,
                         'profileImageUrl': _isDefaultImage ? null : (downloadUrl ?? UserData.profileImagePath),
                       });
 
+                      // 닉네임 변경 시 연관 데이터 업데이트
                       if (nicknameChanged) {
                         try {
                           final postsSnapshot = await FirebaseFirestore.instance
@@ -272,7 +291,7 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                             }
                           }
                         } catch (e) {
-                          debugPrint('🔴 posts 동기화 실패: $e');
+                          debugPrint('posts 동기화 실패: $e');
                           rethrow;
                         }
 
@@ -295,7 +314,7 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                             }
                           }
                         } catch (e) {
-                          debugPrint('🔴 comments 동기화 실패: $e');
+                          debugPrint('comments 동기화 실패: $e');
                           rethrow;
                         }
                       }
@@ -309,8 +328,8 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                         UserData.profileImagePath = downloadUrl;
                       }
 
-                      Navigator.pop(context);
-                      Navigator.pop(context);
+                      Navigator.pop(context); // 로딩 닫기
+                      Navigator.pop(context); // 화면 닫기
 
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('정보가 성공적으로 저장되었습니다.')),
@@ -318,19 +337,20 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
 
                     } catch (e) {
                       Navigator.pop(context);
-                      print("DB 및 스토리지 저장 오류: $e");
+                      debugPrint("DB 및 스토리지 저장 오류: $e");
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('저장 실패: $e')),
                       );
                     }
                   },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.black,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: deepChocolate,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: const BorderSide(color: Colors.grey),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('저장'),
+                  child: const Text('저장', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -340,51 +360,55 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
     );
   }
 
-  // 폼 입력 필드 생성 헬퍼 위젯
+  // 폼 입력 필드 (위-아래 레이아웃으로 변경하여 디자인 개선)
   Widget _buildInputField(
       String label,
       TextEditingController controller, {
         bool readOnly = false,
         TextInputType? keyboardType,
         List<TextInputFormatter>? inputFormatters,
-        Widget? suffixIcon, // 🌟 아이콘을 받을 수 있도록 파라미터 추가
+        Widget? suffixIcon,
       }
       ) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 80,
-          child: Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        ),
-        Expanded(
-          child: TextField(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: subTextColor)),
+          const SizedBox(height: 8),
+          TextField(
             controller: controller,
             readOnly: readOnly,
             keyboardType: keyboardType,
             inputFormatters: inputFormatters,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: readOnly ? Colors.grey : Colors.black, fontSize: 14),
+            style: TextStyle(
+                color: readOnly ? subTextColor : deepChocolate,
+                fontSize: 15,
+                fontWeight: FontWeight.w500
+            ),
             decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              suffixIcon: suffixIcon, // 🌟 우측 복사 아이콘 추가 반영
-              enabledBorder: const OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.grey),
-                borderRadius: BorderRadius.zero,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              suffixIcon: suffixIcon,
+              enabledBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: deepChocolate.withOpacity(0.15)),
+                borderRadius: BorderRadius.circular(12),
               ),
-              focusedBorder: const OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.blue),
-                borderRadius: BorderRadius.zero,
+              focusedBorder: OutlineInputBorder(
+                borderSide: const BorderSide(color: deepChocolate, width: 1.5),
+                borderRadius: BorderRadius.circular(12),
               ),
-              filled: readOnly,
-              fillColor: readOnly ? Colors.grey.shade100 : Colors.white,
+              filled: true,
+              fillColor: readOnly ? deepChocolate.withOpacity(0.04) : Colors.white,
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
+// 전화번호 자동 포맷터
 class PhoneNumberFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(

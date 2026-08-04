@@ -16,52 +16,56 @@ class InquirySuccessScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 현재 시간을 문의 일시로 사용합니다.
+    const Color pointCoralRed = Color(0xFFFF6B57);
+    const Color deepChocolate = Color(0xFF4A3225);
+    const Color creamyIvory = Color(0xFFFFFDF9);
+    const Color subTextColor = Color(0xFF7A6B63);
+
     final String currentTime = DateFormat('yyyy.MM.dd. HH:mm').format(DateTime.now());
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // 1. V 체크 아이콘
               Container(
-                width: 72,
-                height: 72,
+                width: 76,
+                height: 76,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.black, width: 2),
+                  color: pointCoralRed.withOpacity(0.1),
+                  border: Border.all(color: pointCoralRed, width: 2),
                 ),
-                child: const Icon(Icons.check, color: Colors.black, size: 36),
+                child: const Icon(Icons.check, color: pointCoralRed, size: 40),
               ),
               const SizedBox(height: 24),
 
-              // 2. 완료 메시지
               const Text(
                 '문의가 등록되었어요',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: deepChocolate),
               ),
               const SizedBox(height: 12),
 
-              // 3. 안내 문구 (설계안 반영)
               const Text(
                 '영업일 기준 1~2일 이내에\n답변 확인이 가능합니다.\n(이메일로도 답변 확인 가능합니다.)',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
+                style: TextStyle(fontSize: 14, color: subTextColor, height: 1.5),
               ),
               const SizedBox(height: 32),
 
-              // 4. 등록된 문의 요약 정보 박스
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: deepChocolate.withOpacity(0.08)),
+                  boxShadow: [
+                    BoxShadow(color: deepChocolate.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 4)),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -70,30 +74,29 @@ class InquirySuccessScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     _infoRow('문의일시', currentTime),
                     const SizedBox(height: 8),
-                    _infoRow('제목', title, maxLines: 1),
+                    _infoRow('제    목', title, maxLines: 1),
                   ],
                 ),
               ),
               const SizedBox(height: 40),
 
-              // 5. 하단 버튼 영역
               SizedBox(
                 width: double.infinity,
                 height: 52,
-                child: OutlinedButton(
+                child: ElevatedButton(
                   onPressed: () {
-                    // 문의 상세 보기: 현재 화면을 상세 화면으로 교체
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(
                         builder: (_) => InquiryDetailScreen(inquiryId: inquiryId),
                       ),
                     );
                   },
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Colors.grey.shade400),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: pointCoralRed,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('문의 상세 보기', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 15)),
+                  child: const Text('문의 상세 보기', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
               ),
               const SizedBox(height: 12),
@@ -102,16 +105,15 @@ class InquirySuccessScreen extends StatelessWidget {
                 height: 52,
                 child: OutlinedButton(
                   onPressed: () {
-                    // 문의 내역으로 돌아가기: 현재 화면을 내역 리스트 화면으로 교체
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(builder: (_) => const InquiryListScreen()),
                     );
                   },
                   style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Colors.grey.shade400),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    side: BorderSide(color: deepChocolate.withOpacity(0.3)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('문의 내역으로 돌아가기', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 15)),
+                  child: const Text('문의 내역으로 돌아가기', style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
               ),
             ],
@@ -121,18 +123,23 @@ class InquirySuccessScreen extends StatelessWidget {
     );
   }
 
-  // 설계안에 맞춘 '• 라벨: 값' 형태의 정보 출력 위젯
   Widget _infoRow(String label, String value, {int? maxLines}) {
+    const Color deepChocolate = Color(0xFF4A3225);
+    const Color subTextColor = Color(0xFF7A6B63);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('• $label: ', style: const TextStyle(fontSize: 13, color: Colors.black87)),
+        SizedBox(
+          width: 75,
+          child: Text('• $label: ', style: const TextStyle(fontSize: 13, color: subTextColor, fontWeight: FontWeight.bold)),
+        ),
         Expanded(
           child: Text(
             value,
             maxLines: maxLines,
             overflow: maxLines != null ? TextOverflow.ellipsis : null,
-            style: const TextStyle(fontSize: 13, color: Colors.black87),
+            style: const TextStyle(fontSize: 13, color: deepChocolate, fontWeight: FontWeight.w600),
           ),
         ),
       ],

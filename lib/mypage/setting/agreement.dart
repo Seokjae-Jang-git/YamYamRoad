@@ -3,23 +3,42 @@ import 'package:flutter/material.dart';
 class AgreementScreen extends StatelessWidget {
   const AgreementScreen({super.key});
 
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+  static const Color subTextColor = Color(0xFF7A6B63);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       appBar: AppBar(
         title: const Text(
           '이용약관',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold, fontSize: 22),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: creamyIvory,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
+        scrolledUnderElevation: 0,
+        iconTheme: const IconThemeData(color: deepChocolate, size: 28),
       ),
       body: SingleChildScrollView(
-        child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
+        child: Container(
+          width: double.infinity,
           padding: const EdgeInsets.all(24.0),
-          child: Text(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: deepChocolate.withOpacity(0.08)),
+            boxShadow: [
+              BoxShadow(
+                color: deepChocolate.withOpacity(0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const SelectableText(
             '''[얌얌로드(YamYamRoad)] 서비스 이용약관
 
 제 1 조 (목적)
@@ -81,7 +100,12 @@ GPS 등 위치 정보의 오차로 인해 발생한 문제에 대하여 회사�
 회사는 천재지변 또는 이에 준하는 불가항력으로 인하여 서비스를 제공할 수 없는 경우에는 서비스 제공에 관한 책임이 면제됩니다.
 회사는 회원의 귀책사유로 인한 서비스 이용의 장애에 대하여 책임을 지지 않습니다.
 회사는 회원이 서비스와 관련하여 게재한 정보, 자료, 사실의 신뢰도, 정확성 등의 내용에 관하여는 책임을 지지 않습니다.''',
-            style: const TextStyle(fontSize: 14, height: 1.6, color: Colors.black87), // 줄간격(height)을 넓혀 가독성을 높였습니다.
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.6,
+              color: deepChocolate,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ),
       ),

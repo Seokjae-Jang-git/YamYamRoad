@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
-// 🌟 서비스 및 공통 유저 데이터
 import '../../services/auth_service.dart';
 import '../../common/user_data.dart';
 
-// 🌟 문의 모델 및 연동 화면들
 import 'inquiry_model.dart';
 import 'inquiry_detail_screen.dart';
 import 'inquiry_write_screen.dart';
@@ -19,11 +17,15 @@ class InquiryListScreen extends StatefulWidget {
 }
 
 class _InquiryListScreenState extends State<InquiryListScreen> {
+  static const Color pointCoralRed = Color(0xFFFF6B57);
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+  static const Color subTextColor = Color(0xFF7A6B63);
+
   String get _currentUserId => AuthService.currentUser?.uid ?? UserData.uid ?? 'unknown_uid';
 
-  // 🌟 필터 상태값: ALL / pending / answered / cancelled / closed
   String _selectedStatusFilter = 'ALL';
-  String _selectedSortType = 'CREATED_DESC'; // CREATED_DESC / ANSWERED_DESC
+  String _selectedSortType = 'CREATED_DESC';
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +33,6 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
         .collection('inquiry')
         .where('userId', isEqualTo: _currentUserId);
 
-    // 정렬 조건 적용 (문의 최신순 / 답변 최신순)
     if (_selectedSortType == 'CREATED_DESC') {
       query = query.orderBy('createdAt', descending: true);
     } else if (_selectedSortType == 'ANSWERED_DESC') {
@@ -39,81 +40,75 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamyIvory,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: creamyIvory,
         elevation: 0,
+        scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: deepChocolate, size: 28),
           onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
         ),
         title: const Text(
           '문의 내역',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
+          style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold, fontSize: 22),
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.white,
-        shape: CircleBorder(side: BorderSide(color: Colors.grey.shade300)),
+        backgroundColor: pointCoralRed,
         elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         onPressed: () {
           Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const InquiryWriteScreen()),
           );
         },
-        child: const Icon(Icons.add, color: Colors.black),
+        child: const Icon(Icons.edit, color: Colors.white),
       ),
       body: Column(
         children: [
-          // 🌟 상단 필터 및 정렬 영역 (가로 스크롤 적용 완료)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // 좌측: 상태 필터 (스크롤 영역)
                 Expanded(
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    // 우측 패딩을 빼고 바깥쪽에 간격을 줍니다.
                     child: Row(
                       children: [
                         _filterChip('전체', 'ALL'),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         _filterChip('답변 대기', 'pending'),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         _filterChip('답변 완료', 'answered'),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         _filterChip('문의 취소', 'cancelled'),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         _filterChip('문의 종료', 'closed'),
                       ],
                     ),
                   ),
                 ),
-
-                // 🌟 핵심 수정 포인트: 필터 스크롤 영역과 정렬 버튼 사이에 확실한 여백(간격) 추가
                 const SizedBox(width: 12),
-
-                // 우측: 정렬 드롭다운 (고정 영역)
                 _buildSortDropdown(),
               ],
             ),
           ),
-          const Divider(height: 1),
 
-          // 실시간 문의 내역 목록
+          Divider(height: 1, color: deepChocolate.withOpacity(0.08)),
+
           Expanded(
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: query.snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: Colors.black));
+                  return const Center(child: CircularProgressIndicator(color: deepChocolate));
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return const Center(
-                    child: Text('등록된 문의가 없어요', style: TextStyle(color: Colors.grey)),
+                    child: Text('등록된 문의가 없어요', style: TextStyle(color: subTextColor)),
                   );
                 }
 
@@ -121,14 +116,13 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
                     .map((d) => InquiryModel.fromFirestore(d))
                     .toList();
 
-                // 상태 필터링 적용
                 if (_selectedStatusFilter != 'ALL') {
                   inquiries = inquiries.where((r) => r.status == _selectedStatusFilter).toList();
                 }
 
                 if (inquiries.isEmpty) {
                   return const Center(
-                    child: Text('해당하는 문의 내역이 없습니다.', style: TextStyle(color: Colors.grey)),
+                    child: Text('해당하는 문의 내역이 없습니다.', style: TextStyle(color: subTextColor)),
                   );
                 }
 
@@ -148,24 +142,30 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
     );
   }
 
-  // 필터 칩 버튼
   Widget _filterChip(String label, String value) {
     final isSelected = _selectedStatusFilter == value;
     return InkWell(
       onTap: () => setState(() => _selectedStatusFilter = value),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.grey.shade200 : Colors.white,
-          border: Border.all(color: Colors.grey.shade400),
-          borderRadius: BorderRadius.circular(4),
+          color: isSelected ? deepChocolate : Colors.white,
+          border: Border.all(color: isSelected ? deepChocolate : deepChocolate.withOpacity(0.15)),
+          borderRadius: BorderRadius.circular(20),
         ),
-        child: Text(label, style: const TextStyle(fontSize: 11, color: Colors.black87)),
+        child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              color: isSelected ? Colors.white : subTextColor,
+            )
+        ),
       ),
     );
   }
 
-  // 정렬 드롭다운
   Widget _buildSortDropdown() {
     String displayLabel = _selectedSortType == 'CREATED_DESC' ? '문의 최신순' : '답변 최신순';
 
@@ -173,34 +173,35 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
       onSelected: (String value) {
         setState(() => _selectedSortType = value);
       },
-      offset: const Offset(0, 32),
-      elevation: 3,
+      offset: const Offset(0, 40),
+      elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: const Color(0xFFF3EEF8),
+      color: Colors.white,
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        const PopupMenuItem<String>(
+        PopupMenuItem<String>(
           value: 'CREATED_DESC',
           height: 40,
-          child: Text('문의 최신순', style: TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w500)),
+          child: Text('문의 최신순', style: TextStyle(fontSize: 13, color: deepChocolate, fontWeight: _selectedSortType == 'CREATED_DESC' ? FontWeight.bold : FontWeight.w500)),
         ),
-        const PopupMenuItem<String>(
+        PopupMenuItem<String>(
           value: 'ANSWERED_DESC',
           height: 40,
-          child: Text('답변 최신순', style: TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w500)),
+          child: Text('답변 최신순', style: TextStyle(fontSize: 13, color: deepChocolate, fontWeight: _selectedSortType == 'ANSWERED_DESC' ? FontWeight.bold : FontWeight.w500)),
         ),
       ],
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.black,
-          borderRadius: BorderRadius.circular(4),
+          color: Colors.white,
+          border: Border.all(color: deepChocolate.withOpacity(0.15)),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(displayLabel, style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold)),
-            const SizedBox(width: 2),
-            const Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
+            Text(displayLabel, style: const TextStyle(fontSize: 12, color: subTextColor, fontWeight: FontWeight.bold)),
+            const SizedBox(width: 4),
+            const Icon(Icons.keyboard_arrow_down, color: subTextColor, size: 16),
           ],
         ),
       ),
@@ -212,9 +213,7 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
     return DateFormat('yyyy.MM.dd. HH:mm').format(date);
   }
 
-  // 🌟 문의 카드 렌더링
   Widget _buildInquiryCard(InquiryModel r) {
-    // 💡 status 문자열을 한글 표시용 라벨로 변환 (closed 추가)
     String statusLabel = r.displayStatus;
     if (r.status == 'cancelled') {
       statusLabel = '문의 취소';
@@ -223,7 +222,7 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
     } else if (r.status == 'answered') {
       statusLabel = '답변 완료';
     } else if (r.status == 'closed') {
-      statusLabel = '문의 종료'; // 🌟 새로 추가된 상태
+      statusLabel = '문의 종료';
     }
 
     return GestureDetector(
@@ -233,45 +232,50 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 14),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: deepChocolate.withOpacity(0.08)),
+          boxShadow: [
+            BoxShadow(
+              color: deepChocolate.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. 문의번호 / 문의유형
             _twoItemRow(
               leftLabel: '문의번호', leftValue: r.id,
               rightLabel: '문의유형', rightValue: r.displayType,
             ),
-
-            // 2. 문의일시 / 상태 (statusLabel 전달)
             _twoItemRow(
               leftLabel: '문의일시', leftValue: _formatDate(r.createdAt),
-              rightLabel: '상태', rightValue: statusLabel,
+              rightLabel: '상       태', rightValue: statusLabel,
               isRightHighlight: true,
             ),
 
-            // 3. 답변일시
             if (r.answeredAt != null)
               _singleItemRow('답변일시', _formatDate(r.answeredAt)),
 
-            // 4. 제목
-            _singleItemRow('제목', r.title, maxLines: 1),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Divider(height: 1, color: Color(0xFFF0EAE3)),
+            ),
 
-            // 5. 내용
-            _singleItemRow('내용', r.content, maxLines: 1),
+            _singleItemRow('제    목', r.title, maxLines: 1),
+            _singleItemRow('내    용', r.content, maxLines: 1, isContent: true),
           ],
         ),
       ),
     );
   }
 
-  Widget _singleItemRow(String label, String value, {int? maxLines}) {
+  Widget _singleItemRow(String label, String value, {int? maxLines, bool isContent = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Text.rich(
@@ -279,11 +283,15 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
           children: [
             TextSpan(
               text: '• $label: ',
-              style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 13, color: subTextColor, fontWeight: FontWeight.bold),
             ),
             TextSpan(
               text: value,
-              style: const TextStyle(fontSize: 14, color: Colors.black87),
+              style: TextStyle(
+                  fontSize: 14,
+                  color: isContent ? deepChocolate.withOpacity(0.8) : deepChocolate,
+                  fontWeight: isContent ? FontWeight.normal : FontWeight.w600
+              ),
             ),
           ],
         ),
@@ -293,7 +301,6 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
     );
   }
 
-  // 🌟 두 개 분할 행 (상태별 하이라이트 색상 적용)
   Widget _twoItemRow({
     required String leftLabel,
     required String leftValue,
@@ -301,12 +308,11 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
     required String rightValue,
     bool isRightHighlight = false,
   }) {
-    // 💡 상태별 포인트 컬러 정의
     Color getStatusColor(String statusText) {
-      if (!isRightHighlight) return Colors.black87;
-      if (statusText == '답변 대기') return Colors.orange;
-      if (statusText == '문의 취소' || statusText == '문의 종료') return Colors.grey.shade600; // 취소나 종료 건은 차분한 회색
-      return Colors.black87; // 답변 완료 등
+      if (!isRightHighlight) return deepChocolate;
+      if (statusText == '답변 대기') return pointCoralRed;
+      if (statusText == '문의 취소' || statusText == '문의 종료') return subTextColor;
+      return deepChocolate;
     }
 
     return Padding(
@@ -320,11 +326,11 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
                 children: [
                   TextSpan(
                     text: '• $leftLabel: ',
-                    style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontSize: 13, color: subTextColor, fontWeight: FontWeight.bold),
                   ),
                   TextSpan(
                     text: leftValue,
-                    style: const TextStyle(fontSize: 14, color: Colors.black87),
+                    style: const TextStyle(fontSize: 13, color: deepChocolate, fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
@@ -339,13 +345,13 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
                 children: [
                   TextSpan(
                     text: '• $rightLabel: ',
-                    style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontSize: 13, color: subTextColor, fontWeight: FontWeight.bold),
                   ),
                   TextSpan(
                     text: rightValue,
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: isRightHighlight ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 13,
+                      fontWeight: isRightHighlight ? FontWeight.bold : FontWeight.w500,
                       color: getStatusColor(rightValue),
                     ),
                   ),
