@@ -9,7 +9,7 @@ import 'diary/diary.dart';
 import 'community_my/community_my.dart';
 import 'inquiry/inquiry_list_screen.dart';
 import 'stamp/stamp_main_screen.dart';
-import 'badge/badge_main_screen.dart';
+// import 'badge/badge_main_screen.dart'; // 중복 임포트 주석 처리 유지
 import 'point/point_main_screen.dart';
 
 import 'badge_grant_debug_tool.dart';
@@ -20,7 +20,7 @@ import 'widgets/profile_section.dart';
 import 'widgets/menu_grid.dart';
 import 'widgets/mypage_content_widgets.dart';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart'; // 중복 임포트 주석 처리 유지
 import '../../services/badge_service.dart'; // 뱃지 서비스 경로에 맞게 임포트 해주세요!
 
 class MyPageMainScreen extends StatefulWidget {
@@ -125,6 +125,9 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
             style: TextStyle(color: deepChocolate, fontWeight: FontWeight.bold)),
         backgroundColor: creamyIvory,
         elevation: 0,
+        // 🌟 스크롤 시 보라색 변색 방지 속성 추가
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         centerTitle: false,
         iconTheme: const IconThemeData(color: deepChocolate),
       ),
@@ -271,6 +274,8 @@ class _MyPageMainScreenState extends State<MyPageMainScreen> {
     );
   }
 }
+
+// 🌟 주석 처리된 TestBadgeButton 클래스 완전 보존
 
 // class TestBadgeButton extends StatefulWidget {
 //   const TestBadgeButton({Key? key}) : super(key: key);

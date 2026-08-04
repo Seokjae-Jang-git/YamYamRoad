@@ -108,8 +108,15 @@ class DetailPlaceCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
+                        // 🌟 🍒 이모지 대신 Icons.verified 체크 뱃지 아이콘으로 교체
+                        const Icon(
+                          Icons.verified,
+                          size: 14,
+                          color: pointCoralRed,
+                        ),
+                        const SizedBox(width: 2),
                         Text(
-                          '🍒 ${place.stampCount}',
+                          '${place.stampCount}',
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,

@@ -33,14 +33,18 @@ class StampVerificationDialog extends StatelessWidget {
       actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       title: Row(
         children: [
-          // 🍒 체리 컨셉의 화사한 원형 아이콘 배경 (Strawberry Pink 톤)
+          // 🌟 체리 이모지 대신 브랜드 스탬프 Icons.verified 아이콘으로 교체
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: strawberryPink.withOpacity(0.2),
               shape: BoxShape.circle,
             ),
-            child: const Text('🍒', style: TextStyle(fontSize: 18)),
+            child: const Icon(
+              Icons.verified,
+              size: 18,
+              color: pointCoralRed,
+            ),
           ),
           const SizedBox(width: 10),
           const Text(
@@ -141,12 +145,15 @@ class StampVerificationDialog extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Text(
-                          '🍒',
-                          style: TextStyle(fontSize: 11),
+                        // 🌟 🍒 이모지 대신 Icons.verified 스탬프 아이콘 적용
+                        const Icon(
+                          Icons.verified,
+                          size: 12,
+                          color: pointCoralRed,
                         ),
+                        const SizedBox(width: 2),
                         Text(
-                          ' ${place.stampCount}',
+                          '${place.stampCount}',
                           style: const TextStyle(
                             fontSize: 11,
                             color: pointCoralRed,
