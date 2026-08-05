@@ -11,12 +11,14 @@ class PointEmoticonView extends StatelessWidget {
   const PointEmoticonView({
     super.key,
     required this.repository,
+    required this.userId,
     required this.onSelectEmoticon,
     required this.onOpenAiRecommendationPage,
     required this.onOpenStampDevPage,
   });
 
   final PointShopRepository repository;
+  final String userId;
   final ValueChanged<EmoticonProduct> onSelectEmoticon;
   final VoidCallback onOpenAiRecommendationPage;
   final VoidCallback onOpenStampDevPage;
@@ -27,7 +29,7 @@ class PointEmoticonView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<EmoticonProduct>>(
-      stream: repository.watchEmoticons(),
+      stream: repository.watchEmoticons(userId),
       builder: (context, snapshot) {
         return Column(
           children: [
@@ -40,12 +42,12 @@ class PointEmoticonView extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                     itemCount: emoticons.length,
                     gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 0.86,
-                    ),
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 0.86,
+                        ),
                     itemBuilder: (context, index) {
                       final emoticon = emoticons[index];
                       return EmoticonThumbnail(

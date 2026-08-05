@@ -333,7 +333,7 @@ class _StampVerificationPageState extends State<StampVerificationPage> {
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
             icon: const Icon(Icons.photo_library_outlined, size: 20),
-            label: const Text('개발용: 갤러리에서 선택'),
+            label: const Text('갤러리에서 테스트 영수증 선택'),
           ),
         ],
 

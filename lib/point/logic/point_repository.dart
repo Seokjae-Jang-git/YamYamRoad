@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/point_models.dart';
@@ -5,7 +7,7 @@ import '../models/point_models.dart';
 abstract interface class PointShopRepository {
   Stream<PointBalance> watchPointBalance(String userId);
 
-  Stream<List<EmoticonProduct>> watchEmoticons();
+  Stream<List<EmoticonProduct>> watchEmoticons(String userId);
 
   Stream<List<GifticonProduct>> watchGifticons();
 
@@ -28,19 +30,89 @@ class FirestorePointShopRepository implements PointShopRepository {
   }
 
   @override
-  Stream<List<EmoticonProduct>> watchEmoticons() {
-    return _firestore
-        .collection('emoticon')
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .where((document) => document.data()['isActive'] != false)
-              .map(
-                (document) =>
-                    EmoticonProduct.fromMap(document.id, document.data()),
-              )
-              .toList(growable: false),
-        );
+  Stream<List<EmoticonProduct>> watchEmoticons(String userId) {
+    late final StreamController<List<EmoticonProduct>> controller;
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+    productSubscription;
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+    purchaseSubscription;
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+    ownershipSubscription;
+    QuerySnapshot<Map<String, dynamic>>? productSnapshot;
+    Set<String>? purchasedIds;
+    Set<String>? ownedIds;
+
+    void emitAvailableProducts() {
+      final snapshot = productSnapshot;
+      final purchased = purchasedIds;
+      final owned = ownedIds;
+      if (snapshot == null ||
+          purchased == null ||
+          owned == null ||
+          controller.isClosed) {
+        return;
+      }
+      final unavailableIds = {...purchased, ...owned};
+      controller.add(
+        snapshot.docs
+            .where(
+              (document) =>
+                  document.data()['isActive'] != false &&
+                  !unavailableIds.contains(document.id),
+            )
+            .map(
+              (document) =>
+                  EmoticonProduct.fromMap(document.id, document.data()),
+            )
+            .toList(growable: false),
+      );
+    }
+
+    controller = StreamController<List<EmoticonProduct>>(
+      onListen: () {
+        productSubscription = _firestore
+            .collection('emoticon')
+            .snapshots()
+            .listen((snapshot) {
+              productSnapshot = snapshot;
+              emitAvailableProducts();
+            }, onError: controller.addError);
+        purchaseSubscription = _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('users_purchase')
+            .where('purchaseType', isEqualTo: 'emoticon')
+            .snapshots()
+            .listen((snapshot) {
+              purchasedIds = snapshot.docs
+                  .where((document) {
+                    final status = document.data()['status'];
+                    return status != 'cancelled' && status != 'refunded';
+                  })
+                  .map(
+                    (document) => document.data()['itemId']?.toString() ?? '',
+                  )
+                  .where((id) => id.isNotEmpty)
+                  .toSet();
+              emitAvailableProducts();
+            }, onError: controller.addError);
+        ownershipSubscription = _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('users_emoticon')
+            .snapshots()
+            .listen((snapshot) {
+              ownedIds = snapshot.docs.map((document) => document.id).toSet();
+              emitAvailableProducts();
+            }, onError: controller.addError);
+      },
+      onCancel: () async {
+        await productSubscription?.cancel();
+        await purchaseSubscription?.cancel();
+        await ownershipSubscription?.cancel();
+      },
+    );
+    return controller.stream;
   }
 
   @override
@@ -82,7 +154,7 @@ class MockPointShopRepository implements PointShopRepository {
   }
 
   @override
-  Stream<List<EmoticonProduct>> watchEmoticons() {
+  Stream<List<EmoticonProduct>> watchEmoticons(String userId) {
     const characterFiles = [
       '01_smile.svg',
       '02_bigsmile.svg',

@@ -1,10 +1,13 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'logic/recommendation_api_client.dart';
 import 'models/recommendation_models.dart';
+import '../road/course_detail_screen.dart';
+import '../road/models/road.dart';
 
 typedef RecommendationLoader =
     Future<RecommendationResult> Function({
@@ -158,6 +161,7 @@ class _AiRecommendationPageState extends State<AiRecommendationPage> {
   _RecommendationBasis? _selectedBasis;
   RecommendationResult? _result;
   String? _errorMessage;
+  String? _openingCourseId;
 
   @override
   void dispose() {
@@ -213,10 +217,7 @@ class _AiRecommendationPageState extends State<AiRecommendationPage> {
       setState(() {
         _result = result;
         _messages.add(
-          const _ChatMessage(
-            text: '추천을 준비했어요. 추천한 이유를 알려드릴게요.',
-            isUser: false,
-          ),
+          const _ChatMessage(text: '추천을 준비했어요. 추천한 이유를 알려드릴게요.', isUser: false),
         );
         _step = _ConversationStep.result;
       });
@@ -267,6 +268,44 @@ class _AiRecommendationPageState extends State<AiRecommendationPage> {
         '현재 위치를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
       );
     }
+  }
+
+  Future<void> _openCourseDetail(String courseId) async {
+    if (_openingCourseId != null) return;
+    setState(() => _openingCourseId = courseId);
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('road')
+          .doc(courseId)
+          .get();
+      if (!mounted) return;
+      if (!snapshot.exists) {
+        _showCourseOpenError('추천한 코스를 찾을 수 없습니다.');
+        return;
+      }
+
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              CourseDetailScreen(road: Road.fromFirestore(snapshot)),
+        ),
+      );
+    } on FirebaseException {
+      if (mounted) {
+        _showCourseOpenError('코스 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _openingCourseId = null);
+      }
+    }
+  }
+
+  void _showCourseOpenError(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _showRecommendationError(String message) {
@@ -378,6 +417,8 @@ class _AiRecommendationPageState extends State<AiRecommendationPage> {
                     _RecommendationResultPanel(
                       result: _result!,
                       scope: _selectedScope!,
+                      openingCourseId: _openingCourseId,
+                      onOpenCourse: _openCourseDetail,
                     ),
                 ],
               ),
@@ -637,10 +678,17 @@ class _ThinkingBubble extends StatelessWidget {
 }
 
 class _RecommendationResultPanel extends StatelessWidget {
-  const _RecommendationResultPanel({required this.result, required this.scope});
+  const _RecommendationResultPanel({
+    required this.result,
+    required this.scope,
+    required this.openingCourseId,
+    required this.onOpenCourse,
+  });
 
   final RecommendationResult result;
   final AiRecommendationScope scope;
+  final String? openingCourseId;
+  final Future<void> Function(String courseId) onOpenCourse;
 
   @override
   Widget build(BuildContext context) {
@@ -672,6 +720,7 @@ class _RecommendationResultPanel extends StatelessWidget {
           .map(
             (item) => _RecommendationDisplayItem(
               title: item.name,
+              address: item.address,
               reasons: item.reasons,
             ),
           )
@@ -697,6 +746,12 @@ class _RecommendationResultPanel extends StatelessWidget {
             (item) => _RecommendationDisplayItem(
               title: item.title,
               reasons: item.reasons,
+              actionLabel: openingCourseId == item.courseId
+                  ? '불러오는 중...'
+                  : '코스 자세히 보기',
+              onAction: openingCourseId == null
+                  ? () => onOpenCourse(item.courseId)
+                  : null,
             ),
           )
           .toList(growable: false);
@@ -718,10 +773,16 @@ class _RecommendationDisplayItem {
   const _RecommendationDisplayItem({
     required this.title,
     required this.reasons,
+    this.address = '',
+    this.actionLabel,
+    this.onAction,
   });
 
   final String title;
   final List<String> reasons;
+  final String address;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 }
 
 class _RecommendationSection extends StatelessWidget {
@@ -777,8 +838,34 @@ class _RecommendationSection extends StatelessWidget {
                 '추천: ${items[index].title}',
                 style: _AiRecommendationTokens.recommendationTitleStyle,
               ),
+              if (items[index].address.isNotEmpty) ...[
+                const SizedBox(height: _AiRecommendationTokens.tinyGap),
+                Text(
+                  '주소: ${items[index].address}',
+                  style: _AiRecommendationTokens.bodyStyle.copyWith(
+                    color: _AiRecommendationTokens.secondaryText,
+                  ),
+                ),
+              ],
               const SizedBox(height: _AiRecommendationTokens.compactGap),
               _RecommendationReasons(reasons: items[index].reasons),
+              if (items[index].actionLabel != null) ...[
+                const SizedBox(height: _AiRecommendationTokens.controlGap),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: OutlinedButton.icon(
+                    onPressed: items[index].onAction,
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                    label: Text(items[index].actionLabel!),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _AiRecommendationTokens.accent,
+                      side: const BorderSide(
+                        color: _AiRecommendationTokens.softAccentBorder,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
         ],
       ),

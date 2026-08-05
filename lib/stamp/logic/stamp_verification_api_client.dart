@@ -95,6 +95,7 @@ class StampVerificationApiClient {
     required double userLng,
     bool isRooted = false,
     bool isMockLocation = false,
+    bool devSkipGps = false,
     String? roadId,
   }) async {
     final currentUser = _firebaseAuth.currentUser;
@@ -206,6 +207,12 @@ class StampVerificationApiClient {
         boundary: boundary,
         name: 'isMockLocation',
         value: isMockLocation.toString(),
+      );
+      _writeField(
+        httpRequest,
+        boundary: boundary,
+        name: 'devSkipGps',
+        value: devSkipGps.toString(),
       );
 
       await _writeFile(httpRequest, boundary: boundary, file: receiptFile);
