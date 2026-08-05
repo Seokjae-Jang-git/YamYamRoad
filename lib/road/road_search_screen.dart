@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'widgets/course_list_card.dart';
 import 'course_detail_screen.dart';
 import 'models/road.dart';
 import 'repositories/road_repository.dart';
@@ -220,29 +221,15 @@ class _RoadSearchScreenState extends State<RoadSearchScreen> {
 
     final totalItemCount = _searchResults.length + (_isFetchingMore ? 1 : 0);
 
-    return ListView.separated(
+    return ListView.builder(
       controller: _scrollController,
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       itemCount: totalItemCount,
-      separatorBuilder: (context, index) => const Divider(
-        height: 1,
-        thickness: 0.5,
-        color: Color(0xFFE0E0E0),
-        indent: 16,
-        endIndent: 16,
-      ),
       itemBuilder: (context, index) {
         if (index < _searchResults.length) {
           final road = _searchResults[index];
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-            title: Text(
-              road.title,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: deepChocolate,
-              ),
-            ),
+          return CourseListCard(
+            road: road,
             onTap: () => _navigateToDetail(road),
           );
         }
