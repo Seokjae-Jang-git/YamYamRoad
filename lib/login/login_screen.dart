@@ -4,6 +4,8 @@ import 'phone_login_screen.dart';
 import 'login_controller.dart';
 import 'widgets/login_widgets.dart';
 
+import '../yamyam_home/main_home_screen.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -185,6 +187,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     );
   }
 
+  // 🌟 로그인 성공 시 호출될 라우팅 함수 추가
+  void _onLoginSuccess() {
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const MainHomeScreen()),
+          (route) => false,
+    );
+  }
+
   Widget _buildButtons() {
     return Column(
       children: [
@@ -194,7 +206,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           textColor: const Color(0xFF3C1E1E),
           customIcon: const KakaoIcon(size: 20),
           loading: _isLoading,
-          onPressed: () => _controller.handleKakaoLogin(setLoading: _setLoading, onError: _showError),
+          onPressed: () => _controller.handleKakaoLogin(
+            setLoading: _setLoading,
+            onError: _showError,
+            onSuccess: _onLoginSuccess, // 🌟 성공 함수 연결
+          ),
         ),
         const SizedBox(height: 12),
         SocialButton(
@@ -203,7 +219,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           textColor: Colors.white,
           customIcon: const NaverIcon(size: 20),
           loading: _isLoading,
-          onPressed: () => _controller.handleNaverLogin(setLoading: _setLoading, onError: _showError),
+          onPressed: () => _controller.handleNaverLogin(
+            setLoading: _setLoading,
+            onError: _showError,
+            onSuccess: _onLoginSuccess, // 🌟 성공 함수 연결
+          ),
         ),
         const SizedBox(height: 12),
         SocialButton(
@@ -213,18 +233,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           borderColor: _textDark.withOpacity(0.12),
           customIcon: const GoogleIcon(size: 20),
           loading: _isLoading,
-          onPressed: () => _controller.handleGoogleLogin(setLoading: _setLoading, onError: _showError),
-        ),
-        const SizedBox(height: 22),
-        Row(
-          children: [
-            Expanded(child: Divider(color: _textDark.withOpacity(0.12))),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text('또는', style: TextStyle(fontSize: 11, color: _textDark.withOpacity(0.4))),
-            ),
-            Expanded(child: Divider(color: _textDark.withOpacity(0.12))),
-          ],
+          onPressed: () => _controller.handleGoogleLogin(
+            setLoading: _setLoading,
+            onError: _showError,
+            onSuccess: _onLoginSuccess, // 🌟 성공 함수 연결
+          ),
         ),
         const SizedBox(height: 22),
         SocialButton(

@@ -24,7 +24,6 @@ class LoginController {
     }
   }
 
-  // 🌟 차단(banned) 유저 검증
   Future<bool> blockIfBanned(String uid, Function(String) onError) async {
     try {
       final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
@@ -45,41 +44,36 @@ class LoginController {
   Future<void> handleKakaoLogin({
     required Function(bool) setLoading,
     required Function(String) onError,
+    required VoidCallback onSuccess, // 🌟 성공 콜백 추가
   }) async {
     setLoading(true);
     try {
       kakao.OAuthToken? token;
-
-      // 1. 카카오톡 앱 설치 여부 확인 후 로그인 시도
       bool isInstalled = await kakao.isKakaoTalkInstalled();
 
       if (isInstalled) {
         try {
           token = await kakao.UserApi.instance.loginWithKakaoTalk();
         } catch (e) {
-          debugPrint('⚠️ 카카오톡 앱 로그인 실패/취소, 브라우저 로그인으로 전환: $e');
-          // 카카오톡 앱 로그인 실패 시(유저 취소 포함) 웹 브라우저 로그인으로 예외 전환
           token = await kakao.UserApi.instance.loginWithKakaoAccount();
         }
       } else {
-        // 카카오톡 미설치 시 바로 웹 브라우저 로그인
         token = await kakao.UserApi.instance.loginWithKakaoAccount();
       }
-
-      // 2. 토큰 정상 추출 여부 디버그 확인
-      debugPrint('🔑 발급된 카카오 accessToken: ${token.accessToken}');
 
       if (token.accessToken.isEmpty) {
         onError('카카오 인증 토큰을 받지 못했습니다.');
         return;
       }
 
-      // 3. 백엔드 Cloud Function 호출 (accessToken 전달)
       final userModel = await AuthService.loginWithKakao(token.accessToken);
       if (await blockIfBanned(userModel.uid, onError)) return;
 
-    } catch (e, stackTrace) {
-      debugPrint('🔴 카카오 로그인 최종 에러: $e\n$stackTrace');
+      // 🌟 데이터 로드 후 성공 콜백 실행
+      await AuthService.loadUserProfileToUserData();
+      onSuccess();
+
+    } catch (e) {
       onError('카카오 로그인에 실패했습니다.');
     } finally {
       setLoading(false);
@@ -90,6 +84,7 @@ class LoginController {
   Future<void> handleNaverLogin({
     required Function(bool) setLoading,
     required Function(String) onError,
+    required VoidCallback onSuccess, // 🌟 성공 콜백 추가
   }) async {
     setLoading(true);
     try {
@@ -102,8 +97,12 @@ class LoginController {
       final tokenResult = await FlutterNaverLogin.getCurrentAccessToken();
       final userModel = await AuthService.loginWithNaver(tokenResult.accessToken);
       if (await blockIfBanned(userModel.uid, onError)) return;
-    } catch (e, stackTrace) {
-      debugPrint('🔴 네이버 로그인 에러: $e\n$stackTrace');
+
+      // 🌟 데이터 로드 후 성공 콜백 실행
+      await AuthService.loadUserProfileToUserData();
+      onSuccess();
+
+    } catch (e) {
       onError('네이버 로그인에 실패했습니다.');
     } finally {
       setLoading(false);
@@ -114,6 +113,7 @@ class LoginController {
   Future<void> handleGoogleLogin({
     required Function(bool) setLoading,
     required Function(String) onError,
+    required VoidCallback onSuccess, // 🌟 성공 콜백 추가
   }) async {
     setLoading(true);
     try {
@@ -126,14 +126,18 @@ class LoginController {
 
       final userModel = await AuthService.loginWithGoogle(idToken: idToken);
       if (await blockIfBanned(userModel.uid, onError)) return;
+
+      // 🌟 데이터 로드 후 성공 콜백 실행
+      await AuthService.loadUserProfileToUserData();
+      onSuccess();
+
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled) {
         onError('구글 로그인이 취소되었습니다.');
       } else {
         onError('구글 로그인에 실패했습니다.');
       }
-    } catch (e, stackTrace) {
-      debugPrint('🔴 구글 로그인 알 수 없는 에러: $e\n$stackTrace');
+    } catch (e) {
       onError('구글 로그인에 실패했습니다.');
     } finally {
       setLoading(false);
