@@ -13,10 +13,10 @@ class RoadMainScreen extends StatefulWidget {
   const RoadMainScreen({super.key});
 
   @override
-  State<RoadMainScreen> createState() => _RoadMainScreenState();
+  RoadMainScreenState createState() => RoadMainScreenState();
 }
 
-class _RoadMainScreenState extends State<RoadMainScreen> {
+class RoadMainScreenState extends State<RoadMainScreen> {
   // YamYamRoad 브랜드 공식 컬러 상수 정의
   static const Color pointCoralRed = Color(0xFFFF6B57);    // 시그니처 코랄 레드
   static const Color deepChocolate = Color(0xFF4A3225);    // 텍스트 & 아이콘 메인
@@ -24,6 +24,7 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
   static const Color subTextColor = Color(0xFF7A6B63);      // 서브 브라운 텍스트
 
   final RoadRepository _roadRepository = RoadRepository();
+  final ScrollController _scrollController = ScrollController();
 
   String _selectedTab = '지역별';
   String _selectedFilter = '전체';
@@ -37,6 +38,23 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
   void initState() {
     super.initState();
     _fetchRoadsFromFirestore();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// 🌟 상단 탭 재클릭 시 리스트를 최상단으로 부드럽게 스크롤하는 메서드
+  void scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   /// Firestore에서 비동기로 실데이터 가져오는 로직 (type 분기 및 RegionMapper 연동)
@@ -229,6 +247,7 @@ class _RoadMainScreenState extends State<RoadMainScreen> {
       backgroundColor: Colors.white,
       onRefresh: _fetchRoadsFromFirestore,
       child: ListView.builder(
+        controller: _scrollController,
         itemCount: uiItems.length,
         itemBuilder: (context, index) {
           return uiItems[index];
