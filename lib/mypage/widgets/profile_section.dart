@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:firebase_auth/firebase_auth.dart'; // 더 이상 직접 호출하지 않으므로 삭제해도 됩니다.
 import '../../common/user_data.dart';
 import '../../login/login_screen.dart';
 import '../setting/myinfo.dart';
+import '../../services/auth_service.dart'; // 🌟 AuthService 임포트 추가
 
 class ProfileSection extends StatelessWidget {
   final VoidCallback onRefresh;
@@ -18,8 +19,8 @@ class ProfileSection extends StatelessWidget {
   const ProfileSection({
     Key? key,
     required this.onRefresh,
-    this.totalLikes = 0,   // 🌟 기본값 설정
-    this.totalScraps = 0,  // 🌟 기본값 설정
+    this.totalLikes = 0,
+    this.totalScraps = 0,
   }) : super(key: key);
 
   // 🌟 로그아웃 다이얼로그 함수
@@ -51,8 +52,9 @@ class ProfileSection extends StatelessWidget {
               onPressed: () async {
                 Navigator.pop(dialogContext); // 다이얼로그 닫기
 
-                // 파이어베이스 로그아웃 처리
-                await FirebaseAuth.instance.signOut();
+                // 🌟 수정된 부분: 파이어베이스 단독 로그아웃이 아닌 AuthService의 logout() 호출
+                // 이를 통해 UserData 메모리 초기화와 FCM 해제가 정상적으로 이루어집니다.
+                await AuthService.logout();
 
                 // LoginScreen() 위젯을 직접 호출하여 이동 (이전 화면 스택 모두 삭제)
                 if (context.mounted) {

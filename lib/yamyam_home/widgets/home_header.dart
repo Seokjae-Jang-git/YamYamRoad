@@ -8,6 +8,7 @@ import '../../noti/models/noti_reference.dart';
 import '../../noti/widgets/noti_list_screen.dart';
 import '../../noti/widgets/noti_unread_badge.dart';
 import '../../services/auth_service.dart';
+import '../../login/login_screen.dart';
 
 /// 홈 화면 최상단 헤더 (로고, 알림 버튼, 프로필 아바타 및 계정 메뉴)
 class HomeHeader extends StatefulWidget {
@@ -151,8 +152,13 @@ class _HomeHeaderState extends State<HomeHeader> {
   Future<void> _handleLogout() async {
     try {
       await AuthService.logout();
+
+      // 🌟 수정된 부분: 단순 setState가 아니라 로그인 화면으로 이동하며 기존 스택 파괴
       if (mounted) {
-        setState(() {});
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+              (route) => false,
+        );
       }
     } catch (e) {
       if (!mounted) return;
@@ -195,8 +201,6 @@ class _HomeHeaderState extends State<HomeHeader> {
         );
       case NotiReferenceType.pointTransaction:
       case NotiReferenceType.point:
-        Navigator.of(context).pop();
-        widget.onTabChanged(3);
       case NotiReferenceType.purchase:
         return;
     }

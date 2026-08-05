@@ -162,8 +162,6 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         );
       case NotiReferenceType.pointTransaction:
       case NotiReferenceType.point:
-        Navigator.of(context).pop();
-        setState(() => _currentTabIndex = 3);
       case NotiReferenceType.purchase:
         return;
     }

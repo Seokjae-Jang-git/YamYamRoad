@@ -25,7 +25,7 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
   late final TextEditingController _nicknameController;
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
-  final TextEditingController _socialController = TextEditingController(text: 'Google');
+  late final TextEditingController _socialController;
   late final TextEditingController _uidController;
 
   // 상태 관리 변수
@@ -39,6 +39,7 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
     _nicknameController = TextEditingController(text: UserData.nickname);
     _nameController = TextEditingController(text: UserData.name);
     _phoneController = TextEditingController(text: UserData.phone);
+    _socialController = TextEditingController(text: UserData.provider);
     _uidController = TextEditingController(text: UserData.uid ?? '알 수 없음');
     _isDefaultImage = UserData.isDefaultProfileImage;
   }
@@ -117,6 +118,12 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 🌟 1. 이름 수정 가능 여부 체크 (카카오 또는 네이버일 경우 true)
+    final bool isNameEditable = (UserData.uid != null &&
+        (UserData.uid!.startsWith('kakao:') || UserData.uid!.startsWith('naver:'))) ||
+        UserData.provider == 'kakao' ||
+        UserData.provider == 'naver';
+
     return Scaffold(
       backgroundColor: creamyIvory,
       appBar: AppBar(
@@ -217,7 +224,8 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                 ),
               ),
 
-              _buildInputField('이름', _nameController, readOnly: true),
+              // 🌟 2. 이름 수정 불가능한 상태(구글 등)일 때만 읽기 전용으로 설정
+              _buildInputField('이름', _nameController, readOnly: !isNameEditable),
 
               _buildInputField('닉네임', _nicknameController),
 
@@ -264,11 +272,20 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                       final String newNickname = _nicknameController.text;
                       final bool nicknameChanged = newNickname != UserData.nickname;
 
-                      await userDocRef.update({
+                      // 🌟 3-1. updateData 맵을 명시적 타입과 함께 올바르게 선언
+                      final Map<String, dynamic> updateData = {
                         'nickname': newNickname,
                         'phone': _phoneController.text,
                         'profileImageUrl': _isDefaultImage ? null : (downloadUrl ?? UserData.profileImagePath),
-                      });
+                      };
+
+                      // 🌟 3-2. 카카오나 네이버 로그인일 경우 사용자가 입력한 '이름'도 업데이트 목록에 추가
+                      if (isNameEditable) {
+                        updateData['name'] = _nameController.text;
+                      }
+
+                      // Firestore 문서 업데이트 실행
+                      await userDocRef.update(updateData);
 
                       // 닉네임 변경 시 연관 데이터 업데이트
                       if (nicknameChanged) {
@@ -321,6 +338,12 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
 
                       UserData.nickname = _nicknameController.text;
                       UserData.phone = _phoneController.text;
+
+                      // 🌟 3-3. 로컬 UserData에도 이름 반영
+                      if (isNameEditable) {
+                        UserData.name = _nameController.text;
+                      }
+
                       UserData.isDefaultProfileImage = _isDefaultImage;
                       if (_isDefaultImage) {
                         UserData.profileImagePath = null;

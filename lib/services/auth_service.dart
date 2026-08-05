@@ -56,6 +56,7 @@ class AuthService {
         UserData.nickname = data['nickname'] as String? ?? '이름없음';
         UserData.name = data['name'] as String? ?? '';
         UserData.phone = data['phone'] as String? ?? '';
+        UserData.provider = data['provider'] as String? ?? '';
         UserData.profileImagePath = data['profileImageUrl'] as String?;
         UserData.isDefaultProfileImage =
         (data['profileImageUrl'] == null || data['profileImageUrl'].toString().isEmpty);
