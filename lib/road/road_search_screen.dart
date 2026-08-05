@@ -25,6 +25,7 @@ class _RoadSearchScreenState extends State<RoadSearchScreen> {
   bool _isLoading = false;
   bool _isFetchingMore = false;
   bool _hasMore = true;
+  bool _hasSearched = false; // 검색 수행 여부 플래그
   DocumentSnapshot? _lastDocument;
 
   @override
@@ -65,6 +66,7 @@ class _RoadSearchScreenState extends State<RoadSearchScreen> {
         _lastDocument = null;
         _hasMore = false;
         _isLoading = false;
+        _hasSearched = false;
       });
       return;
     }
@@ -74,13 +76,14 @@ class _RoadSearchScreenState extends State<RoadSearchScreen> {
       _searchResults = [];
       _lastDocument = null;
       _hasMore = true;
+      _hasSearched = true;
     });
 
     try {
       final result = await _roadRepository.searchRoadsPaged(
         query: trimmedQuery,
         lastDocument: null,
-        limit: 15, // 화면 스크롤 확보를 위해 15개로 상향
+        limit: 15,
       );
 
       setState(() {
@@ -110,7 +113,7 @@ class _RoadSearchScreenState extends State<RoadSearchScreen> {
       final result = await _roadRepository.searchRoadsPaged(
         query: query,
         lastDocument: _lastDocument,
-        limit: 15, // 추가 로드 시에도 15개씩 수신
+        limit: 15,
       );
 
       setState(() {
@@ -170,7 +173,13 @@ class _RoadSearchScreenState extends State<RoadSearchScreen> {
                 : null,
           ),
           onChanged: (text) {
-            setState(() {}); // Clear 버튼 상태 업데이트
+            // 타이핑 즉시 기존 결과 및 검색 플래그 초기화 -> '검색어를 입력해 주세요.' 상태로 전환
+            setState(() {
+              _searchResults = [];
+              _lastDocument = null;
+              _hasMore = true;
+              _hasSearched = false;
+            });
           },
         ),
         actions: [
@@ -191,7 +200,7 @@ class _RoadSearchScreenState extends State<RoadSearchScreen> {
       );
     }
 
-    if (_searchController.text.trim().isEmpty) {
+    if (!_hasSearched || _searchController.text.trim().isEmpty) {
       return Center(
         child: Text(
           '검색어를 입력해 주세요.',
