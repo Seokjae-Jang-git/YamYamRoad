@@ -15,6 +15,7 @@ class CategoryTabs extends StatelessWidget {
   // YamYamRoad 브랜드 공식 컬러 상수 정의
   static const Color pointCoralRed = Color(0xFFFF6B57); // 시그니처 코랄 레드 (활성)
   static const Color subBrown = Color(0xFF7A6B63);      // 부드러운 서브 브라운 (비활성)
+  static const Color deepChocolate = Color(0xFF4A3225); // 메인 텍스트 & 아이콘 컬러
 
   @override
   Widget build(BuildContext context) {
@@ -31,25 +32,19 @@ class CategoryTabs extends StatelessWidget {
               _buildTabItem('메뉴별'),
             ],
           ),
-          /* 💡 우측 검색 버튼 (현재 검색 페이지 미연동 상태이므로 주석 처리)
+          // 우측 단독 돋보기 아이콘 버튼 (배경/테두리 제거)
           GestureDetector(
             onTap: onSearchPressed,
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFAF6F0), // 따뜻한 베이지 배경
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.grey.shade300, width: 1),
-              ),
-              child: const Icon(
+            behavior: HitTestBehavior.opaque,
+            child: const Padding(
+              padding: EdgeInsets.all(4.0),
+              child: Icon(
                 Icons.search_rounded,
-                color: Color(0xFF504D46),
-                size: 20,
+                color: deepChocolate,
+                size: 26,
               ),
             ),
           ),
-          */
         ],
       ),
     );

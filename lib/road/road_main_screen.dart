@@ -6,6 +6,7 @@ import 'widgets/sub_filter_chips.dart';
 import 'widgets/sorting_bar.dart';
 import 'widgets/region_select_page.dart';
 import 'course_detail_screen.dart';
+import 'road_search_screen.dart';
 import 'models/road.dart';
 import 'repositories/road_repository.dart';
 import 'utils/road_ad_helper.dart';
@@ -252,8 +253,11 @@ class RoadMainScreenState extends State<RoadMainScreen> {
                 }
               },
               onSearchPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('검색 페이지 연동 예정입니다.')),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const RoadSearchScreen(),
+                  ),
                 );
               },
             ),

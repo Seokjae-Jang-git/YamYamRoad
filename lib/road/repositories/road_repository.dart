@@ -20,6 +20,71 @@ class RoadRepository {
   RoadRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
+  /// 제목(title) 기준 접두사(Prefix) 검색 커서 기반 페이징
+  /// - [query]: 검색어 (제목 시작 문자열)
+  /// - [lastDocument]: 이전 페이지의 마지막 문서 Snapshot
+  /// - [limit]: 한 번에 불러올 데이터 개수 (기본 6개)
+  Future<RoadPagedResult> searchRoadsPaged({
+    required String query,
+    DocumentSnapshot? lastDocument,
+    int limit = 6,
+  }) async {
+    final trimmedQuery = query.trim();
+
+    // 빈 검색어 입력 시 DB 요청 없이 바로 빈 결과 반환
+    if (trimmedQuery.isEmpty) {
+      return RoadPagedResult(
+        roads: [],
+        lastDocument: null,
+        hasMore: false,
+      );
+    }
+
+    try {
+      // 1. Firestore 제목 기준 범위 쿼리 및 정렬
+      Query<Map<String, dynamic>> firestoreQuery = _firestore
+          .collection('road')
+          .orderBy('title')
+          .startAt([trimmedQuery])
+          .endAt(['$trimmedQuery\uf8ff']);
+
+      // 2. 다음 페이지 요청 시 커서 위치 지정
+      if (lastDocument != null) {
+        firestoreQuery = firestoreQuery.startAfterDocument(lastDocument);
+      }
+
+      // 3. 페이징 limit 적용 (기본 6개)
+      firestoreQuery = firestoreQuery.limit(limit);
+
+      final querySnapshot = await firestoreQuery.get();
+
+      if (querySnapshot.docs.isEmpty) {
+        return RoadPagedResult(
+          roads: [],
+          lastDocument: lastDocument,
+          hasMore: false,
+        );
+      }
+
+      // 4. DocumentSnapshot을 Road 모델 객체로 변환
+      final List<Road> roads = querySnapshot.docs
+          .map((doc) => Road.fromFirestore(doc))
+          .toList();
+
+      final DocumentSnapshot newLastDocument = querySnapshot.docs.last;
+      final bool hasMore = querySnapshot.docs.length == limit;
+
+      return RoadPagedResult(
+        roads: roads,
+        lastDocument: newLastDocument,
+        hasMore: hasMore,
+      );
+    } catch (e) {
+      print('RoadRepository.searchRoadsPaged 오류 발생: $e');
+      rethrow;
+    }
+  }
+
   /// 커서 기반 페이징 및 복합 색인 없는 인메모리 Loop Fetching
   /// - [type]: 'region' (지역별) 또는 'category' (메뉴별)
   /// - [selectedRegion]: 선택된 지역 필터
