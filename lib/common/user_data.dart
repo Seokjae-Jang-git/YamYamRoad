@@ -6,6 +6,7 @@ class UserData {
   static String? nickname;
   static String? name;
   static String? phone;
+  static String? provider;
 
   // 프로필 이미지가 기본 이미지인지 구분하는 상태값
   static bool isDefaultProfileImage = true;
@@ -18,6 +19,7 @@ class UserData {
     nickname = null;
     name = null;
     phone = null;
+    provider = null;
     isDefaultProfileImage = true;
     profileImagePath = null;
   }

@@ -434,14 +434,55 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   }
 
   Future<void> _deleteComment(CommunityComment comment) async {
+    // 🌟 얌얌로드 공식 컬러 토큰
+    const Color pointCoralRed = Color(0xFFFF6B57);
+    const Color deepChocolate = Color(0xFF4A3225);
+    const Color creamyIvory = Color(0xFFFFFDF9);
+    const Color subTextColor = Color(0xFF7A6B63);
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('댓글 삭제'),
-        content: const Text('이 댓글을 삭제하시겠어요?'),
+        backgroundColor: creamyIvory,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: deepChocolate.withOpacity(0.1)),
+        ),
+        title: const Text(
+          '댓글 삭제',
+          style: TextStyle(
+            color: deepChocolate,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        content: const Text(
+          '이 댓글을 삭제하시겠어요?',
+          style: TextStyle(color: subTextColor, fontSize: 14),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('삭제', style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              '취소',
+              style: TextStyle(color: subTextColor, fontWeight: FontWeight.bold),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: pointCoralRed,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              '삭제',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
         ],
       ),
     );

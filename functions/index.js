@@ -43,16 +43,29 @@ exports.socialLogin = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "지원하지 않는 provider입니다.");
   }
 
+  // 🌟 [핵심 수정] Firebase Admin SDK에 undefined 값이 들어가지 않도록 제거 처리
+  const cleanUserInfo = {};
+  if (userInfo.displayName) cleanUserInfo.displayName = userInfo.displayName;
+  if (userInfo.email) cleanUserInfo.email = userInfo.email;
+  if (userInfo.photoURL) cleanUserInfo.photoURL = userInfo.photoURL;
+
   try {
-    await admin.auth().updateUser(uid, userInfo);
+    await admin.auth().updateUser(uid, cleanUserInfo);
   } catch (e) {
     if (e.code === "auth/user-not-found") {
-      await admin.auth().createUser({ uid, ...userInfo });
+      await admin.auth().createUser({ uid, ...cleanUserInfo });
     } else {
-      throw e;
+      console.error("🔴 Firebase Auth 생성/수정 실패:", e);
+      throw new HttpsError("internal", e.message || "유저 생성 실패");
     }
   }
 
   const customToken = await admin.auth().createCustomToken(uid);
-  return { customToken };
+  return {
+    customToken,
+    profile: {
+      nickname: userInfo.displayName || null,
+      profileImageUrl: userInfo.photoURL || null,
+    },
+  };
 });
