@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../common/utils/region_mapper.dart';
 import 'widgets/category_tabs.dart';
 import 'widgets/sub_filter_chips.dart';
@@ -17,11 +18,10 @@ class RoadMainScreen extends StatefulWidget {
 }
 
 class RoadMainScreenState extends State<RoadMainScreen> {
-  // YamYamRoad 브랜드 공식 컬러 상수 정의
+  // 브랜드 공식 컬러 상수 정의
   static const Color pointCoralRed = Color(0xFFFF6B57);    // 시그니처 코랄 레드
   static const Color deepChocolate = Color(0xFF4A3225);    // 텍스트 & 아이콘 메인
   static const Color creamyIvory = Color(0xFFFFFDF9);      // 화면 바탕 크림 아이보리
-  static const Color subTextColor = Color(0xFF7A6B63);      // 서브 브라운 텍스트
 
   final RoadRepository _roadRepository = RoadRepository();
   final ScrollController _scrollController = ScrollController();
@@ -31,22 +31,43 @@ class RoadMainScreenState extends State<RoadMainScreen> {
   String _selectedSort = '최신순';
 
   List<Road> _roads = [];
-  bool _isLoading = true;
+  bool _isLoading = true;          // 첫 데이터 로딩 상태
+  bool _isFetchingMore = false;     // 하단 스크롤 시 추가 데이터 로딩 상태
+  bool _hasMore = true;             // 다음 DB 데이터 존재 여부
+  DocumentSnapshot? _lastDocument;  // 커서 페이징을 위한 마지막 문서 Snapshot
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _fetchRoadsFromFirestore();
+    _scrollController.addListener(_onScroll);
+    _fetchInitialRoads();
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
   }
 
-  /// 🌟 상단 탭 재클릭 시 리스트를 최상단으로 부드럽게 스크롤하는 메서드
+  /// 스크롤 위치 감지하여 하단 도달 시 추가 데이터 페이징 요청
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+
+    // 스크롤 바닥 200px 전 지점에 도달하고, 현재 로딩 중이 아니며, 불러올 데이터가 더 남아있을 때 실행
+    if (maxScroll - currentScroll <= 200 &&
+        !_isFetchingMore &&
+        !_isLoading &&
+        _hasMore) {
+      _fetchMoreRoads();
+    }
+  }
+
+  /// 상단 탭 재클릭 시 최상단으로 스크롤 이동
   void scrollToTop() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
@@ -57,46 +78,46 @@ class RoadMainScreenState extends State<RoadMainScreen> {
     }
   }
 
-  /// Firestore에서 비동기로 실데이터 가져오는 로직 (type 분기 및 RegionMapper 연동)
-  Future<void> _fetchRoadsFromFirestore() async {
+  /// 1. 첫 페이지 데이터 로드 (탭/필터/정렬 변경 및 Pull-to-Refresh 시)
+  Future<void> _fetchInitialRoads() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _roads = [];
+      _lastDocument = null;
+      _hasMore = true;
     });
 
     try {
       final isRegionTab = _selectedTab == '지역별';
       final targetType = isRegionTab ? 'region' : 'category';
 
-      // 💡 탭 종류('region' / 'category')에 따른 Firestore 데이터 분기 조회
-      final fetchedRoads = await _roadRepository.fetchRoads(
+      final result = await _roadRepository.fetchRoadsPaged(
         type: targetType,
-        selectedRegion: null, // 지역별은 아래의 RegionMapper로 유연하게 처리
-        selectedCategory: !isRegionTab ? _selectedFilter : null,
+        selectedRegion: isRegionTab && _selectedFilter != '전체' ? _selectedFilter : null,
+        selectedCategory: !isRegionTab && _selectedFilter != '전체' ? _selectedFilter : null,
         sortBy: _selectedSort,
+        lastDocument: null,
+        limit: 6,
       );
 
-      List<Road> filteredRoads = fetchedRoads;
+      List<Road> filteredRoads = result.roads;
 
-      // '지역별' 탭이고 선택된 필터가 '전체'가 아닌 경우 (예: '충북') RegionMapper 매핑 검사
+      // '지역별' 탭 필터링 시 RegionMapper 유연한 매핑 적용
       if (isRegionTab && _selectedFilter != '전체') {
-        filteredRoads = fetchedRoads.where((road) {
-          // 1. regionId 매핑 검사 ('충북' <-> '충청북도')
+        filteredRoads = filteredRoads.where((road) {
           final regionIdMatch = RegionMapper.isMatch(
             selectedRegion: _selectedFilter,
             targetText: road.regionId,
           );
-          // 2. title 매핑 검사
           final titleMatch = RegionMapper.isMatch(
             selectedRegion: _selectedFilter,
             targetText: road.title,
           );
-          // 3. description 매핑 검사
           final descriptionMatch = RegionMapper.isMatch(
             selectedRegion: _selectedFilter,
             targetText: road.description,
           );
-          // 4. searchKeywords 매핑 검사
           final keywordsMatch = road.searchKeywords.any(
                 (kw) => RegionMapper.isMatch(
               selectedRegion: _selectedFilter,
@@ -110,6 +131,8 @@ class RoadMainScreenState extends State<RoadMainScreen> {
 
       setState(() {
         _roads = filteredRoads;
+        _lastDocument = result.lastDocument;
+        _hasMore = result.hasMore;
         _isLoading = false;
       });
     } catch (e) {
@@ -120,7 +143,68 @@ class RoadMainScreenState extends State<RoadMainScreen> {
     }
   }
 
-  // '지역 더보기' 전체 화면 선택 창 띄우기 로직
+  /// 2. 다음 페이지 추가 로드 (스크롤 하단 감지 시)
+  Future<void> _fetchMoreRoads() async {
+    if (_isFetchingMore || !_hasMore) return;
+
+    setState(() {
+      _isFetchingMore = true;
+    });
+
+    try {
+      final isRegionTab = _selectedTab == '지역별';
+      final targetType = isRegionTab ? 'region' : 'category';
+
+      final result = await _roadRepository.fetchRoadsPaged(
+        type: targetType,
+        selectedRegion: isRegionTab && _selectedFilter != '전체' ? _selectedFilter : null,
+        selectedCategory: !isRegionTab && _selectedFilter != '전체' ? _selectedFilter : null,
+        sortBy: _selectedSort,
+        lastDocument: _lastDocument,
+        limit: 6,
+      );
+
+      List<Road> newRoads = result.roads;
+
+      if (isRegionTab && _selectedFilter != '전체') {
+        newRoads = newRoads.where((road) {
+          final regionIdMatch = RegionMapper.isMatch(
+            selectedRegion: _selectedFilter,
+            targetText: road.regionId,
+          );
+          final titleMatch = RegionMapper.isMatch(
+            selectedRegion: _selectedFilter,
+            targetText: road.title,
+          );
+          final descriptionMatch = RegionMapper.isMatch(
+            selectedRegion: _selectedFilter,
+            targetText: road.description,
+          );
+          final keywordsMatch = road.searchKeywords.any(
+                (kw) => RegionMapper.isMatch(
+              selectedRegion: _selectedFilter,
+              targetText: kw,
+            ),
+          );
+
+          return regionIdMatch || titleMatch || descriptionMatch || keywordsMatch;
+        }).toList();
+      }
+
+      setState(() {
+        _roads.addAll(newRoads);
+        _lastDocument = result.lastDocument;
+        _hasMore = result.hasMore;
+        _isFetchingMore = false;
+      });
+    } catch (e) {
+      print('추가 데이터 로드 중 오류 발생: $e');
+      setState(() {
+        _isFetchingMore = false;
+      });
+    }
+  }
+
   void _openRegionSelectPage() async {
     final String? selectedRegion = await Navigator.push<String>(
       context,
@@ -134,7 +218,7 @@ class RoadMainScreenState extends State<RoadMainScreen> {
       setState(() {
         _selectedFilter = selectedRegion;
       });
-      _fetchRoadsFromFirestore();
+      _fetchInitialRoads();
     }
   }
 
@@ -155,16 +239,16 @@ class RoadMainScreenState extends State<RoadMainScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. 최상단 대분류 및 검색 버튼
+            // 1. 최상단 대분류 탭 및 검색
             CategoryTabs(
               selectedTab: _selectedTab,
               onTabChanged: (tab) {
                 if (_selectedTab != tab) {
                   setState(() {
                     _selectedTab = tab;
-                    _selectedFilter = '전체'; // 탭 전환 시 서브 필터 초기화
+                    _selectedFilter = '전체';
                   });
-                  _fetchRoadsFromFirestore();
+                  _fetchInitialRoads();
                 }
               },
               onSearchPressed: () {
@@ -176,7 +260,7 @@ class RoadMainScreenState extends State<RoadMainScreen> {
 
             const SizedBox(height: 4),
 
-            // 2. 가로 스크롤형 동적 필터 칩 영역
+            // 2. 가로 스크롤 서브 필터 칩
             SubFilterChips(
               selectedTab: _selectedTab,
               selectedFilter: _selectedFilter,
@@ -185,7 +269,7 @@ class RoadMainScreenState extends State<RoadMainScreen> {
                   setState(() {
                     _selectedFilter = filter;
                   });
-                  _fetchRoadsFromFirestore();
+                  _fetchInitialRoads();
                 }
               },
               onMorePressed: _openRegionSelectPage,
@@ -201,12 +285,12 @@ class RoadMainScreenState extends State<RoadMainScreen> {
                   setState(() {
                     _selectedSort = sort;
                   });
-                  _fetchRoadsFromFirestore();
+                  _fetchInitialRoads();
                 }
               },
             ),
 
-            // 4. Firestore 리스트 렌더링 영역
+            // 4. Firestore 결과 리스트 영역
             Expanded(
               child: _buildListContent(),
             ),
@@ -216,7 +300,6 @@ class RoadMainScreenState extends State<RoadMainScreen> {
     );
   }
 
-  /// 로딩 / 에러 / 실데이터 연동 영역
   Widget _buildListContent() {
     if (_isLoading) {
       return const Center(
@@ -237,20 +320,50 @@ class RoadMainScreenState extends State<RoadMainScreen> {
       );
     }
 
+    if (_roads.isEmpty) {
+      return Center(
+        child: Text(
+          '해당 조건에 맞는 코스가 존재하지 않습니다.',
+          style: TextStyle(color: deepChocolate.withAlpha(150), fontSize: 14),
+        ),
+      );
+    }
+
+    // 광고가 삽입된 UI 카드 위젯 리스트 생성
     final uiItems = RoadAdHelper.buildListWithAds(
       listToShow: _roads,
       onCardPressed: _onCardPressed,
     );
 
+    // 하단 추가 페이징 로딩 스피너 카운트 포함
+    final totalItemCount = uiItems.length + (_isFetchingMore ? 1 : 0);
+
     return RefreshIndicator(
       color: pointCoralRed,
       backgroundColor: Colors.white,
-      onRefresh: _fetchRoadsFromFirestore,
+      onRefresh: _fetchInitialRoads,
       child: ListView.builder(
         controller: _scrollController,
-        itemCount: uiItems.length,
+        itemCount: totalItemCount,
         itemBuilder: (context, index) {
-          return uiItems[index];
+          if (index < uiItems.length) {
+            return uiItems[index];
+          }
+
+          // 스크롤 최하단 로딩 스피너
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20.0),
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  color: pointCoralRed,
+                  strokeWidth: 2.5,
+                ),
+              ),
+            ),
+          );
         },
       ),
     );
