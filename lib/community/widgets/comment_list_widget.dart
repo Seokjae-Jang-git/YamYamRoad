@@ -8,7 +8,7 @@ import '../../features/emoticon/emoticon_text_controller.dart';
 class CommentListWidget extends StatelessWidget {
   final String postId;
   final String currentUserId;
-  final String postAuthorId; // 🌟 게시글 작성자 uid - "작성자" 배지 표시용
+  final String postAuthorId;
   final Function(CommunityComment) onStartReply;
   final Function(CommunityComment) onDeleteComment;
   final Function(CommunityComment) onLikeToggle;
@@ -40,7 +40,7 @@ class CommentListWidget extends StatelessWidget {
         if (!snapshot.hasData) {
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
-            child: Center(child: CircularProgressIndicator(color: Colors.black)),
+            child: Center(child: CircularProgressIndicator(color: Color(0xFFFF6B57))),
           );
         }
 
@@ -56,7 +56,7 @@ class CommentListWidget extends StatelessWidget {
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
             child: Center(
-              child: Text('첫 댓글을 남겨보세요!', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              child: Text('첫 댓글을 남겨보세요!', style: TextStyle(color: Color(0xFF7A6B63), fontSize: 13)),
             ),
           );
         }
@@ -79,7 +79,7 @@ class CommentListWidget extends StatelessWidget {
 
   Widget _buildCommentTile(BuildContext context, CommunityComment comment, {required bool isReply}) {
     final bool isMine = comment.userId == currentUserId;
-    final bool isAuthor = comment.userId == postAuthorId; // 🌟 댓글 작성자 == 게시글 작성자
+    final bool isAuthor = comment.userId == postAuthorId;
 
     return Padding(
       padding: EdgeInsets.only(left: isReply ? 40 : 0, top: 12, bottom: 0),
@@ -89,14 +89,14 @@ class CommentListWidget extends StatelessWidget {
           if (isReply)
             const Padding(
               padding: EdgeInsets.only(right: 6, top: 2),
-              child: Icon(Icons.subdirectory_arrow_right, size: 16, color: Colors.grey),
+              child: Icon(Icons.subdirectory_arrow_right, size: 16, color: Color(0xFF7A6B63)),
             ),
           CircleAvatar(
             radius: isReply ? 14 : 16,
             backgroundColor: const Color(0xFFF5F5F5),
             backgroundImage: comment.profileImage != null ? NetworkImage(comment.profileImage!) : null,
             child: comment.profileImage == null
-                ? Icon(Icons.person_outline, size: isReply ? 14 : 16, color: Colors.grey)
+                ? Icon(Icons.person_outline, size: isReply ? 14 : 16, color: const Color(0xFF7A6B63))
                 : null,
           ),
           const SizedBox(width: 8),
@@ -106,21 +106,20 @@ class CommentListWidget extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(comment.nickname, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    // 🌟 게시글 작성자가 남긴 댓글이면 "작성자" 배지 표시
+                    Text(comment.nickname, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF4A3225))),
                     if (isAuthor) ...[
                       const SizedBox(width: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFF0E6),
+                          color: const Color(0xFFFF6B57).withOpacity(0.12),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: const Text(
                           '작성자',
                           style: TextStyle(
                             fontSize: 10,
-                            color: Color(0xFFFF8A3D),
+                            color: Color(0xFFFF6B57),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -128,16 +127,15 @@ class CommentListWidget extends StatelessWidget {
                     ],
                     const SizedBox(width: 6),
                     if (comment.createdAt != null)
-                      Text(_formatTime(comment.createdAt!), style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                      Text(_formatTime(comment.createdAt!), style: const TextStyle(fontSize: 11, color: Color(0xFF7A6B63))),
                     if (comment.updatedAt != null) ...[
                       const SizedBox(width: 4),
-                      const Text('(수정됨)', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      const Text('(수정됨)', style: TextStyle(fontSize: 11, color: Color(0xFF7A6B63))),
                     ],
                     const Spacer(),
-                    // 🌟 내 댓글이면 수정/삭제, 남의 댓글이면 신고
                     PopupMenuButton<String>(
                       padding: EdgeInsets.zero,
-                      icon: const Icon(Icons.more_horiz, size: 18, color: Colors.grey),
+                      icon: const Icon(Icons.more_horiz, size: 18, color: Color(0xFF7A6B63)),
                       onSelected: (value) {
                         if (value == 'edit') _showEditDialog(context, comment);
                         if (value == 'delete') onDeleteComment(comment);
@@ -158,12 +156,12 @@ class CommentListWidget extends StatelessWidget {
                 EmoticonRichContent(
                   content: comment.content,
                   emojiSize: 16,
-                  style: const TextStyle(fontSize: 13, color: Colors.black87),
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF4A3225)),
                   leadingSpans: comment.replyToNickname != null
                       ? [
                     TextSpan(
                       text: '@${comment.replyToNickname} ',
-                      style: const TextStyle(color: Color(0xFFFF8A3D), fontWeight: FontWeight.w600, fontSize: 13),
+                      style: const TextStyle(color: Color(0xFFFF6B57), fontWeight: FontWeight.w600, fontSize: 13),
                     ),
                   ]
                       : const [],
@@ -174,10 +172,9 @@ class CommentListWidget extends StatelessWidget {
                     GestureDetector(
                       onTap: () => onStartReply(comment),
                       child: const Text('답글쓰기',
-                          style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
+                          style: TextStyle(fontSize: 12, color: Color(0xFF7A6B63), fontWeight: FontWeight.w600)),
                     ),
                     const SizedBox(width: 12),
-                    // 🌟 좋아요 - StreamBuilder로 내 좋아요 여부 확인
                     StreamBuilder<DocumentSnapshot>(
                       stream: FirebaseFirestore.instance
                           .collection('posts').doc(postId)
@@ -191,10 +188,10 @@ class CommentListWidget extends StatelessWidget {
                           child: Row(
                             children: [
                               Icon(isLiked ? Icons.favorite : Icons.favorite_border,
-                                  size: 14, color: isLiked ? Colors.red : Colors.grey),
+                                  size: 14, color: isLiked ? const Color(0xFFFF6B57) : const Color(0xFF7A6B63)),
                               const SizedBox(width: 3),
                               Text('${comment.likeCount}',
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                  style: const TextStyle(fontSize: 12, color: Color(0xFF7A6B63))),
                             ],
                           ),
                         );
@@ -246,6 +243,12 @@ class _CommentEditDialog extends StatefulWidget {
 }
 
 class _CommentEditDialogState extends State<_CommentEditDialog> {
+  // 🌟 얌얌로드 공식 컬러 토큰
+  static const Color pointCoralRed = Color(0xFFFF6B57);
+  static const Color deepChocolate = Color(0xFF4A3225);
+  static const Color creamyIvory = Color(0xFFFFFDF9);
+  static const Color subTextColor = Color(0xFF7A6B63);
+
   late final EmoticonTextEditingController _controller;
   bool _loading = true;
   bool _showEmoticonPicker = false;
@@ -282,7 +285,20 @@ class _CommentEditDialogState extends State<_CommentEditDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('댓글 수정'),
+      backgroundColor: creamyIvory,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: deepChocolate.withOpacity(0.1)),
+      ),
+      title: const Text(
+        '댓글 수정',
+        style: TextStyle(
+          color: deepChocolate,
+          fontWeight: FontWeight.bold,
+          fontSize: 18,
+        ),
+      ),
       content: SizedBox(
         width: double.maxFinite,
         child: Column(
@@ -291,31 +307,52 @@ class _CommentEditDialogState extends State<_CommentEditDialog> {
             if (_loading)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 20),
-                child: CircularProgressIndicator(color: Colors.black),
+                child: CircularProgressIndicator(color: pointCoralRed),
               )
             else ...[
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
                     icon: Icon(
                       _showEmoticonPicker ? Icons.keyboard_alt_outlined : Icons.emoji_emotions_outlined,
-                      color: Colors.grey,
+                      color: subTextColor,
                     ),
                     tooltip: '이모티콘',
-                    padding: EdgeInsets.zero,
+                    padding: const EdgeInsets.only(top: 10),
                     constraints: const BoxConstraints(),
                     onPressed: _toggleEmoticonPicker,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
                       controller: _controller,
                       maxLines: 3,
                       autofocus: true,
+                      style: const TextStyle(color: deepChocolate, fontSize: 14),
+                      cursorColor: pointCoralRed,
                       onTap: () {
                         if (_showEmoticonPicker) setState(() => _showEmoticonPicker = false);
                       },
-                      decoration: const InputDecoration(hintText: '댓글을 입력해주세요'),
+                      decoration: InputDecoration(
+                        hintText: '댓글을 입력해주세요',
+                        hintStyle: const TextStyle(color: subTextColor, fontSize: 14),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.all(12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: deepChocolate.withOpacity(0.15)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: deepChocolate.withOpacity(0.15)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: pointCoralRed, width: 1.5),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -335,10 +372,26 @@ class _CommentEditDialogState extends State<_CommentEditDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
         TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text(
+            '취소',
+            style: TextStyle(color: subTextColor, fontWeight: FontWeight.bold),
+          ),
+        ),
+        ElevatedButton(
           onPressed: _loading ? null : () => Navigator.pop(context, _controller.toStorageText()),
-          child: const Text('완료'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: pointCoralRed,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          child: const Text(
+            '완료',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
         ),
       ],
     );

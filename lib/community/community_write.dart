@@ -317,7 +317,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
                   maxLines: 5,
                   onChanged: (_) => setState(() {}),
                   decoration: const InputDecoration(
-                    hintText: '오늘 다녀온 빵집, 발견한 메뉴를 자유롭게 공유해보세요',
+                    hintText: '오늘 다녀온 디저트가게, 발견한 메뉴를 자유롭게 공유해보세요',
                     border: InputBorder.none,
                   ),
                 ),
