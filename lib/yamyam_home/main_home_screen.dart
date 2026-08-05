@@ -31,6 +31,10 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   final GlobalKey<CommunityMainScreenState> _communityKey =
   GlobalKey<CommunityMainScreenState>();
 
+  // 🌟 얌얌로드 탭을 다시 눌렀을 때 최상단으로 스크롤시키기 위한 키
+  final GlobalKey<RoadMainScreenState> _roadKey =
+  GlobalKey<RoadMainScreenState>();
+
   // 브랜드 컬러 상수 정의
   static const Color creamyIvory = Color(0xFFFFFDF9);
   static const Color coralRed = Color(0xFFFF6B57);
@@ -87,13 +91,18 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   }
 
   // 🌟 하단 탭 탭 이벤트 처리
-  //    - 이미 커뮤니티 탭(index 1)에 있는 상태에서 커뮤니티 탭을 다시 누르면
-  //      화면 전환 없이 커뮤니티 피드만 최상단으로 스크롤
+  //    - 활성화된 탭(커뮤니티: index 1, 얌얌로드: index 2)을 다시 누르면
+  //      화면 전환 없이 리스트만 최상단으로 스크롤
   //    - 그 외에는 기존처럼 탭 전환
   void _handleTabTap(int index) {
-    if (index == _currentTabIndex && index == 1) {
-      _communityKey.currentState?.scrollToTop();
-      return;
+    if (index == _currentTabIndex) {
+      if (index == 1) {
+        _communityKey.currentState?.scrollToTop();
+        return;
+      } else if (index == 2) {
+        _roadKey.currentState?.scrollToTop();
+        return;
+      }
     }
     setState(() {
       _currentTabIndex = index;
@@ -113,7 +122,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
       case 1:
         return CommunityMainScreen(key: _communityKey);
       case 2:
-        return const RoadMainScreen();
+        return RoadMainScreen(key: _roadKey);
       case 3:
         return PointMainScreen(
           userId: AuthService.currentUser?.uid ?? 'test_user_01',

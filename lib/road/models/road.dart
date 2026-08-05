@@ -28,13 +28,13 @@ class PlaceCoordinate {
 
 class Road {
   final String id;
-  final String type; // 💡 'region' (지역별) 또는 'category' (메뉴별)
+  final String type; // 'region' (지역별) 또는 'category' (메뉴별)
   final String title;
   final String description;
   final String regionId;
   final List<String> categoryIds;
   final List<String> roadPlace;
-  final List<PlaceCoordinate> placeCoordinates; // 📍 반정규화된 가게 좌표 리스트
+  final List<PlaceCoordinate> placeCoordinates; // 반정규화된 가게 좌표 리스트
   final String thumbnailUrl;
   final String badgeName;
   final int stampRewardPoint;
@@ -81,6 +81,7 @@ class Road {
 
     // bool 타입 안전 파싱 헬퍼 (String, num, bool 모두 대응)
     bool parseBool(dynamic value) {
+      if (value == null) return true; // 필드가 없으면 기본 활성화(true)
       if (value is bool) return value;
       if (value is String) {
         final lower = value.trim().toLowerCase();
@@ -89,7 +90,7 @@ class Road {
       if (value is num) {
         return value == 1;
       }
-      return true; // 기본값
+      return true;
     }
 
     // placeCoordinates 파싱 헬퍼 (Map, GeoPoint 등 다양한 형태 대응)
@@ -107,7 +108,7 @@ class Road {
 
     return Road(
       id: docId,
-      // type 필드가 없는 기존 Firestore 문서 대응 (기본값: 'region')
+      // type 필드가 없는 기존 Firestore 레거시 문서 대응 (기본값: 'region')
       type: map['type']?.toString() ?? 'region',
       title: map['title']?.toString() ?? '제목 없음',
       description: map['description']?.toString() ?? '',
@@ -166,8 +167,7 @@ class Road {
     };
   }
 
-  /// 📍 사용자의 현재 위치(위도/경도) 기반으로 코스 내 가게 중 '최단 거리(km)' 연산
-  /// 좌표 리스트가 비어있을 경우 double.infinity 반환
+  /// 사용자의 현재 위치(위도/경도) 기반으로 코스 내 가게 중 '최단 거리(km)' 연산
   double getMinDistanceKm(double userLat, double userLng) {
     if (placeCoordinates.isEmpty) {
       return double.infinity;
