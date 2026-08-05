@@ -140,6 +140,7 @@ class _PointMainScreenState extends State<PointMainScreen> {
                 child: switch (_selectedTab) {
                   PointShopTab.emoticon => PointEmoticonView(
                     repository: _repository,
+                    userId: widget.userId,
                     onSelectEmoticon: _showEmoticonPackage,
                     onOpenAiRecommendationPage: _openAiRecommendationPage,
                     onOpenStampDevPage: _openStampDevPage,

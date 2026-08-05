@@ -26,6 +26,7 @@ class _StampDevPlaceEntryPageState extends State<StampDevPlaceEntryPage> {
   final StampLocationEvidenceCollector _locationCollector =
       const StampLocationEvidenceCollector();
   bool _isLoading = false;
+  bool _gpsCheckEnabled = true;
 
   Future<void> _issueDevStamp() async {
     final placeId = _placeIdController.text.trim();
@@ -133,6 +134,7 @@ class _StampDevPlaceEntryPageState extends State<StampDevPlaceEntryPage> {
             userLat: location.latitude,
             userLng: location.longitude,
             isMockLocation: location.isMockLocation,
+            devSkipGps: !_gpsCheckEnabled,
           );
         },
       );
@@ -169,12 +171,11 @@ class _StampDevPlaceEntryPageState extends State<StampDevPlaceEntryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('스탬프 개발 테스트')),
+      appBar: AppBar(title: const Text('개발자용 스탬프 인증')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: ListView(
             children: [
               Container(
                 padding: const EdgeInsets.all(14),
@@ -183,9 +184,9 @@ class _StampDevPlaceEntryPageState extends State<StampDevPlaceEntryPage> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
-                  '개발 전용 화면입니다. 실제 기기 무결성과 현재 GPS를 확인하며, '
-                  'OCR과 서버 검증이 성공하면 '
-                  'verification·stamp·별점이 실제 DB에 저장됩니다.\n\n'
+                  '개발 전용 화면입니다. 카메라 촬영 또는 갤러리의 테스트 영수증으로 '
+                  'OCR 인증을 확인할 수 있습니다. GPS 검증을 끄면 현재 위치는 수집하지만 '
+                  '업체와의 거리·이동 속도는 승인 조건에서 제외합니다.\n\n'
                   '아래 즉시 발행 버튼은 서버의 개발용 우회 설정이 켜진 경우에만 '
                   '동작하며 OCR·GPS 검사를 모두 생략합니다.',
                 ),
@@ -203,6 +204,33 @@ class _StampDevPlaceEntryPageState extends State<StampDevPlaceEntryPage> {
                 ),
               ),
               const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: const Color(0xFFFFE3DE)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: SwitchListTile.adaptive(
+                  value: _gpsCheckEnabled,
+                  onChanged: _isLoading
+                      ? null
+                      : (value) {
+                          setState(() => _gpsCheckEnabled = value);
+                        },
+                  secondary: Icon(
+                    _gpsCheckEnabled
+                        ? Icons.location_on_outlined
+                        : Icons.location_off_outlined,
+                  ),
+                  title: const Text('GPS 검증 사용'),
+                  subtitle: Text(
+                    _gpsCheckEnabled
+                        ? '업체 거리와 이전 인증 위치 기준 이동 속도를 확인합니다.'
+                        : '개발 모드에서 거리와 이동 속도 검증만 생략합니다.',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               SizedBox(
                 height: 52,
                 child: FilledButton(
@@ -212,7 +240,7 @@ class _StampDevPlaceEntryPageState extends State<StampDevPlaceEntryPage> {
                           dimension: 22,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('인증 화면 열기'),
+                      : const Text('개발자용 인증 화면 열기'),
                 ),
               ),
               const SizedBox(height: 12),

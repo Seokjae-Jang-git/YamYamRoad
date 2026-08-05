@@ -35,12 +35,14 @@ class PlaceRecommendation {
   const PlaceRecommendation({
     required this.placeId,
     required this.name,
+    required this.address,
     required this.score,
     required this.reasons,
   });
 
   final String placeId;
   final String name;
+  final String address;
   final int score;
   final List<String> reasons;
 
@@ -49,6 +51,7 @@ class PlaceRecommendation {
     return PlaceRecommendation(
       placeId: _requiredString(data['placeId'], 'placeId'),
       name: _requiredString(data['name'], 'name'),
+      address: _nullableString(data['address']) ?? '',
       score: _asInt(data['score']),
       reasons: _asStringList(data['reasons']),
     );

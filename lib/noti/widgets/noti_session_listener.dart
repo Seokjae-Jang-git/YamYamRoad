@@ -27,15 +27,11 @@ class _NotiSessionListenerState extends State<NotiSessionListener> {
   final NotiDeviceService _deviceService = NotiDeviceService();
   final NotiPushService _pushService = NotiPushService();
 
-  StreamSubscription<NotiPushMessage>? _foregroundSubscription;
   StreamSubscription<NotiPushMessage>? _openedSubscription;
 
   @override
   void initState() {
     super.initState();
-    _foregroundSubscription = _pushService.foregroundMessages.listen(
-      _showForegroundMessage,
-    );
     _openedSubscription = _pushService.openedMessages.listen(
       (_) => _openNotificationList(),
     );
@@ -62,19 +58,6 @@ class _NotiSessionListenerState extends State<NotiSessionListener> {
     }
   }
 
-  void _showForegroundMessage(NotiPushMessage message) {
-    if (!mounted) return;
-    final title = message.title.trim().isEmpty ? '새 알림' : message.title.trim();
-    final body = message.body.trim();
-    final text = body.isEmpty ? title : '$title\n$body';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(text),
-        action: SnackBarAction(label: '보기', onPressed: _openNotificationList),
-      ),
-    );
-  }
-
   void _openNotificationList() {
     if (!mounted) return;
     Navigator.of(context).push(
@@ -89,7 +72,6 @@ class _NotiSessionListenerState extends State<NotiSessionListener> {
 
   @override
   void dispose() {
-    unawaited(_foregroundSubscription?.cancel());
     unawaited(_openedSubscription?.cancel());
     unawaited(_deviceService.dispose());
     super.dispose();

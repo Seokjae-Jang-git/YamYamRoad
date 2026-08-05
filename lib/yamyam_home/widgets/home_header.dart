@@ -201,8 +201,6 @@ class _HomeHeaderState extends State<HomeHeader> {
         );
       case NotiReferenceType.pointTransaction:
       case NotiReferenceType.point:
-        Navigator.of(context).pop();
-        widget.onTabChanged(3);
       case NotiReferenceType.purchase:
         return;
     }
