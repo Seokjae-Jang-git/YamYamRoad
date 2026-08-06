@@ -249,7 +249,7 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? deepChocolate : Colors.white,
-          borderRadius: BorderRadius.circular(20), // 🌟 알약 형태
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: selected ? deepChocolate : deepChocolate.withOpacity(0.15)),
         ),
         child: Text(
@@ -330,7 +330,7 @@ class _InquiryWriteScreenState extends State<InquiryWriteScreen> {
                   onTap: () => setState(() => _imagePath = null),
                   child: const CircleAvatar(
                     radius: 12,
-                    backgroundColor: pointCoralRed, // 🌟 삭제 버튼 코랄 레드 포인트
+                    backgroundColor: pointCoralRed,
                     child: Icon(Icons.close, size: 14, color: Colors.white),
                   ),
                 ),

@@ -152,7 +152,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
         _newVideos.addAll(acceptedVideos);
       });
     } catch (e) {
-      debugPrint('미디어 선택 중 오류: $e');
+      // debugPrint('미디어 선택 중 오류: $e');
       _showMessage('사진/영상을 불러오지 못했어요.');
     }
   }
@@ -264,7 +264,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
 
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      debugPrint('글 등록/수정 중 오류 발생: $e');
+      // debugPrint('글 등록/수정 중 오류 발생: $e');
       _showMessage('저장에 실패했어요. 다시 시도해주세요.');
     } finally {
       if (mounted) setState(() => _isSubmitting = false);

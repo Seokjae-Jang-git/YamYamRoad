@@ -65,7 +65,7 @@ class _WithdrawnScreenState extends State<WithdrawnScreen> {
       setState(() {
         _isLoading = false;
       });
-      debugPrint("탈퇴 처리 에러: $e");
+      // debugPrint("탈퇴 처리 에러: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('탈퇴 처리 중 오류가 발생했습니다.')),
       );

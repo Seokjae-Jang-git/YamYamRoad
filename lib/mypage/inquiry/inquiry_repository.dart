@@ -55,7 +55,7 @@ class InquiryRepository {
 
   /// 문의 등록 (저장된 문의번호 ID를 반환합니다)
   Future<String> add({
-    required String type, // 'general' 또는 'partnership'
+    required String type,
     required String title,
     required String content,
     String? contactEmail,
@@ -80,13 +80,13 @@ class InquiryRepository {
       'content': content,
       'contactEmail': contactEmail,
       'imageUrl': imageUrl,
-      'status': 'pending', // 새 문의는 무조건 답변 대기
+      'status': 'pending',
       'adminMemo': null,
       'createdAt': FieldValue.serverTimestamp(),
       'answeredAt': null,
     });
 
-    return inquiryId; // 성공 화면에 전달하기 위해 생성된 ID 반환
+    return inquiryId;
   }
 
   /// 문의 수정 (제목/내용/이메일/유형/이미지만 수정 가능)
