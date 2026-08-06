@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
@@ -25,10 +26,22 @@ class LocationService {
   static const double defaultLng = 126.9780;
   static const String defaultAddress = '서울특별시 중구 태평로1가 31';
 
-  // 🐛 디버그 모드 전용 테스트 좌표 (서초구청)
+  // 🐛 디버그/테스트 모드 전용 좌표 (서초구청)
   static const double debugLat = 37.4837;
   static const double debugLng = 127.0324;
   static const String debugAddress = '서울특별시 서초구 남부순환로 2584';
+
+  // 🔘 런타임 개발자 가짜 위치 토글 상태 (기본값: false - 실제 위치 사용)
+  static bool _useMockLocation = false;
+
+  /// 현재 가짜 위치(Mock) 모드 활성화 여부 반환
+  static bool get useMockLocation => _useMockLocation;
+
+  /// 가짜 위치 모드 켜기/끄기 설정
+  static void setMockLocation(bool enable) {
+    _useMockLocation = enable;
+    debugPrint('⚙️ [LocationService] 가짜 위치 모드 변경됨: $_useMockLocation');
+  }
 
   /// Google Reverse Geocoding REST API를 호출하여 좌표를 주소 문자열로 변환
   static Future<String> getAddressFromCoordinates(double lat, double lng) async {
@@ -106,11 +119,11 @@ class LocationService {
     }
   }
 
-  /// 🌟 통합 위치 수신 (디버그 우회 + 4단계 Fallback 메커니즘)
+  /// 🌟 통합 위치 수신 (개발자 토글 + 권한 검사 + 4단계 Fallback 메커니즘)
   static Future<LocationDataResult> getCurrentLocationWithFallback() async {
-    // 0️⃣ 디버그 모드(kDebugMode) 우회 처리: 에뮬레이터 버그 방지 및 개발 생산성 확보
-    if (kDebugMode) {
-      debugPrint('🐛 [LocationService] 디버그 모드(kDebugMode) 감지: 서초구청 우회(Mock) 좌표를 반환합니다.');
+    // 0️⃣ 개발자 토글 스위치가 켜진 경우: 서초구청 좌표 즉시 반환
+    if (_useMockLocation) {
+      debugPrint('🐛 [LocationService] 개발자 토글(Mock) 활성화: 서초구청 좌표를 반환합니다.');
       return LocationDataResult(
         latitude: debugLat,
         longitude: debugLng,
@@ -118,18 +131,10 @@ class LocationService {
       );
     }
 
-    // ------------------- 아래는 실제 기기(Release 모드) 작동 로직 -------------------
-
-    // [단계 A] GPS 기기 서비스 활성화 확인
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      debugPrint('⚠️ [LocationService] 위치 서비스가 꺼져 있습니다. Fallback을 실행합니다.');
-      return await _getFallbackLocation();
-    }
-
-    // [단계 B] 권한 확인
+    // [1단계] 앱 위치 권한 확인 및 요청 (OS 최우선 요건)
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
+      debugPrint('📱 [LocationService] 위치 권한을 동적으로 요청합니다.');
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
         debugPrint('⚠️ [LocationService] 위치 권한이 거부되었습니다. Fallback을 실행합니다.');
@@ -142,11 +147,18 @@ class LocationService {
       return await _getFallbackLocation();
     }
 
-    // [단계 C] 1순위: 기기 내 마지막 기록 위치(LastKnownPosition) 먼저 확인
+    // [2단계] 스마트폰 기기 GPS 서비스 활성화 여부 확인
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      debugPrint('⚠️ [LocationService] 기기 GPS가 꺼져 있습니다. 무한 대기하지 않고 즉시 Fallback을 실행합니다.');
+      return await _getFallbackLocation();
+    }
+
+    // [1순위] 스마트폰 OS 캐시 데이터(LastKnownPosition) 수신
     try {
       final lastPosition = await Geolocator.getLastKnownPosition();
       if (lastPosition != null) {
-        debugPrint('⚡ [LocationService] 캐시된 기기 위치(LastKnownPosition) 수신 성공: (${lastPosition.latitude}, ${lastPosition.longitude})');
+        debugPrint('⚡ [LocationService] [1순위] OS 캐시 위치 수신 성공: (${lastPosition.latitude}, ${lastPosition.longitude})');
         final address = await getAddressFromCoordinates(lastPosition.latitude, lastPosition.longitude);
         await saveLastLocationToFirestore(lastPosition.latitude, lastPosition.longitude, address);
         return LocationDataResult(
@@ -156,34 +168,35 @@ class LocationService {
         );
       }
     } catch (e) {
-      debugPrint('⚠️ [LocationService] LastKnownPosition 조회 중 경고: $e');
+      debugPrint('⚠️ [LocationService] 1순위(OS 캐시) 조회 실패: $e');
     }
 
-    // [단계 D] 2순위: 실시간 GPS 수신 시도 (2초 타임아웃 안전망 적용)
+    // [2순위] 실시간 GPS 수신 시도 (Dart Native .timeout() 2초 강제 타임아웃 적용)
     try {
-      debugPrint('📡 [LocationService] 현재 GPS 위치 수신 시도 중 (2초 제한)...');
+      debugPrint('📡 [LocationService] [2순위] 실시간 GPS 위치 수신 시도 중 (2초 제한)...');
 
+      // forceLocationManager 제거 (안드로이드 OS 레벨의 자동 설정 튕김 방지)
       late final LocationSettings locationSettings;
       if (defaultTargetPlatform == TargetPlatform.android) {
         locationSettings = AndroidSettings(
           accuracy: LocationAccuracy.high,
-          timeLimit: const Duration(seconds: 2), // 2초 타임아웃 설정
-          forceLocationManager: true,
         );
       } else {
         locationSettings = const LocationSettings(
           accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 2),
         );
       }
 
       final position = await Geolocator.getCurrentPosition(
         locationSettings: locationSettings,
+      ).timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {
+          throw TimeoutException('GPS 응답 시간 2초 초과');
+        },
       );
 
       final address = await getAddressFromCoordinates(position.latitude, position.longitude);
-
-      // 성공 시 Firestore DB에 최신 위치 백업
       await saveLastLocationToFirestore(position.latitude, position.longitude, address);
 
       return LocationDataResult(
@@ -192,21 +205,22 @@ class LocationService {
         address: address,
       );
     } catch (e) {
-      debugPrint('⏱️ [LocationService] GPS 수신 실패/타임아웃 ($e). 안전하게 Fallback으로 전환합니다.');
+      debugPrint('⏱️ [LocationService] 2순위(실시간 GPS) 수신 실패/타임아웃 ($e). Fallback 단계로 진입합니다.');
       return await _getFallbackLocation();
     }
   }
 
-  /// Fallback 처리: (3순위) DB lastLocation -> (4순위) 기본 서울시청
+  /// Fallback 내부 처리: (3순위) DB lastLocation -> (4순위) 기본 서울시청
   static Future<LocationDataResult> _getFallbackLocation() async {
-    // 3순위: DB의 lastLocation
+    // [3순위] Firestore DB의 lastLocation
     final lastLoc = await getLastLocationFromFirestore();
     if (lastLoc != null) {
+      debugPrint('📦 [LocationService] [3순위] Firestore DB 이전 위치 복원 성공');
       return lastLoc;
     }
 
-    // 4순위: 기본 좌표 (서울시청)
-    debugPrint('🏛️ [LocationService] 저장된 DB 정보가 없어 기본 위치(서울시청)를 사용합니다.');
+    // [4순위] 기본 좌표 (서울시청)
+    debugPrint('🏛️ [LocationService] [4순위] 최종 안전망: 기본 위치(서울시청)를 사용합니다.');
     return LocationDataResult(
       latitude: defaultLat,
       longitude: defaultLng,

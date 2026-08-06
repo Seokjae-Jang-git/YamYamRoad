@@ -52,8 +52,11 @@ class LocationBar extends StatelessWidget {
             onTap: locationProvider.isLoading
                 ? null
                 : () {
-              // 새로고침 버튼 클릭 시 forceRefresh: true 전달
-              context.read<UserLocationProvider>().refreshLocation(forceRefresh: true);
+              // 새로고침 버튼 클릭 시 context 및 forceRefresh: true 전달 (안내 팝업 트리거)
+              context.read<UserLocationProvider>().refreshLocation(
+                context: context,
+                forceRefresh: true,
+              );
             },
             borderRadius: BorderRadius.circular(20),
             child: Padding(
