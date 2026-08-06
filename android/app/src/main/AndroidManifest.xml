@@ -11,10 +11,10 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
-        <!-- ⬇️ Google AdMob 테스트 앱 ID 메타데이터 추가 ⬇️ -->
+        <!-- ⬇️ Google AdMob 앱 ID 메타데이터 (env로 관리) ⬇️ -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713"/>
+            android:value="${ADMOB_APP_ID}"/>
         <!-- ⬆️ 추가 완료 ⬆️ -->
 
         <!-- 구글 지도 API Key 설정 (.env의 GOOGLE_MAPS_API_KEY를 build.gradle.kts를 통해 전달받음) -->
@@ -44,8 +44,8 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- 카카오 로그인 AppKey -->
-        <meta-data android:name="com.kakao.sdk.AppKey" android:value="069a7990957fdbe501532762273b49dc" />
+        <!-- 카카오 로그인 AppKey (env로 관리) -->
+        <meta-data android:name="com.kakao.sdk.AppKey" android:value="${KAKAO_APP_KEY}" />
 
         <!-- 카카오 로그인 인증 Activity -->
         <activity
@@ -55,20 +55,21 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:host="oauth" android:scheme="kakao069a7990957fdbe501532762273b49dc" />
+                <!-- scheme 자체에 앱키가 포함되므로 KAKAO_SCHEME으로 별도 관리 -->
+                <data android:host="oauth" android:scheme="${KAKAO_SCHEME}" />
             </intent-filter>
         </activity>
 
-        <!-- 네이버 로그인 SDK 설정 -->
+        <!-- 네이버 로그인 SDK 설정 (env로 관리) -->
         <meta-data
             android:name="com.naver.sdk.clientId"
-            android:value="_U6u6K8IKdUkf_HA1WaD" />
+            android:value="${NAVER_CLIENT_ID}" />
         <meta-data
             android:name="com.naver.sdk.clientSecret"
-            android:value="m58Yu4WJ54" />
+            android:value="${NAVER_CLIENT_SECRET}" />
         <meta-data
             android:name="com.naver.sdk.clientName"
-            android:value="얌얌로드" />
+            android:value="${NAVER_CLIENT_NAME}" />
     </application>
 
     <!-- 외부 앱 및 브라우저 실행 허용 설정 -->

@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
 import 'package:flutter_naver_login/flutter_naver_login.dart';
 import 'package:flutter_naver_login/interface/types/naver_login_status.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../services/auth_service.dart';
 
@@ -15,12 +16,11 @@ class LoginController {
   Future<void> initGoogleSignIn() async {
     try {
       await _googleSignIn.initialize(
-        serverClientId: '964766524983-2h5i53gehbvf1ti82ih7aeel99k7aln2.apps.googleusercontent.com',
+        serverClientId: dotenv.env['GOOGLE_SERVER_CLIENT_ID'] ?? '',
       );
       _googleSignInReady = true;
-      debugPrint('✅ 구글 SDK 초기화 성공');
     } catch (e) {
-      debugPrint('🔴 구글 SDK 초기화 실패: $e');
+      // debugPrint('⚠️ Google Sign-In 초기화 실패: $e');
     }
   }
 
@@ -35,7 +35,6 @@ class LoginController {
       }
       return false;
     } catch (e) {
-      debugPrint('🔴 계정 상태 확인 실패: $e');
       return false;
     }
   }
@@ -44,7 +43,7 @@ class LoginController {
   Future<void> handleKakaoLogin({
     required Function(bool) setLoading,
     required Function(String) onError,
-    required VoidCallback onSuccess, // 🌟 성공 콜백 추가
+    required VoidCallback onSuccess,
   }) async {
     setLoading(true);
     try {
@@ -74,6 +73,7 @@ class LoginController {
       onSuccess();
 
     } catch (e) {
+      // debugPrint('⚠️ 카카오 로그인 실패: $e');
       onError('카카오 로그인에 실패했습니다.');
     } finally {
       setLoading(false);
@@ -84,7 +84,7 @@ class LoginController {
   Future<void> handleNaverLogin({
     required Function(bool) setLoading,
     required Function(String) onError,
-    required VoidCallback onSuccess, // 🌟 성공 콜백 추가
+    required VoidCallback onSuccess,
   }) async {
     setLoading(true);
     try {
@@ -103,6 +103,7 @@ class LoginController {
       onSuccess();
 
     } catch (e) {
+      // debugPrint('⚠️ 네이버 로그인 실패: $e');
       onError('네이버 로그인에 실패했습니다.');
     } finally {
       setLoading(false);
@@ -113,7 +114,7 @@ class LoginController {
   Future<void> handleGoogleLogin({
     required Function(bool) setLoading,
     required Function(String) onError,
-    required VoidCallback onSuccess, // 🌟 성공 콜백 추가
+    required VoidCallback onSuccess,
   }) async {
     setLoading(true);
     try {
@@ -135,9 +136,11 @@ class LoginController {
       if (e.code == GoogleSignInExceptionCode.canceled) {
         onError('구글 로그인이 취소되었습니다.');
       } else {
+        // debugPrint('⚠️ 구글 로그인 실패: ${e.code} - ${e.description}');
         onError('구글 로그인에 실패했습니다.');
       }
     } catch (e) {
+      // debugPrint('⚠️ 구글 로그인 실패: $e');
       onError('구글 로그인에 실패했습니다.');
     } finally {
       setLoading(false);
