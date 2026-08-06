@@ -11,6 +11,11 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
+        <!-- 🌟 구글 Credential Manager 에뮬레이터 충돌 우회 설정 -->
+        <meta-data
+            android:name="flutter_google_sign_in.disable_credential_manager"
+            android:value="true" />
+
         <!-- ⬇️ Google AdMob 앱 ID 메타데이터 (env로 관리) ⬇️ -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
