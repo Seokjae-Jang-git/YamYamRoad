@@ -42,6 +42,12 @@ android {
         versionName = flutter.versionName
 
         manifestPlaceholders["MAPS_API_KEY"] = envProperties.getProperty("GOOGLE_MAPS_API_KEY") ?: ""
+        manifestPlaceholders["ADMOB_APP_ID"] = envProperties.getProperty("ADMOB_APP_ID", "")
+        manifestPlaceholders["KAKAO_APP_KEY"] = envProperties.getProperty("KAKAO_APP_KEY", "")
+        manifestPlaceholders["KAKAO_SCHEME"] = envProperties.getProperty("KAKAO_SCHEME", "")
+        manifestPlaceholders["NAVER_CLIENT_ID"] = envProperties.getProperty("NAVER_CLIENT_ID", "")
+        manifestPlaceholders["NAVER_CLIENT_SECRET"] = envProperties.getProperty("NAVER_CLIENT_SECRET", "")
+        manifestPlaceholders["NAVER_CLIENT_NAME"] = envProperties.getProperty("NAVER_CLIENT_NAME", "")
     }
 
     buildTypes {

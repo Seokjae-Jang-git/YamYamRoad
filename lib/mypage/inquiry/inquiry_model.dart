@@ -1,14 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class InquiryModel {
-  final String id; // INQ-YYYYMMDD-XXXX 포맷의 문서 ID
-  final String? userId; // 비회원 문의 허용 시 nullable
-  final String type; // 'general', 'partnership'
+  final String id;
+  final String? userId;
+  final String type;
   final String title;
   final String content;
   final String? contactEmail;
-  final String? imageUrl; // 🌟 팀원 코드 참고하여 첨부 이미지 필드 추가
-  final String status; // 'pending', 'answered', 'closed'
+  final String? imageUrl;
+  final String status;
   final String? adminMemo;
   final DateTime? createdAt;
   final DateTime? answeredAt;
@@ -62,21 +62,5 @@ class InquiryModel {
       default:
         return status;
     }
-  }
-
-  /// 새로운 문의를 작성하여 DB에 저장할 때 사용하는 Map 변환 함수
-  Map<String, dynamic> toCreateMap() {
-    return {
-      'userId': userId,
-      'type': type,
-      'title': title,
-      'content': content,
-      'contactEmail': contactEmail,
-      'imageUrl': imageUrl,
-      'status': 'pending', // 새 문의는 무조건 답변 대기 상태
-      'adminMemo': null,
-      'createdAt': FieldValue.serverTimestamp(),
-      'answeredAt': null,
-    };
   }
 }

@@ -22,7 +22,7 @@ class PostHeaderWithBadges extends StatelessWidget {
   Future<List<Map<String, dynamic>>> _fetchAllUserBadges(String userId) async {
     final cleanUid = userId.trim();
     if (cleanUid.isEmpty) {
-      debugPrint('⚠️ [BadgeCheck] userId가 없어 뱃지 조회를 건너뜁니다.');
+      // debugPrint('⚠️ [BadgeCheck] userId가 없어 뱃지 조회를 건너뜁니다.');
       return [];
     }
 
@@ -72,7 +72,7 @@ class PostHeaderWithBadges extends StatelessWidget {
 
       return badgeDetails;
     } catch (e) {
-      debugPrint('🔴 [BadgeCheck] 뱃지 로드 중 에러 발생: $e');
+      // debugPrint('🔴 [BadgeCheck] 뱃지 로드 중 에러 발생: $e');
       return [];
     }
   }

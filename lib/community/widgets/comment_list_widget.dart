@@ -15,6 +15,11 @@ class CommentListWidget extends StatelessWidget {
   final Function(CommunityComment) onReport;
   final Function(CommunityComment, String) onEditSubmit;
 
+  // 🌟 얌얌로드 공식 컬러 토큰 (PostContentWidget과 통일)
+  static const Color _deepChocolate = Color(0xFF4A3225);
+  static const Color _pointCoralRed = Color(0xFFFF6B57);
+  static const Color _creamyIvory = Color(0xFFFFFDF9);
+
   const CommentListWidget({
     Key? key,
     required this.postId,
@@ -77,6 +82,46 @@ class CommentListWidget extends StatelessWidget {
     );
   }
 
+  // 🌟 팝업 메뉴 항목 하나를 아이콘 + 텍스트로 구성 (PostContentWidget과 동일한 스타일)
+  PopupMenuItem<String> _buildMenuItem({
+    required String value,
+    required IconData icon,
+    required String label,
+    bool isDestructive = false,
+  }) {
+    final Color color = isDestructive ? _pointCoralRed : _deepChocolate;
+    return PopupMenuItem<String>(
+      value: value,
+      height: 40,
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🌟 "..." 버튼에 동그란 배경을 줘서 존재감을 살림 (본문의 더보기 버튼보다 살짝 작게)
+  Widget _buildMoreButton() {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: _deepChocolate.withOpacity(0.06),
+        shape: BoxShape.circle,
+      ),
+      child: const Icon(Icons.more_horiz_rounded, size: 16, color: _deepChocolate),
+    );
+  }
+
   Widget _buildCommentTile(BuildContext context, CommunityComment comment, {required bool isReply}) {
     final bool isMine = comment.userId == currentUserId;
     final bool isAuthor = comment.userId == postAuthorId;
@@ -135,19 +180,26 @@ class CommentListWidget extends StatelessWidget {
                     const Spacer(),
                     PopupMenuButton<String>(
                       padding: EdgeInsets.zero,
-                      icon: const Icon(Icons.more_horiz, size: 18, color: Color(0xFF7A6B63)),
+                      icon: _buildMoreButton(),
+                      color: _creamyIvory,
+                      elevation: 4,
+                      surfaceTintColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(color: _deepChocolate.withOpacity(0.08)),
+                      ),
                       onSelected: (value) {
                         if (value == 'edit') _showEditDialog(context, comment);
                         if (value == 'delete') onDeleteComment(comment);
                         if (value == 'report') onReport(comment);
                       },
                       itemBuilder: (context) => isMine
-                          ? const [
-                        PopupMenuItem(value: 'edit', child: Text('수정')),
-                        PopupMenuItem(value: 'delete', child: Text('삭제')),
+                          ? [
+                        _buildMenuItem(value: 'edit', icon: Icons.edit_outlined, label: '수정'),
+                        _buildMenuItem(value: 'delete', icon: Icons.delete_outline_rounded, label: '삭제', isDestructive: true),
                       ]
-                          : const [
-                        PopupMenuItem(value: 'report', child: Text('신고')),
+                          : [
+                        _buildMenuItem(value: 'report', icon: Icons.flag_outlined, label: '신고', isDestructive: true),
                       ],
                     ),
                   ],

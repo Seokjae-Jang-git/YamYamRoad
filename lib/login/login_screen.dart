@@ -209,7 +209,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           onPressed: () => _controller.handleKakaoLogin(
             setLoading: _setLoading,
             onError: _showError,
-            onSuccess: _onLoginSuccess, // 🌟 성공 함수 연결
+            onSuccess: _onLoginSuccess,
           ),
         ),
         const SizedBox(height: 12),
@@ -222,7 +222,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           onPressed: () => _controller.handleNaverLogin(
             setLoading: _setLoading,
             onError: _showError,
-            onSuccess: _onLoginSuccess, // 🌟 성공 함수 연결
+            onSuccess: _onLoginSuccess,
           ),
         ),
         const SizedBox(height: 12),
@@ -236,7 +236,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           onPressed: () => _controller.handleGoogleLogin(
             setLoading: _setLoading,
             onError: _showError,
-            onSuccess: _onLoginSuccess, // 🌟 성공 함수 연결
+            onSuccess: _onLoginSuccess,
           ),
         ),
         const SizedBox(height: 22),

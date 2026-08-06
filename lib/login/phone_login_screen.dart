@@ -13,7 +13,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   // ── 로그인 화면과 통일한 브랜드 컬러 토큰 ─────────────
   static const Color _bgTop = Color(0xFFFEFDFB);
   static const Color _bgBottom = Color(0xFFFBF4EC);
-  static const Color primaryColor = Color(0xFFE8845A); // 로고 핀 컬러와 통일
+  static const Color primaryColor = Color(0xFFE8845A);
   static const Color textDark = Color(0xFF3E2723);
 
   final TextEditingController _phoneController = TextEditingController();
@@ -40,9 +40,6 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
     return '+82$digits';
   }
 
-  // 🌟 Firebase Phone Auth가 주는 E.164 형식(+821012345678)을
-  // 국내에서 익숙한 하이픈 형식(010-1234-5678)으로 변환해서 저장.
-  // 표준 010 휴대폰 번호(11자리)와, 혹시 모를 10자리 번호도 함께 처리.
   String _toLocalPhoneFormat(String? e164) {
     if (e164 == null || e164.isEmpty) return '';
     String digits = e164.replaceAll(RegExp(r'[^0-9]'), '');
@@ -142,16 +139,6 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
     }
   }
 
-  // ---------------- 공통: 자격 증명으로 Firebase 로그인 ----------------
-  //
-  // 🌟 탈퇴 체크는 이제 여기서 하지 않습니다.
-  //    로그인 성공 → authStateChanges 발동 → main.dart가 MainHomeScreen으로 전환
-  //    → MainHomeScreen.initState()에서 탈퇴 여부를 확인하고 복구 팝업을 띄웁니다.
-  //    여기서 context를 써서 다이얼로그를 띄우면, 화면 전환 타이밍과 겹쳐
-  //    context가 이미 unmount된 상태일 수 있어 실패했었습니다.
-  //
-  // 🌟 다만 밴(banned) 상태는 여기서 바로 막습니다. 기존 회원 문서가 이미
-  //    banned 상태라면 로그인 자체를 취소시켜서 다음 화면으로 못 넘어가게 합니다.
   Future<void> _signInWithCredential(PhoneAuthCredential credential) async {
     try {
       final userCredential =
@@ -196,8 +183,6 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
           'phone': localPhone,
         });
       }
-
-      debugPrint('🟢 휴대폰 로그인 완료: uid=${firebaseUser.uid}');
 
       if (!mounted) return;
       Navigator.pop(context, true);
