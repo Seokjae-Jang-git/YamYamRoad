@@ -42,7 +42,7 @@ class FirestorePointShopRepository implements PointShopRepository {
     Set<String>? purchasedIds;
     Set<String>? ownedIds;
 
-    void emitAvailableProducts() {
+    void emitProducts() {
       final snapshot = productSnapshot;
       final purchased = purchasedIds;
       final owned = ownedIds;
@@ -52,20 +52,22 @@ class FirestorePointShopRepository implements PointShopRepository {
           controller.isClosed) {
         return;
       }
-      final unavailableIds = {...purchased, ...owned};
-      controller.add(
-        snapshot.docs
-            .where(
-              (document) =>
-                  document.data()['isActive'] != false &&
-                  !unavailableIds.contains(document.id),
-            )
-            .map(
-              (document) =>
-                  EmoticonProduct.fromMap(document.id, document.data()),
-            )
-            .toList(growable: false),
-      );
+      final purchasedOrOwnedIds = {...purchased, ...owned};
+      final products = snapshot.docs
+          .where((document) => document.data()['isActive'] != false)
+          .map(
+            (document) => EmoticonProduct.fromMap(
+              document.id,
+              document.data(),
+              isPurchased: purchasedOrOwnedIds.contains(document.id),
+            ),
+          )
+          .toList(growable: false);
+
+      controller.add([
+        ...products.where((product) => !product.isPurchased),
+        ...products.where((product) => product.isPurchased),
+      ]);
     }
 
     controller = StreamController<List<EmoticonProduct>>(
@@ -75,7 +77,7 @@ class FirestorePointShopRepository implements PointShopRepository {
             .snapshots()
             .listen((snapshot) {
               productSnapshot = snapshot;
-              emitAvailableProducts();
+              emitProducts();
             }, onError: controller.addError);
         purchaseSubscription = _firestore
             .collection('users')
@@ -94,7 +96,7 @@ class FirestorePointShopRepository implements PointShopRepository {
                   )
                   .where((id) => id.isNotEmpty)
                   .toSet();
-              emitAvailableProducts();
+              emitProducts();
             }, onError: controller.addError);
         ownershipSubscription = _firestore
             .collection('users')
@@ -103,7 +105,7 @@ class FirestorePointShopRepository implements PointShopRepository {
             .snapshots()
             .listen((snapshot) {
               ownedIds = snapshot.docs.map((document) => document.id).toSet();
-              emitAvailableProducts();
+              emitProducts();
             }, onError: controller.addError);
       },
       onCancel: () async {

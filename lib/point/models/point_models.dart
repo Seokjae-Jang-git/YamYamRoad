@@ -19,6 +19,7 @@ class EmoticonProduct {
     required this.imageUrl,
     required this.items,
     required this.pricePoint,
+    this.isPurchased = false,
   });
 
   final String id;
@@ -26,11 +27,13 @@ class EmoticonProduct {
   final String imageUrl;
   final List<EmoticonItem> items;
   final int pricePoint;
+  final bool isPurchased;
 
   factory EmoticonProduct.fromMap(
     String documentId,
-    Map<String, dynamic> data,
-  ) {
+    Map<String, dynamic> data, {
+    bool isPurchased = false,
+  }) {
     final rawItems = data['items'];
     final items = rawItems is List
         ? rawItems
@@ -52,6 +55,7 @@ class EmoticonProduct {
       imageUrl: data['imageUrl'] as String? ?? '',
       items: items,
       pricePoint: _asInt(data['pricePoint']),
+      isPurchased: isPurchased,
     );
   }
 }

@@ -46,13 +46,15 @@ class PointEmoticonView extends StatelessWidget {
                           crossAxisCount: 3,
                           mainAxisSpacing: 12,
                           crossAxisSpacing: 12,
-                          childAspectRatio: 0.86,
+                          childAspectRatio: 0.74,
                         ),
                     itemBuilder: (context, index) {
                       final emoticon = emoticons[index];
                       return EmoticonThumbnail(
                         emoticon: emoticon,
-                        onTap: () => onSelectEmoticon(emoticon),
+                        onTap: emoticon.isPurchased
+                            ? null
+                            : () => onSelectEmoticon(emoticon),
                       );
                     },
                   );
