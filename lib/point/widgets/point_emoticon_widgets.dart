@@ -12,40 +12,87 @@ class EmoticonThumbnail extends StatelessWidget {
   });
 
   final EmoticonProduct emoticon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   static const Color deepChocolate = Color(0xFF4A3225);
   static const Color cardBorder = Color(0xFFEFEBE4);
 
   @override
   Widget build(BuildContext context) {
+    final isPurchased = emoticon.isPurchased;
+    final productImage = ProductImage(
+      imageUrl: emoticon.imageUrl,
+      icon: Icons.emoji_emotions_outlined,
+    );
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isPurchased ? Colors.grey.shade100 : Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: cardBorder),
+          border: Border.all(
+            color: isPurchased ? Colors.grey.shade300 : cardBorder,
+          ),
         ),
         child: Column(
           children: [
             Expanded(
-              child: ProductImage(
-                imageUrl: emoticon.imageUrl,
-                icon: Icons.emoji_emotions_outlined,
-              ),
+              child: isPurchased
+                  ? ColorFiltered(
+                      colorFilter: const ColorFilter.matrix([
+                        0.2126,
+                        0.7152,
+                        0.0722,
+                        0,
+                        0,
+                        0.2126,
+                        0.7152,
+                        0.0722,
+                        0,
+                        0,
+                        0.2126,
+                        0.7152,
+                        0.0722,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        1,
+                        0,
+                      ]),
+                      child: Opacity(
+                        opacity: 0.62,
+                        child: productImage,
+                      ),
+                    )
+                  : productImage,
             ),
             const SizedBox(height: 6),
             Text(
               emoticon.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: deepChocolate,
+                color: isPurchased ? Colors.grey.shade600 : deepChocolate,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              isPurchased
+                  ? '구매됨'
+                  : '${formatPointNumber(emoticon.pricePoint)} P',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: isPurchased
+                    ? Colors.grey.shade600
+                    : EmoticonPackageSheet.pointCoralRed,
               ),
             ),
           ],
