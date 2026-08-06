@@ -429,7 +429,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
         commentId: commentId,
       );
     } catch (error) {
-      debugPrint('커뮤니티 알림 요청 실패: $error');
+      // debugPrint('커뮤니티 알림 요청 실패: $error');
     }
   }
 

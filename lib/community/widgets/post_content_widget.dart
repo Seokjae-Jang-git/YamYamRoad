@@ -17,6 +17,13 @@ class PostContentWidget extends StatelessWidget {
   final VoidCallback onLikeToggle;
   final VoidCallback onScrapToggle;
 
+  // 🌟 얌얌로드 공식 컬러 토큰 (다른 화면들과 통일)
+  static const Color _deepChocolate = Color(0xFF4A3225);
+  static const Color _pointCoralRed = Color(0xFFFF6B57);
+  static const Color _creamyIvory = Color(0xFFFFFDF9);
+  static const Color _subTextColor = Color(0xFF7A6B63);
+  static const Color _accentOrange = Color(0xFFFF8A3D);
+
   const PostContentWidget({
     Key? key,
     required this.post,
@@ -38,6 +45,45 @@ class PostContentWidget extends StatelessWidget {
       MaterialPageRoute(
         builder: (context) => CommunitySearchScreen(initialQuery: '#$tag'),
       ),
+    );
+  }
+
+  // 🌟 팝업 메뉴 항목 하나를 아이콘 + 텍스트로 구성 (기본 텍스트 전용 스타일 대체)
+  PopupMenuItem<String> _buildMenuItem({
+    required String value,
+    required IconData icon,
+    required String label,
+    bool isDestructive = false,
+  }) {
+    final Color color = isDestructive ? _pointCoralRed : _deepChocolate;
+    return PopupMenuItem<String>(
+      value: value,
+      height: 42,
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 10),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🌟 "..." 버튼 자체도 동그란 배경을 줘서 터치 영역과 존재감을 살림
+  Widget _buildMoreButton() {
+    return Container(
+      decoration: BoxDecoration(
+        color: _deepChocolate.withOpacity(0.06),
+        shape: BoxShape.circle,
+      ),
+      child: const Icon(Icons.more_horiz_rounded, size: 20, color: _deepChocolate),
     );
   }
 
@@ -71,22 +117,40 @@ class PostContentWidget extends StatelessWidget {
             ),
             isMine
                 ? PopupMenuButton<String>(
+              padding: EdgeInsets.zero,
+              icon: _buildMoreButton(),
+              color: _creamyIvory,
+              elevation: 4,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: _deepChocolate.withOpacity(0.08)),
+              ),
+              itemBuilder: (context) => [
+                _buildMenuItem(value: 'edit', icon: Icons.edit_outlined, label: '수정'),
+                _buildMenuItem(value: 'delete', icon: Icons.delete_outline_rounded, label: '삭제', isDestructive: true),
+              ],
               onSelected: (value) {
                 if (value == 'edit') onEdit();
                 if (value == 'delete') onDelete();
               },
-              itemBuilder: (context) => const [
-                PopupMenuItem(value: 'edit', child: Text('수정')),
-                PopupMenuItem(value: 'delete', child: Text('삭제')),
-              ],
             )
                 : PopupMenuButton<String>(
+              padding: EdgeInsets.zero,
+              icon: _buildMoreButton(),
+              color: _creamyIvory,
+              elevation: 4,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: _deepChocolate.withOpacity(0.08)),
+              ),
+              itemBuilder: (context) => [
+                _buildMenuItem(value: 'report', icon: Icons.flag_outlined, label: '신고', isDestructive: true),
+              ],
               onSelected: (value) {
                 if (value == 'report') onReport();
               },
-              itemBuilder: (context) => const [
-                PopupMenuItem(value: 'report', child: Text('신고')),
-              ],
             ),
           ],
         ),
@@ -108,7 +172,7 @@ class PostContentWidget extends StatelessWidget {
                   '#$tag',
                   style: const TextStyle(
                     fontSize: 13,
-                    color: Color(0xFFFF8A3D),
+                    color: _accentOrange,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -139,7 +203,7 @@ class PostContentWidget extends StatelessWidget {
             GestureDetector(
               onTap: onScrapToggle,
               child: Icon(isScrapped ? Icons.bookmark : Icons.bookmark_border,
-                  size: 20, color: isScrapped ? const Color(0xFFFF8A3D) : Colors.grey),
+                  size: 20, color: isScrapped ? _accentOrange : Colors.grey),
             ),
             const SizedBox(width: 4),
             Text('스크랩 ${post.scrapCount}', style: const TextStyle(fontSize: 13)),

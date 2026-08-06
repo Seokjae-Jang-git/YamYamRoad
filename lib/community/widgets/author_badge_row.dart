@@ -46,7 +46,7 @@ class AuthorBadgeRow extends StatelessWidget {
       }
       return badgeDetails;
     } catch (e) {
-      debugPrint('🔴 [BadgeCheck] 뱃지 로드 중 에러 발생: $e');
+      // debugPrint('🔴 [BadgeCheck] 뱃지 로드 중 에러 발생: $e');
       return [];
     }
   }
