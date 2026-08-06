@@ -5,10 +5,11 @@ plugins {
     id("kotlin-android")
     // 플러터 엔진과 네이티브 라이브러리를 연결해주는 핵심 플러그인
     id("dev.flutter.flutter-gradle-plugin")
+    // 🌟 1. 파이어베이스 구글 서비스 플러그인을 Kotlin DSL 문법으로 올바르게 추가합니다.
+    id("com.google.gms.google-services")
 }
 
 val envProperties = Properties()
-// 플러터 프로젝트 루트 디렉토리의 .env 파일을 가리키도록 상위 경로(../.env) 지정
 val envFile = rootProject.file("../.env")
 if (envFile.exists()) {
     envFile.forEachLine { line ->
@@ -52,11 +53,9 @@ android {
 
     buildTypes {
         debug {
-            // 개발용(디버그) 앱 실행 시 식별자 뒤에 .debug를 추가하여 배포용 앱과 분리
-            applicationIdSuffix = ".debug"
+            // applicationIdSuffix = ".debug"  👈 이 줄을 삭제하거나 주석 처리하세요.
         }
         release {
-            // R8 난독화 및 리소스 제거 기능 비활성화 (Kotlin DSL 정식 속성명)
             isMinifyEnabled = false
             isShrinkResources = false
             signingConfig = signingConfigs.getByName("debug")
@@ -71,3 +70,4 @@ flutter {
 dependencies {
     implementation("com.google.mlkit:text-recognition-korean:16.0.1")
 }
+// ❌ 기존 파일 맨 아래에 있던 잘못된 Groovy 방식의 apply 문법은 삭제했습니다.
