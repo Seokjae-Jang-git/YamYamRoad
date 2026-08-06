@@ -21,7 +21,7 @@ class UserLocationProvider with ChangeNotifier {
     await refreshLocation(context: context, forceRefresh: true);
   }
 
-  /// 위치 정보 수동/자동 새로고침 (BuildContext 전달 시 팝업 안내)
+  /// 위치 정보 수동/자동 새로고침
   Future<void> refreshLocation({
     BuildContext? context,
     bool forceRefresh = false,
@@ -33,14 +33,30 @@ class UserLocationProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1️⃣ 기기 GPS(위치 서비스) 활성화 검사
+      // 1️⃣ [선행 실행] OS 위치 권한 상태 점검 및 팝업 즉시 요청
+      LocationPermission permission = await Geolocator.checkPermission();
+
+      if (permission == LocationPermission.denied) {
+        debugPrint('⚠️ [UserLocationProvider] 위치 권한이 없어 OS 권한 팝업을 호출합니다.');
+        permission = await Geolocator.requestPermission();
+      }
+
+      // 사용자가 권한을 거부하거나 영구 거부한 경우 ➔ 무한 로딩 차단 및 Fallback(기본 위치) 적용
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        debugPrint('⚠️ [UserLocationProvider] 위치 권한이 거부되어 기본 위치로 설정합니다.');
+        _userLat = LocationService.defaultLat;
+        _userLng = LocationService.defaultLng;
+        _currentAddress = LocationService.defaultAddress;
+        return; // finally 블록으로 이동하여 _isLoading = false 처리
+      }
+
+      // 2️⃣ [권한 허용 후] 기기 GPS(위치 서비스) 스위치 활성화 검사
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
       if (!serviceEnabled) {
         if (context != null && context.mounted) {
-          debugPrint('⚠️ [UserLocationProvider] 사용자에 의한 새로고침: GPS 꺼짐 안내 팝업 출력을 시도합니다.');
+          debugPrint('⚠️ [UserLocationProvider] GPS 꺼짐 안내 팝업 출력을 시도합니다.');
 
-          // 🎨 YamYam Road 브랜드 스타일 다이얼로그 출력
           final bool? shouldOpenSettings = await showDialog<bool>(
             context: context,
             barrierDismissible: false,
@@ -104,28 +120,15 @@ class UserLocationProvider with ChangeNotifier {
             ),
           );
 
-          // 사용자가 [설정으로 이동]을 눌렀을 때만 설정 화면으로 이동
           if (shouldOpenSettings == true) {
             await Geolocator.openLocationSettings();
           }
         } else {
-          debugPrint('ℹ️ [UserLocationProvider] 앱 첫 진입(Silent Mode): GPS 꺼짐 상태이므로 설정창 이동 없이 Fallback 주소를 채웁니다.');
+          debugPrint('ℹ️ [UserLocationProvider] Silent Mode: GPS 꺼짐 상태이므로 설정창 이동 없이 진행합니다.');
         }
       }
 
-      // 2️⃣ 위치 권한 상태 확인 (앱 튕김 방지를 위해 권한 확인만 수행)
-      LocationPermission permission = await Geolocator.checkPermission();
-
-      if (permission == LocationPermission.denied && context != null) {
-        debugPrint('⚠️ [UserLocationProvider] 수동 요청 시 위치 권한 팝업을 호출합니다.');
-        permission = await Geolocator.requestPermission();
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        debugPrint('⚠️ [UserLocationProvider] 위치 권한이 영구 거부되어 있습니다.');
-      }
-
-      // 3️⃣ LocationService의 통합 위치 수신 (4단계 Fallback 메커니즘 실행)
+      // 3️⃣ LocationService 통합 위치 수신 (실시간 좌표 취득)
       final result = await LocationService.getCurrentLocationWithFallback();
 
       _userLat = result.latitude;
