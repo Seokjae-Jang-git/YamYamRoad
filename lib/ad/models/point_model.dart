@@ -65,9 +65,9 @@ class PointModel {
   /// 🗓️ 특정 광고(adId)를 '오늘(YYYY-MM-DD)' 이미 시청했는지 판별하는 메서드
   bool hasWatchedToday(String adId) {
     // 🧪 [테스트 전용 코드] 무한 테스트를 위해 무조건 시청 안 함(false)으로 반환
-    return false;
+    // return false;
 
-    /* 원래 로직 (테스트 완료 후 위 return false; 줄만 삭제하세요)
+    // 원래 로직 (테스트 완료 후 위 return false; 줄만 삭제하세요)
     if (!adWatchHistory.containsKey(adId)) return false;
     final lastWatched = adWatchHistory[adId];
     if (lastWatched == null) return false;
@@ -76,7 +76,6 @@ class PointModel {
     return lastWatched.year == now.year &&
         lastWatched.month == now.month &&
         lastWatched.day == now.day;
-    */
   }
 
   /// 불변 객체 복사 (copyWith)
