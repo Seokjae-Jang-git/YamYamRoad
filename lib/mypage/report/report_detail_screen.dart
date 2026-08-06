@@ -224,33 +224,81 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // 3. 첨부 이미지 리스트 미리보기
+                      // 3. 첨부 이미지 리스트 (썸네일 형식 + 터치 팝업)
                       if (imageUrls.isNotEmpty) ...[
                         const Padding(
                           padding: EdgeInsets.only(left: 4, bottom: 8),
                           child: Text('• 첨부 이미지', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: subTextColor)),
                         ),
-                        ...imageUrls.map((url) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Container(
-                            width: double.infinity,
-                            decoration: _cardDecoration(),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: Image.network(
-                                url,
-                                fit: BoxFit.contain,
-                                loadingBuilder: (context, child, progress) {
-                                  if (progress == null) return child;
-                                  return const Padding(
-                                    padding: EdgeInsets.all(40.0),
-                                    child: Center(child: CircularProgressIndicator(color: deepChocolate)),
-                                  );
-                                },
+                        Wrap(
+                          spacing: 12, // 이미지 간 가로 간격
+                          runSpacing: 12, // 이미지 간 세로 간격
+                          children: imageUrls.map((url) {
+                            return GestureDetector(
+                              onTap: () {
+                                // 썸네일 터치 시 원본 크기로 볼 수 있는 팝업 띄우기
+                                showDialog(
+                                  context: context,
+                                  builder: (_) => Dialog(
+                                    backgroundColor: Colors.transparent,
+                                    insetPadding: const EdgeInsets.all(16),
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        InteractiveViewer(
+                                          child: Image.network(url, fit: BoxFit.contain),
+                                        ),
+                                        Positioned(
+                                          top: 0,
+                                          right: 0,
+                                          child: IconButton(
+                                            icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                                            onPressed: () => Navigator.pop(context),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                width: 100, // 썸네일 가로 크기
+                                height: 100, // 썸네일 세로 크기
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: deepChocolate.withOpacity(0.1)),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: deepChocolate.withOpacity(0.02),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(
+                                    url,
+                                    fit: BoxFit.cover, // 정사각형 썸네일 안에 가득 차게 자름
+                                    loadingBuilder: (context, child, progress) {
+                                      if (progress == null) return child;
+                                      return const Center(
+                                        child: SizedBox(
+                                          width: 20, height: 20,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: deepChocolate),
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) => const Center(
+                                      child: Icon(Icons.broken_image, color: subTextColor),
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                        )).toList(),
+                            );
+                          }).toList(),
+                        ),
                         const SizedBox(height: 24),
                       ],
 
