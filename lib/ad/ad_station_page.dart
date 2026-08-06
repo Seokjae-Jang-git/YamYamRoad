@@ -105,41 +105,43 @@ class _AdStationPageState extends State<AdStationPage> {
 
             final pointModel = snapshot.data ?? PointModel.initial();
 
-            return Column(
-              children: [
-                PointStatusCard(points: pointModel.points),
-                const AdTabBar(),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      AdmobTabView(
-                        isAdLoading:
-                        _adStationService.adMobManager.isAdLoading,
-                        pointModel: pointModel,
-                        onWatchAdMobAd: (adId, rewardPoints) =>
-                            _adStationService.handleAdMobAd(
-                              context: context,
-                              uid: uid,
-                              adId: adId,
-                              rewardPoints: rewardPoints,
-                              pointModel: pointModel,
-                            ),
-                      ),
-                      InHouseTabView(
-                        pointModel: pointModel,
-                        onPlayInHouseAd: (ad) =>
-                            _adStationService.handleInHouseAd(
-                              context: context,
-                              uid: uid,
-                              ad: ad,
-                              pointModel: pointModel,
-                            ),
-                      ),
-                    ],
+            return SafeArea(
+              child: Column(
+                children: [
+                  PointStatusCard(points: pointModel.points),
+                  const AdTabBar(),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        AdmobTabView(
+                          isAdLoading:
+                          _adStationService.adMobManager.isAdLoading,
+                          pointModel: pointModel,
+                          onWatchAdMobAd: (adId, rewardPoints) =>
+                              _adStationService.handleAdMobAd(
+                                context: context,
+                                uid: uid,
+                                adId: adId,
+                                rewardPoints: rewardPoints,
+                                pointModel: pointModel,
+                              ),
+                        ),
+                        InHouseTabView(
+                          pointModel: pointModel,
+                          onPlayInHouseAd: (ad) =>
+                              _adStationService.handleInHouseAd(
+                                context: context,
+                                uid: uid,
+                                ad: ad,
+                                pointModel: pointModel,
+                              ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             );
           },
         ),

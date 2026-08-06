@@ -47,7 +47,8 @@ class InHouseTabView extends StatelessWidget {
         final ads = snapshot.data ?? [];
 
         return ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
           children: [
             // 제휴 광고 전용 안내 상자 (캐러멜 골드 포인트)
             Container(
