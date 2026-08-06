@@ -79,6 +79,7 @@ class _InHouseAdPlayerPageState extends State<InHouseAdPlayerPage> {
 
   // 1초 단위로 흐르는 광고 타이머 구동
   void _startAdTimer() {
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       setState(() {
@@ -97,25 +98,61 @@ class _InHouseAdPlayerPageState extends State<InHouseAdPlayerPage> {
     });
   }
 
-  // 사용자가 강제로 뒤로 가려고 할 때 처리
-  void _handleBackAttempt() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('광고를 끝까지 시청하셔야 ${widget.ad.rewardPoint}P를 받을 수 있습니다!'),
-        duration: const Duration(seconds: 1),
-        backgroundColor: Colors.redAccent,
+  // 사용자가 시청 도중 뒤로 가거나 X 버튼을 누를 때 팝업 처리
+  Future<void> _handleBackAttempt() async {
+    // 1. 비디오 및 타이머 일시정지
+    _controller?.pause();
+    _timer?.cancel();
+
+    // 2. 이탈 확인 다이얼로그 출력
+    final bool? shouldLeave = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text(
+          '광고 시청 중단',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        content: Text(
+          '지금 나가시면 ${widget.ad.rewardPoint}P를 받을 수 없습니다.\n정말 나가시겠습니까?',
+          style: const TextStyle(fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false), // 이어서 보기
+            child: const Text('이어서 보기', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true), // 나가기
+            child: const Text('나가기', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
+
+    if (!mounted) return;
+
+    if (shouldLeave == true) {
+      // 보상 없이 화면 종료 (false 전달)
+      Navigator.pop(context, false);
+    } else {
+      // 비디오 및 타이머 재개
+      if (_controller != null && _controller!.value.isInitialized) {
+        _controller!.play();
+      }
+      _startAdTimer();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // PopScope를 사용하여 광고 시청 중 시스템 뒤로가기 버튼 차단
+    // PopScope를 사용하여 광고 시청 중 시스템 뒤로가기 가로채기
     return PopScope(
       canPop: _isFinished,
-      onPopInvokedWithResult: (didPop, result) {
+      onPopInvokedWithResult: (didPop, result) async {
         if (!didPop) {
-          _handleBackAttempt();
+          await _handleBackAttempt();
         }
       },
       child: Scaffold(
@@ -256,8 +293,8 @@ class _InHouseAdPlayerPageState extends State<InHouseAdPlayerPage> {
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          _isFinished ? Icons.close : Icons.lock_outline,
-                          color: _isFinished ? Colors.black : Colors.white54,
+                          Icons.close,
+                          color: _isFinished ? Colors.black : Colors.white,
                           size: 20,
                         ),
                       ),

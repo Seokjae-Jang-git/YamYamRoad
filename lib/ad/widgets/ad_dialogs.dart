@@ -26,7 +26,15 @@ class AdDialogs {
           children: [
             const Icon(Icons.monetization_on, color: Colors.amber),
             const SizedBox(width: 8),
-            Text(title),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           ],
         ),
         content: Text(message),

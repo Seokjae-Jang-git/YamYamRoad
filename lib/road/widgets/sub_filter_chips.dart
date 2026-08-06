@@ -106,6 +106,9 @@ class SubFilterChips extends StatelessWidget {
     const Color inactiveText = Color(0xFF7A6B63);
 
     return ChoiceChip(
+      // 🌟 핵심 해결책: 대분류 탭 이름과 칩 라벨을 조합한 고유 ValueKey 부여
+      //    탭 전환 시 ChoiceChip의 이전 선택/포커스 테두리 잔상 및 RenderObject 재사용 이슈를 완전 차단합니다.
+      key: ValueKey('${selectedTab}_$label'),
       label: Text(label),
       selected: isSelected,
       onSelected: (_) => onSelected(),

@@ -13,9 +13,13 @@ class AdStationService {
   final AdMobManager adMobManager = AdMobManager();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// AdMob 초기화 및 광고 미리 로드
+  /// AdMob 초기화 및 전면/영상 광고 2종 동시 미리 로드
   void initAdMob({required VoidCallback onUpdate}) {
     adMobManager.loadRewardedAd(
+      onLoaded: onUpdate,
+      onFailed: onUpdate,
+    );
+    adMobManager.loadRewardedInterstitialAd(
       onLoaded: onUpdate,
       onFailed: onUpdate,
     );
@@ -51,32 +55,45 @@ class AdStationService {
       return;
     }
 
-    adMobManager.showRewardedAd(
-      onUserEarnedReward: (RewardItem reward) async {
-        final bool success = await _pointService.earnAdMobReward(
-          uid: uid,
-          adId: adId,
-          rewardAmount: rewardPoints,
+    void onUserEarnedReward(RewardItem reward) async {
+      final bool success = await _pointService.earnAdMobReward(
+        uid: uid,
+        adId: adId,
+        rewardAmount: rewardPoints,
+      );
+
+      if (!context.mounted) return;
+
+      if (success) {
+        AdDialogs.showRewardSuccessDialog(
+          context,
+          title: 'AdMob 포인트 적립 완료!',
+          message: '구글 광고 시청 보상으로\n$rewardPoints P가 성공적으로 적립되었습니다.',
         );
+      } else {
+        AdDialogs.showSnackBar(context, '포인트 적립 실패: 오늘 이미 보상을 받았거나 오류가 발생했습니다.');
+      }
+    }
 
-        if (!context.mounted) return;
+    void onError(String message) {
+      if (!context.mounted) return;
+      AdDialogs.showSnackBar(context, message);
+    }
 
-        if (success) {
-          AdDialogs.showRewardSuccessDialog(
-            context,
-            title: 'AdMob 포인트 적립 완료!',
-            message: '구글 광고 시청 보상으로\n$rewardPoints P가 성공적으로 적립되었습니다.',
-          );
-        } else {
-          AdDialogs.showSnackBar(context, '포인트 적립 실패: 오늘 이미 보상을 받았거나 오류가 발생했습니다.');
-        }
-      },
-      onAdDismissed: () {},
-      onError: (String message) {
-        if (!context.mounted) return;
-        AdDialogs.showSnackBar(context, message);
-      },
-    );
+    // adId에 따른 광고 분기 호출
+    if (adId == 'admob_interstitial') {
+      adMobManager.showRewardedInterstitialAd(
+        onUserEarnedReward: onUserEarnedReward,
+        onAdDismissed: () {},
+        onError: onError,
+      );
+    } else {
+      adMobManager.showRewardedAd(
+        onUserEarnedReward: onUserEarnedReward,
+        onAdDismissed: () {},
+        onError: onError,
+      );
+    }
   }
 
   /// 자체 스폰서 광고 시청 및 정산 프로세스 제어

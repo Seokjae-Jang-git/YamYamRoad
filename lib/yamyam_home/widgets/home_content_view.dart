@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,11 +8,12 @@ import 'home_stamp_dashboard.dart';
 import 'home_recommended_roads_section.dart';
 import 'ad_banner.dart';
 import '../../ad/ad_station_page.dart';
-import '../../road/models/place_model.dart'; // 🆕 진짜 PlaceModel로 타입 임포트 변경
+import '../../road/models/place_model.dart';
 import '../../providers/user_location_provider.dart';
 import '../../stamp/logic/stamp_verification_navigator.dart';
+import '../../services/location_service.dart';
 
-class HomeContentView extends StatelessWidget {
+class HomeContentView extends StatefulWidget {
   final ValueChanged<int> onTabChanged;
 
   const HomeContentView({
@@ -19,6 +21,11 @@ class HomeContentView extends StatelessWidget {
     required this.onTabChanged,
   });
 
+  @override
+  State<HomeContentView> createState() => _HomeContentViewState();
+}
+
+class _HomeContentViewState extends State<HomeContentView> {
   @override
   Widget build(BuildContext context) {
     // 전역 위치 상태 구독 (추천 로드 섹션 연동용)
@@ -37,8 +44,54 @@ class HomeContentView extends StatelessWidget {
         children: [
           // 1. 상단 헤더 (로고, 알림 버튼, 프로필 메뉴)
           HomeHeader(
-            onTabChanged: onTabChanged,
+            onTabChanged: widget.onTabChanged,
           ),
+
+          // 🐛 [디버그 전용] 가짜 위치(Mock Location) 개발자 토글 스위치 바
+          if (kDebugMode)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(color: Colors.amber.shade300),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.bug_report, size: 18, color: Colors.amber.shade900),
+                      const SizedBox(width: 8),
+                      Text(
+                        '가짜 위치 사용 (서초구청)',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amber.shade900,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Switch(
+                    value: LocationService.useMockLocation,
+                    activeColor: Colors.amber.shade800,
+                    onChanged: (bool value) {
+                      setState(() {
+                        LocationService.setMockLocation(value);
+                      });
+                      // 위치 토글 상태 변경 시 Provider의 refreshLocation 호출
+                      try {
+                        context
+                            .read<UserLocationProvider>()
+                            .refreshLocation(forceRefresh: true);
+                      } catch (_) {}
+                    },
+                  ),
+                ],
+              ),
+            ),
 
           // 2. 위치 안내 및 위치 재설정 바 (Provider 내부 구독)
           const Padding(
