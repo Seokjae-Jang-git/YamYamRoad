@@ -22,11 +22,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # 3. Flutter SDK 설치
+      # 3. Flutter SDK 설치 (최신 Stable 버전 자동 감지)
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
           channel: 'stable'
 
       # 4. GitHub Secrets에 저장된 .env 내용을 가져와 .env 파일 생성
