@@ -66,6 +66,9 @@ android {
 
     buildTypes {
         debug {
+            // USB 디버그 빌드 시 패키지명 뒤에 .debug를 붙여 릴리즈 앱과 완전 분리
+            applicationIdSuffix = ".debug"
+            manifestPlaceholders["appName"] = "얌얌로드 (Debug)"
         }
         release {
             val keystoreFile = System.getenv("KEYSTORE_FILE")
