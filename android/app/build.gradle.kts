@@ -51,6 +51,19 @@ android {
         manifestPlaceholders["NAVER_CLIENT_NAME"] = envProperties.getProperty("NAVER_CLIENT_NAME", "")
     }
 
+    // 🔑 Release Keystore 서명 설정 (이 블록이 복원되었습니다!)
+    signingConfigs {
+        create("release") {
+            val keystoreFile = System.getenv("KEYSTORE_FILE")
+            if (!keystoreFile.isNullOrEmpty()) {
+                storeFile = file(keystoreFile)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -58,6 +71,7 @@ android {
         }
         release {
             val keystoreFile = System.getenv("KEYSTORE_FILE")
+            // GitHub Actions 가상 환경일 때 릴리즈 키 적용, 내 PC 로컬일 때 디버그 키 적용
             signingConfig = if (!keystoreFile.isNullOrEmpty()) {
                 signingConfigs.getByName("release")
             } else {
