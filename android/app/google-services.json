@@ -80,6 +80,42 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:964766524983:android:a5ef837efbd5e87a5d81b2",
+        "android_client_info": {
+          "package_name": "com.example.yamyam_road.debug"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "964766524983-2h5i53gehbvf1ti82ih7aeel99k7aln2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDSONIPlpMqlYbEj5QFH97idF6L7hIlyhs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "964766524983-2h5i53gehbvf1ti82ih7aeel99k7aln2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "964766524983-coehtqehq17s09qbefa1tvmkud87gjre.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.yamyamRoad"
+              }
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"
