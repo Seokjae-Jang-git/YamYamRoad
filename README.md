@@ -175,10 +175,19 @@ YamYamRoad(얌얌로드)는 성수동, 가로수길, 해리단길 등 급증하�
 
 ---
 
-## <a name="resources"></a>📂 프로젝트 자료 모음
+## <a name="resources"></a>📂 프로젝트 자료 모음 및 시연 영상
 
+### 🎥 시연 영상
+**[팀원별 담당 페이지 시연 영상]**
+* ▶ **장석재 (팀장)**: [마이페이지 & 관리자 백오피스 웹 시연 영상](https://drive.google.com)
+* ▶ **필우청**: [소셜/SMS 로그인 & 얌얌북 커뮤니티 & 1:1 문의 시연 영상](https://drive.google.com)
+* ▶ **김현동**: [영수증 OCR 스탬프 인증 & 포인트 결제 & AI 추천 시연 영상](https://drive.google.com)
+* ▶ **임효진**: [메인 & 얌얌로드 지도 & 무료 포인트 충전소 시연 영상](https://drive.google.com)
+
+---
+
+### 📋 기타 자료
 | 분류 | 내용 및 링크 |
 |------|------|
 | 📝 **발표 자료** | [YamYamRoad 발표 PPT(PDF) 보기](https://drive.google.com/file/d/1x51YmlAJ-5Fp_6i1bwwfnxP3HW8GRBxy/view?usp=sharing) |
-| 🎥 **시연 영상** | [YamYamRoad 핵심 기능 시연 영상](https://github.com) |
-| 📊 **설계 자료** | [Figma 화면 설계 & Flow Chart](https://figma.com) \| [Google Sheet DB/컬렉션 명세서](https://docs.google.com) |
+| 📊 **설계 자료** | [Figma 화면 설계 & Flow Chart](https://www.figma.com/board/gnpmd6pOIDDUzFAJUkc9px/YamYam-Road-%ED%99%94%EB%A9%B4%EC%84%A4%EA%B3%84?node-id=0-1&t=bkaj5lBuy3JGVWfG-1) \| [Google Sheet DB 명세서](https://docs.google.com/spreadsheets/d/1q33JJ1_Aat1rMSqjFgVJnWvNoOQW9FJn/edit?usp=sharing&ouid=108808101243830684768&rtpof=true&sd=true) |
