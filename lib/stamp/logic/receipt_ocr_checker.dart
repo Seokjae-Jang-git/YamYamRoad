@@ -18,6 +18,7 @@ class ReceiptOcrValidationResult {
   final String? storeName;
   final DateTime? purchasedAt;
   final int? amount;
+  final String? transactionId;
   final double storeNameSimilarity;
 
   const ReceiptOcrValidationResult._({
@@ -27,6 +28,7 @@ class ReceiptOcrValidationResult {
     this.storeName,
     this.purchasedAt,
     this.amount,
+    this.transactionId,
     this.storeNameSimilarity = 0,
   });
 
@@ -35,12 +37,14 @@ class ReceiptOcrValidationResult {
     required DateTime purchasedAt,
     required double storeNameSimilarity,
     int? amount,
+    String? transactionId,
   }) : this._(
          decision: ReceiptOcrDecision.approved,
          message: '영수증 인증에 성공했습니다.',
          storeName: storeName,
          purchasedAt: purchasedAt,
          amount: amount,
+         transactionId: transactionId,
          storeNameSimilarity: storeNameSimilarity,
        );
 
@@ -59,6 +63,7 @@ class ReceiptOcrValidationResult {
     String? storeName,
     DateTime? purchasedAt,
     int? amount,
+    String? transactionId,
     double storeNameSimilarity = 0,
   }) : this._(
          decision: ReceiptOcrDecision.rejected,
@@ -67,6 +72,7 @@ class ReceiptOcrValidationResult {
          storeName: storeName,
          purchasedAt: purchasedAt,
          amount: amount,
+         transactionId: transactionId,
          storeNameSimilarity: storeNameSimilarity,
        );
 }
@@ -167,13 +173,16 @@ class ReceiptOcrValidator {
     }
 
     final currentTime = now ?? DateTime.now();
+    final amount = _extractAmount(trimmedText);
+    final transactionId = _extractTransactionId(trimmedText);
     if (purchasedAt.isAfter(currentTime.add(futureTolerance))) {
       return ReceiptOcrValidationResult.rejected(
         reason: ReceiptOcrFailureReason.futureDatedReceipt,
         message: '결제 시간이 현재 시간보다 이후로 확인됩니다.',
         storeName: storeMatch.originalLine,
         purchasedAt: purchasedAt,
-        amount: _extractAmount(trimmedText),
+        amount: amount,
+        transactionId: transactionId,
         storeNameSimilarity: storeMatch.similarity,
       );
     }
@@ -184,7 +193,8 @@ class ReceiptOcrValidator {
         message: '인증 가능한 시간이 지난 영수증입니다.',
         storeName: storeMatch.originalLine,
         purchasedAt: purchasedAt,
-        amount: _extractAmount(trimmedText),
+        amount: amount,
+        transactionId: transactionId,
         storeNameSimilarity: storeMatch.similarity,
       );
     }
@@ -192,7 +202,8 @@ class ReceiptOcrValidator {
     return ReceiptOcrValidationResult.approved(
       storeName: storeMatch.originalLine,
       purchasedAt: purchasedAt,
-      amount: _extractAmount(trimmedText),
+      amount: amount,
+      transactionId: transactionId,
       storeNameSimilarity: storeMatch.similarity,
     );
   }
@@ -277,6 +288,16 @@ class ReceiptOcrValidator {
     if (match == null) return null;
 
     return int.tryParse(match.group(1)!.replaceAll(',', ''));
+  }
+
+  String? _extractTransactionId(String rawText) {
+    final match = RegExp(
+      r'(?:승인\s*번호|거래\s*번호|주문\s*번호|영수증\s*번호|전표\s*번호)\s*[:：#-]?\s*([A-Za-z0-9-]{4,})',
+      caseSensitive: false,
+    ).firstMatch(rawText);
+    final value = match?.group(1)?.replaceAll(RegExp(r'[^A-Za-z0-9]'), '');
+    if (value == null || value.length < 4) return null;
+    return value.toUpperCase();
   }
 
   double _storeSimilarity(String expected, String actual) {

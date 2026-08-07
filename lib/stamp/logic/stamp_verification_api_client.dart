@@ -162,6 +162,14 @@ class StampVerificationApiClient {
           value: ocrResult.amount.toString(),
         );
       }
+      if (ocrResult.transactionId?.isNotEmpty == true) {
+        _writeField(
+          httpRequest,
+          boundary: boundary,
+          name: 'ocrTransactionId',
+          value: ocrResult.transactionId!,
+        );
+      }
       _writeField(
         httpRequest,
         boundary: boundary,
