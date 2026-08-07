@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
 
 import 'logic/recommendation_api_client.dart';
 import 'models/recommendation_models.dart';
+import '../providers/user_location_provider.dart';
 import '../road/course_detail_screen.dart';
 import '../road/models/road.dart';
 
@@ -196,6 +198,12 @@ class _AiRecommendationPageState extends State<AiRecommendationPage> {
 
     try {
       final useCurrentLocation = basis == _RecommendationBasis.currentLocation;
+      final currentAddress = useCurrentLocation
+          ? context.read<UserLocationProvider>().currentAddress
+          : '';
+      final currentRegionId = widget.currentRegionId?.trim().isNotEmpty == true
+          ? widget.currentRegionId!.trim()
+          : _regionIdFromAddress(currentAddress);
       var userLat = widget.userLat;
       var userLng = widget.userLng;
       if (useCurrentLocation && (userLat == null || userLng == null)) {
@@ -208,7 +216,7 @@ class _AiRecommendationPageState extends State<AiRecommendationPage> {
           RecommendationApiClient().fetchRecommendations;
       final result = await recommendationLoader(
         userId: widget.userId,
-        currentRegionId: useCurrentLocation ? widget.currentRegionId : null,
+        currentRegionId: useCurrentLocation ? currentRegionId : null,
         userLat: useCurrentLocation ? userLat : null,
         userLng: useCurrentLocation ? userLng : null,
       );
@@ -521,6 +529,34 @@ class _AiRecommendationPageState extends State<AiRecommendationPage> {
       },
     );
   }
+}
+
+String? _regionIdFromAddress(String address) {
+  const regionIdsByAddress = <String, String>{
+    '서울특별시': 'region_seoul',
+    '경기도': 'region_gyeonggi',
+    '인천광역시': 'region_incheon',
+    '강원특별자치도': 'region_gangwon',
+    '강원도': 'region_gangwon',
+    '세종특별자치시': 'region_sejong',
+    '대전광역시': 'region_daejeon',
+    '충청북도': 'region_chungbuk',
+    '충청남도': 'region_chungnam',
+    '광주광역시': 'region_gwangju',
+    '전북특별자치도': 'region_jeonbuk',
+    '전라북도': 'region_jeonbuk',
+    '전라남도': 'region_jeonnam',
+    '부산광역시': 'region_busan',
+    '대구광역시': 'region_daegu',
+    '울산광역시': 'region_ulsan',
+    '경상북도': 'region_gyeongbuk',
+    '경상남도': 'region_gyeongnam',
+    '제주특별자치도': 'region_jeju',
+  };
+  for (final entry in regionIdsByAddress.entries) {
+    if (address.contains(entry.key)) return entry.value;
+  }
+  return null;
 }
 
 class _ConversationGuide extends StatelessWidget {
