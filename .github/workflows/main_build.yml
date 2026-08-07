@@ -2,9 +2,7 @@ name: Flutter Release APK Auto Build
 
 on:
   push:
-    branches: [ "main", "master", "dev", "feature/road" ]
-  pull_request:
-    branches: [ "main", "master", "dev", "feature/road" ]
+    branches: [ "feature/road" ]
 
 jobs:
   build:
