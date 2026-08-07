@@ -30,6 +30,14 @@
           }
         },
         {
+          "client_id": "964766524983-ndvmiq8debegs7psq0s98gutro69f4pf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.yamyam_road",
+            "certificate_hash": "71e82846ddfbbc206b72e25361fc269e14727854"
+          }
+        },
+        {
           "client_id": "964766524983-u2g4rh80kbhs4lrgftkhmejk4fhsucoj.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
