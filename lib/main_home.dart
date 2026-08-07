@@ -26,7 +26,9 @@ void main() async {
   // 2. .env 환경변수 로드
   await dotenv.load(fileName: ".env");
 
-  // 3. 파이어베이스 초기화
+  // print('🔑 내 키 해시: ${await kakao.KakaoSdk.origin}');
+
+  // 3. 파이어베이스 엔진 초기화
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );

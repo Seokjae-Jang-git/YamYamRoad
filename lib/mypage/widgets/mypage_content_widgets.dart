@@ -535,6 +535,8 @@ String _getDisplayStatus(String status) {
       return '처리 중';
     case 'completed':
       return '처리 완료';
+    case 'canceled':
+      return '접수 취소';
     default:
       return status;
   }

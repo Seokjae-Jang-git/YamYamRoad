@@ -47,9 +47,9 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
 
   // 🌟 로그인 직후 탭과 무관하게 딱 한 번, 탈퇴(paused) 상태인지 확인합니다.
   Future<void> _checkWithdrawnStatus() async {
-    debugPrint('🔎 [탈퇴체크] 시작');
+    // debugPrint('🔎 [탈퇴체크] 시작');
     final uid = AuthService.currentUser?.uid;
-    debugPrint('🔎 [탈퇴체크] uid=$uid');
+    // debugPrint('🔎 [탈퇴체크] uid=$uid');
     if (uid == null) {
       if (mounted) setState(() => _checkingWithdrawal = false);
       return;
@@ -57,11 +57,11 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
 
     final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
     final data = doc.data();
-    debugPrint('🔎 [탈퇴체크] Firestore status=${data?['status']}, pausedAt=${data?['pausedAt']}');
+    // debugPrint('🔎 [탈퇴체크] Firestore status=${data?['status']}, pausedAt=${data?['pausedAt']}');
 
     if (data != null && data['status'] == 'paused') {
       final ts = data['pausedAt'] as Timestamp?;
-      debugPrint('🔎 [탈퇴체크] paused 확인, 복구 다이얼로그 호출 시도. mounted=$mounted');
+      // debugPrint('🔎 [탈퇴체크] paused 확인, 복구 다이얼로그 호출 시도. mounted=$mounted');
       if (!mounted) return;
 
       final canProceed = await handleWithdrawnRecovery(
@@ -69,12 +69,12 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         uid: uid,
         pausedAt: ts?.toDate(),
       );
-      debugPrint('🔎 [탈퇴체크] 다이얼로그 결과 canProceed=$canProceed');
+      // debugPrint('🔎 [탈퇴체크] 다이얼로그 결과 canProceed=$canProceed');
 
       if (!canProceed) {
-        debugPrint('🔎 [탈퇴체크] 로그아웃 처리 시작');
+        // debugPrint('🔎 [탈퇴체크] 로그아웃 처리 시작');
         await AuthService.logout();
-        debugPrint('🔎 [탈퇴체크] 로그아웃 완료. mounted=$mounted');
+        // debugPrint('🔎 [탈퇴체크] 로그아웃 완료. mounted=$mounted');
         if (!mounted) return;
         Navigator.pushAndRemoveUntil(
           context,
@@ -85,7 +85,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
       }
     }
 
-    debugPrint('🔎 [탈퇴체크] 최종 완료, 홈 화면 표시. mounted=$mounted');
+    // debugPrint('🔎 [탈퇴체크] 최종 완료, 홈 화면 표시. mounted=$mounted');
     if (!mounted) return;
     setState(() => _checkingWithdrawal = false);
   }
