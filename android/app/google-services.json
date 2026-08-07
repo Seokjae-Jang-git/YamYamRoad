@@ -80,6 +80,82 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:964766524983:android:a5ef837efbd5e87a5d81b2",
+        "android_client_info": {
+          "package_name": "com.example.yamyam_road.debug"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "964766524983-f4b73fip9u2hqttjkb416mqgql8h19o8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.yamyam_road.debug",
+            "certificate_hash": "071faf4250998ec0c493bbd48e0c0dbae39bca1e"
+          }
+        },
+        {
+          "client_id": "964766524983-mrotbdc4lho7blskmfash8kr4et7pkfr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.yamyam_road.debug",
+            "certificate_hash": "a69dc02bea2ab3d6f011f8ba7f27fe07ca0ffd5b"
+          }
+        },
+        {
+          "client_id": "964766524983-pt8j7og1m20t4m8vk6rc3dqbt4oar5i6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.yamyam_road.debug",
+            "certificate_hash": "cb0eb145c6049af034fe6e8935bffbfe40d948e4"
+          }
+        },
+        {
+          "client_id": "964766524983-qqrotttan46pi875tt5hoceq2dntnb1f.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.yamyam_road.debug",
+            "certificate_hash": "0cd419921ec5b563fd7c07e66afe984212cfb700"
+          }
+        },
+        {
+          "client_id": "964766524983-tp1n549l942dqknvk3cjndg9qumgm9d0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.yamyam_road.debug",
+            "certificate_hash": "cd4776bcfe2191249406748920c15c4e43c3597e"
+          }
+        },
+        {
+          "client_id": "964766524983-2h5i53gehbvf1ti82ih7aeel99k7aln2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDSONIPlpMqlYbEj5QFH97idF6L7hIlyhs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "964766524983-2h5i53gehbvf1ti82ih7aeel99k7aln2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "964766524983-coehtqehq17s09qbefa1tvmkud87gjre.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.yamyamRoad"
+              }
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

@@ -5,7 +5,7 @@ plugins {
     id("kotlin-android")
     // 플러터 엔진과 네이티브 라이브러리를 연결해주는 핵심 플러그인
     id("dev.flutter.flutter-gradle-plugin")
-    // 🌟 1. 파이어베이스 구글 서비스 플러그인을 Kotlin DSL 문법으로 올바르게 추가합니다.
+    // 파이어베이스 구글 서비스 플러그인
     id("com.google.gms.google-services")
 }
 
@@ -53,12 +53,19 @@ android {
 
     buildTypes {
         debug {
-            // applicationIdSuffix = ".debug"  👈 이 줄을 삭제하거나 주석 처리하세요.
+            applicationIdSuffix = ".debug"
+            manifestPlaceholders["appName"] = "얌얌로드 (Debug)"
         }
         release {
+            val keystoreFile = System.getenv("KEYSTORE_FILE")
+            signingConfig = if (!keystoreFile.isNullOrEmpty()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = signingConfigs.getByName("debug")
+            manifestPlaceholders["appName"] = "얌얌로드"
         }
     }
 }
@@ -69,13 +76,6 @@ flutter {
 
 dependencies {
     implementation("com.google.mlkit:text-recognition-korean:16.0.1")
-}
-
-
-dependencies {
-    implementation("com.google.mlkit:text-recognition-korean:16.0.1")
-
-    // 🌟 Firebase App Check 네이티브 디버그 라이브러리 추가
     implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
     implementation("com.google.firebase:firebase-appcheck-debug")
 }
