@@ -70,4 +70,12 @@ flutter {
 dependencies {
     implementation("com.google.mlkit:text-recognition-korean:16.0.1")
 }
-// ❌ 기존 파일 맨 아래에 있던 잘못된 Groovy 방식의 apply 문법은 삭제했습니다.
+
+
+dependencies {
+    implementation("com.google.mlkit:text-recognition-korean:16.0.1")
+
+    // 🌟 Firebase App Check 네이티브 디버그 라이브러리 추가
+    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+    implementation("com.google.firebase:firebase-appcheck-debug")
+}

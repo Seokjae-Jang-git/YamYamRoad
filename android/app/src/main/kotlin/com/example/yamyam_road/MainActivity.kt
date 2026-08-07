@@ -1,8 +1,19 @@
 package com.example.yamyam_road
 
-// 🌟 1. 이 부분을 FlutterFragmentActivity로 변경합니다.
-import io.flutter.embedding.android.FlutterFragmentActivity
+import android.os.Bundle
+import io.flutter.embedding.android.FlutterActivity
+import com.google.firebase.FirebaseApp
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 
-// 🌟 2. 상속받는 클래스도 FlutterFragmentActivity로 변경합니다.
-class MainActivity: FlutterFragmentActivity() {
+class MainActivity: FlutterActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        FirebaseApp.initializeApp(this)
+        val firebaseAppCheck = FirebaseAppCheck.getInstance()
+        firebaseAppCheck.installAppCheckProviderFactory(
+            DebugAppCheckProviderFactory.getInstance()
+        )
+    }
 }
