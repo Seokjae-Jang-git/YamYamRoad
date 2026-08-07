@@ -60,35 +60,43 @@ class CourseDetailSheet extends StatelessWidget {
                 ),
               ),
 
-              // 1. 헤더: 코스명, 장소 개수, 정렬 칩
+              // 1. 헤더: 우측 정렬 칩은 오른쪽 고정, 좌측 (코스명 + 개수) 영역만 가로 스크롤
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: deepChocolate,
-                            letterSpacing: -0.3,
-                          ),
+                    // 좌측: 제목 + 개수 영역 (Expanded로 남은 공간을 차지하며 가로 스크롤 허용)
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: deepChocolate,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${places.length}개',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: pointCoralRed,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${places.length}개',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: pointCoralRed,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
+                    const SizedBox(width: 12), // 제목 영역과 정렬 칩 사이의 간격
+                    // 우측: 항상 오른쪽 화면에 고정된 정렬 칩
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         _buildSortOptionChip('거리순'),
                         const SizedBox(width: 6),
