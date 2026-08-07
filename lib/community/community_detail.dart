@@ -28,6 +28,12 @@ class CommunityDetailScreen extends StatefulWidget {
 }
 
 class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
+  // 🌟 얌얌로드 공식 컬러 토큰 (다이얼로그 등 화면 전역에서 공용으로 사용)
+  static const Color _pointCoralRed = Color(0xFFFF6B57);
+  static const Color _deepChocolate = Color(0xFF4A3225);
+  static const Color _creamyIvory = Color(0xFFFFFDF9);
+  static const Color _subTextColor = Color(0xFF7A6B63);
+
   String get _currentUserId => AuthService.currentUser?.uid ?? UserData.uid ?? 'unknown_uid';
   String get _currentUserNickname => UserData.nickname ?? '이름없음';
 
@@ -46,20 +52,63 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     super.dispose();
   }
 
-  Future<void> _deletePost() async {
-    final confirmed = await showDialog<bool>(
+  // 🌟 공용 삭제 확인 다이얼로그 - 글 삭제 / 댓글 삭제가 동일한 디자인을 쓰도록 통일
+  Future<bool?> _showDeleteConfirmDialog({
+    required String title,
+    required String message,
+  }) {
+    return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('글 삭제'),
-        content: const Text('이 글을 삭제하시겠어요? 삭제한 글은 복구할 수 없어요.'),
+        backgroundColor: _creamyIvory,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: _deepChocolate.withOpacity(0.1)),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: _deepChocolate,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(color: _subTextColor, fontSize: 14, height: 1.4),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
           TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              '취소',
+              style: TextStyle(color: _subTextColor, fontWeight: FontWeight.bold),
+            ),
+          ),
+          ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('삭제', style: TextStyle(color: Colors.red)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _pointCoralRed,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              '삭제',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _deletePost() async {
+    final confirmed = await _showDeleteConfirmDialog(
+      title: '글 삭제',
+      message: '이 글을 삭제하시겠어요?\n삭제한 글은 복구할 수 없어요.',
     );
 
     if (confirmed == true) {
@@ -140,15 +189,50 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('신고 상세 사유'),
+        backgroundColor: _creamyIvory,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: _deepChocolate.withOpacity(0.1)),
+        ),
+        title: const Text('신고 상세 사유', style: TextStyle(color: _deepChocolate, fontWeight: FontWeight.bold)),
         content: TextField(
           controller: controller,
           maxLines: 3,
-          decoration: const InputDecoration(hintText: '구체적인 사유를 입력해주세요'),
+          style: const TextStyle(color: _deepChocolate),
+          decoration: InputDecoration(
+            hintText: '구체적인 사유를 입력해주세요',
+            hintStyle: const TextStyle(color: _subTextColor),
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: _deepChocolate.withOpacity(0.15)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: _deepChocolate.withOpacity(0.15)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: _pointCoralRed, width: 1.5),
+            ),
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
-          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text('확인')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소', style: TextStyle(color: _subTextColor, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _pointCoralRed,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('확인', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
         ],
       ),
     );
@@ -163,16 +247,20 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     final reasons = ['부적절한 내용', '스팸/광고', '욕설/비방', '허위 정보', '기타'];
     final selected = await showModalBottomSheet<String>(
       context: context,
+      backgroundColor: _creamyIvory,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Padding(
               padding: EdgeInsets.all(16),
-              child: Text('신고 사유를 선택해주세요', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text('신고 사유를 선택해주세요', style: TextStyle(fontWeight: FontWeight.bold, color: _deepChocolate)),
             ),
             ...reasons.map((reason) => ListTile(
-              title: Text(reason),
+              title: Text(reason, style: const TextStyle(color: _deepChocolate)),
               onTap: () => Navigator.pop(context, reason),
             )),
           ],
@@ -368,14 +456,15 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   }
 
   Future<void> _submitComment(CommunityPost post) async {
-    final text = _commentController.toStorageText().trim(); // 저장용 토큰으로 변환하여 저장
+    final text = _commentController.toStorageText().trim();
     if (text.isEmpty) return;
 
     final postRef = FirebaseFirestore.instance.collection('posts').doc(widget.postId);
     final commentsRef = postRef.collection('comments');
+    final newCommentRef = commentsRef.doc(); // 🌟 ID를 미리 생성
 
     final comment = CommunityComment(
-      id: '',
+      id: newCommentRef.id,
       userId: _currentUserId,
       nickname: _currentUserNickname,
       profileImage: UserData.profileImagePath,
@@ -385,12 +474,15 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     );
 
     try {
-      final commentRef = await commentsRef.add(comment.toMap());
-      await postRef.update({'commentCount': FieldValue.increment(1)});
+      final batch = FirebaseFirestore.instance.batch();
+      batch.set(newCommentRef, comment.toMap());
+      batch.update(postRef, {'commentCount': FieldValue.increment(1)});
+      await batch.commit();
+
       _requestCommunityNotification(
         event: NotiCommunityEvent.postComment,
         postId: post.id,
-        commentId: commentRef.id,
+        commentId: newCommentRef.id,
       );
       _commentController.clear();
       setState(() {
@@ -433,65 +525,22 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     }
   }
 
+  // 🌟 댓글 삭제 - '글 삭제'와 동일한 공용 다이얼로그 사용
   Future<void> _deleteComment(CommunityComment comment) async {
-    // 🌟 얌얌로드 공식 컬러 토큰
-    const Color pointCoralRed = Color(0xFFFF6B57);
-    const Color deepChocolate = Color(0xFF4A3225);
-    const Color creamyIvory = Color(0xFFFFFDF9);
-    const Color subTextColor = Color(0xFF7A6B63);
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: creamyIvory,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: deepChocolate.withOpacity(0.1)),
-        ),
-        title: const Text(
-          '댓글 삭제',
-          style: TextStyle(
-            color: deepChocolate,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        content: const Text(
-          '이 댓글을 삭제하시겠어요?',
-          style: TextStyle(color: subTextColor, fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              '취소',
-              style: TextStyle(color: subTextColor, fontWeight: FontWeight.bold),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: pointCoralRed,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: const Text(
-              '삭제',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
+    final confirmed = await _showDeleteConfirmDialog(
+      title: '댓글 삭제',
+      message: '이 댓글을 삭제하시겠어요?',
     );
     if (confirmed != true) return;
 
     try {
       final postRef = FirebaseFirestore.instance.collection('posts').doc(widget.postId);
-      await postRef.collection('comments').doc(comment.id).delete();
-      await postRef.update({'commentCount': FieldValue.increment(-1)});
+      final commentRef = postRef.collection('comments').doc(comment.id);
+
+      final batch = FirebaseFirestore.instance.batch();
+      batch.delete(commentRef);
+      batch.update(postRef, {'commentCount': FieldValue.increment(-1)});
+      await batch.commit();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('댓글 삭제에 실패했어요.')));
     }
