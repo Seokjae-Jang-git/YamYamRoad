@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+// 🌟 메인 화면 임포트 (경로는 프로젝트 구조에 맞춰 유지해 주세요)
+import '../yamyam_home/main_home_screen.dart';
+
 class PhoneLoginScreen extends StatefulWidget {
   const PhoneLoginScreen({super.key});
 
@@ -72,6 +75,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
         forceResendingToken: _resendToken,
         timeout: const Duration(seconds: 60),
         verificationCompleted: (PhoneAuthCredential credential) async {
+          // 자동 인증 성공 시에도 즉시 로그인 처리
           await _signInWithCredential(credential);
         },
         verificationFailed: (FirebaseAuthException e) {
@@ -185,7 +189,12 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
       }
 
       if (!mounted) return;
-      Navigator.pop(context, true);
+
+      // 🌟 [핵심 수정] 로그인 성공 시 기존 라우트 스택을 모두 비우고 메인 화면으로 이동
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const MainHomeScreen()),
+            (route) => false,
+      );
     } catch (e) {
       _showError('로그인 처리 중 오류가 발생했습니다: $e');
     }
