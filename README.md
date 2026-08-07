@@ -179,6 +179,6 @@ YamYamRoad(얌얌로드)는 성수동, 가로수길, 해리단길 등 급증하�
 
 | 분류 | 내용 및 링크 |
 |------|------|
-| 📝 **발표 자료** | [YamYamRoad 발표 PPT(PDF) 보기](https://github.com) |
+| 📝 **발표 자료** | [YamYamRoad 발표 PPT(PDF) 보기](https://drive.google.com/file/d/1x51YmlAJ-5Fp_6i1bwwfnxP3HW8GRBxy/view?usp=sharing) |
 | 🎥 **시연 영상** | [YamYamRoad 핵심 기능 시연 영상](https://github.com) |
 | 📊 **설계 자료** | [Figma 화면 설계 & Flow Chart](https://figma.com) \| [Google Sheet DB/컬렉션 명세서](https://docs.google.com) |
