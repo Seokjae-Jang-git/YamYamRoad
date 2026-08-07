@@ -23,7 +23,7 @@ void main() async {
   // 2. .env 환경변수 파일 로드 (카카오 키 등을 쓰기 전에 먼저 로드되어야 함)
   await dotenv.load(fileName: ".env");
 
-  print('🔑 내 키 해시: ${await kakao.KakaoSdk.origin}');
+  // print('🔑 내 키 해시: ${await kakao.KakaoSdk.origin}');
 
   // 3. 파이어베이스 엔진 초기화
   await Firebase.initializeApp(
