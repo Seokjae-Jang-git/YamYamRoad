@@ -182,7 +182,7 @@ YamYamRoad(얌얌로드)는 성수동, 가로수길, 해리단길 등 급증하�
 * ▶ **장석재 (팀장)**: [마이페이지 시연 영상](https://drive.google.com/file/d/1E40UVNLDs8E9wsNAn3tKJ9BqR98WkTEd/view?usp=sharing), [관리자 백오피스 웹 시연영상](https://drive.google.com/file/d/10EgcvBBvaIYxJIsKeZUVradU290ukpcC/view?usp=sharing)
 * ▶ **필우청**: [소셜/SMS 로그인 & 얌얌북 커뮤니티 & 1:1 문의 시연 영상](https://drive.google.com)
 * ▶ **김현동**: [영수증 OCR 스탬프 인증 & 포인트 결제 & AI 추천 시연 영상](https://drive.google.com)
-* ▶ **임효진**: [메인 & 얌얌로드 지도 & 무료 포인트 충전소 시연 영상](https://drive.google.com)
+* ▶ **임효진**: [메인 & 얌얌로드 지도 & 무료 포인트 충전소 시연 영상](https://drive.google.com/file/d/1ZiulgUu5jBQZGVsIBNSNWlHGeMILq6dT/view?usp=sharing)
 
 ---
 
