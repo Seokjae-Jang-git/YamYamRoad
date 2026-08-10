@@ -5,7 +5,7 @@ plugins {
     id("kotlin-android")
     // 플러터 엔진과 네이티브 라이브러리를 연결해주는 핵심 플러그인
     id("dev.flutter.flutter-gradle-plugin")
-    // 🌟 1. 파이어베이스 구글 서비스 플러그인을 Kotlin DSL 문법으로 올바르게 추가합니다.
+    // 파이어베이스 구글 서비스 플러그인
     id("com.google.gms.google-services")
 }
 
@@ -51,14 +51,35 @@ android {
         manifestPlaceholders["NAVER_CLIENT_NAME"] = envProperties.getProperty("NAVER_CLIENT_NAME", "")
     }
 
+    // 🔑 Release Keystore 서명 설정 (이 블록이 복원되었습니다!)
+    signingConfigs {
+        create("release") {
+            val keystoreFile = System.getenv("KEYSTORE_FILE")
+            if (!keystoreFile.isNullOrEmpty()) {
+                storeFile = file(keystoreFile)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         debug {
-            // applicationIdSuffix = ".debug"  👈 이 줄을 삭제하거나 주석 처리하세요.
+            applicationIdSuffix = ".debug"
+            manifestPlaceholders["appName"] = "얌얌로드 (Debug)"
         }
         release {
+            val keystoreFile = System.getenv("KEYSTORE_FILE")
+            // GitHub Actions 가상 환경일 때 릴리즈 키 적용, 내 PC 로컬일 때 디버그 키 적용
+            signingConfig = if (!keystoreFile.isNullOrEmpty()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = signingConfigs.getByName("debug")
+            manifestPlaceholders["appName"] = "얌얌로드"
         }
     }
 }
@@ -69,13 +90,6 @@ flutter {
 
 dependencies {
     implementation("com.google.mlkit:text-recognition-korean:16.0.1")
-}
-
-
-dependencies {
-    implementation("com.google.mlkit:text-recognition-korean:16.0.1")
-
-    // 🌟 Firebase App Check 네이티브 디버그 라이브러리 추가
     implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
     implementation("com.google.firebase:firebase-appcheck-debug")
 }
