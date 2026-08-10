@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../../../common/user_data.dart';
+import 'owned_gifticon_detail_page.dart';
 
 class GifticonTab extends StatefulWidget {
   // 🌟 부모로부터 스크롤 컨트롤러를 전달받음
@@ -249,6 +250,7 @@ class GifticonItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final purchaseData = purchaseDoc.data() as Map<String, dynamic>;
     final String itemId = purchaseData['itemId'] ?? '';
+    final String stockId = purchaseData['stockId'] ?? '';
     final Timestamp? createdAt = purchaseData['createdAt'];
     final Timestamp? usedAt = purchaseData['usedAt'];
     final bool isUsed = usedAt != null;
@@ -266,100 +268,131 @@ class GifticonItemCard extends StatelessWidget {
         final num requiredPoint = gifticonData['requiredPoint'] ?? 0;
         final String imageUrl = gifticonData['imageUrl'] ?? '';
 
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: deepChocolate.withOpacity(0.08)),
-            boxShadow: [
-              BoxShadow(
-                color: deepChocolate.withOpacity(0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  border: Border.all(color: deepChocolate.withOpacity(0.05)),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: imageUrl.isNotEmpty
-                    ? ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(imageUrl, fit: BoxFit.cover),
-                )
-                    : Icon(Icons.image_not_supported, color: deepChocolate.withOpacity(0.3)),
-              ),
-              const SizedBox(width: 16),
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              if (stockId.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('발급된 기프티콘 이미지를 찾을 수 없습니다.')),
+                );
+                return;
+              }
 
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            brandName,
-                            style: const TextStyle(fontSize: 12, color: subTextColor, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: isUsed ? Colors.grey.shade100 : Colors.white,
-                            border: Border.all(color: isUsed ? Colors.transparent : pointCoralRed),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            isUsed ? '사용완료' : '미사용',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: isUsed ? subTextColor : pointCoralRed,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            name,
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: deepChocolate, height: 1.2),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${NumberFormat('#,###').format(requiredPoint)} P',
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: pointCoralRed),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text('구매: ${_formatDate(createdAt)}', style: const TextStyle(fontSize: 12, color: subTextColor)),
-                    const SizedBox(height: 2),
-                    Text('사용: ${_formatDate(usedAt)}', style: const TextStyle(fontSize: 12, color: subTextColor)),
-                  ],
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => OwnedGifticonDetailPage(
+                    userId: UserData.uid!,
+                    purchaseId: purchaseDoc.id,
+                    gifticonId: itemId,
+                    stockId: stockId,
+                    brandName: brandName,
+                    productName: name,
+                    thumbnailUrl: imageUrl,
+                    requiredPoint: requiredPoint.toInt(),
+                    purchasedAt: createdAt?.toDate(),
+                    usedAt: usedAt?.toDate(),
+                  ),
                 ),
+              );
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: deepChocolate.withOpacity(0.08)),
+                boxShadow: [
+                  BoxShadow(
+                    color: deepChocolate.withOpacity(0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            ],
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      border: Border.all(color: deepChocolate.withOpacity(0.05)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: imageUrl.isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(imageUrl, fit: BoxFit.cover),
+                          )
+                        : Icon(Icons.image_not_supported, color: deepChocolate.withOpacity(0.3)),
+                  ),
+                  const SizedBox(width: 16),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                brandName,
+                                style: const TextStyle(fontSize: 12, color: subTextColor, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: isUsed ? Colors.grey.shade100 : Colors.white,
+                                border: Border.all(color: isUsed ? Colors.transparent : pointCoralRed),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                isUsed ? '사용완료' : '미사용',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: isUsed ? subTextColor : pointCoralRed,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                name,
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: deepChocolate, height: 1.2),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${NumberFormat('#,###').format(requiredPoint)} P',
+                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: pointCoralRed),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text('구매: ${_formatDate(createdAt)}', style: const TextStyle(fontSize: 12, color: subTextColor)),
+                        const SizedBox(height: 2),
+                        Text('사용: ${_formatDate(usedAt)}', style: const TextStyle(fontSize: 12, color: subTextColor)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         );
       },
