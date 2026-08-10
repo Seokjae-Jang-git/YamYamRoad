@@ -157,9 +157,7 @@ class _InquiryDetailScreenState extends State<InquiryDetailScreen> {
 
           final inquiry = InquiryModel.fromFirestore(snapshot.data!);
           final bool isAnswered = inquiry.status == 'answered';
-          // 🌟 수정: 저장소/모델/목록 화면과 동일하게 'cancelled'(L 두 개)로 통일
-          //    (기존 'canceled'였던 오타 때문에 취소된 문의의 상태 색상이 적용되지 않던 문제 수정)
-          final bool isCanceled = inquiry.status == 'cancelled';
+          final bool isCanceled = inquiry.status == 'canceled';
           final bool isClosed = inquiry.status == 'closed';
 
           String displayStatusText = inquiry.displayStatus;

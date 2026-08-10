@@ -112,7 +112,7 @@ class InquiryRepository {
   // 🌟 기존 delete 메서드를 대체하는 문의 취소 메서드
   Future<void> cancelInquiry(String id) async {
     await _collection.doc(id).update({
-      'status': 'cancelled', // 상태값을 cancelled로 변경 (소프트 딜리트)
+      'status': 'canceled', // 상태값을 canceled로 변경 (소프트 딜리트)
     });
   }
 

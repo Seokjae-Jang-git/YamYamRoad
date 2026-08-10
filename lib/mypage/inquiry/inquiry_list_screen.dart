@@ -151,7 +151,7 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
                         const SizedBox(width: 8),
                         _filterChip('답변 완료', 'answered'),
                         const SizedBox(width: 8),
-                        _filterChip('문의 취소', 'cancelled'),
+                        _filterChip('문의 취소', 'canceled'),
                         const SizedBox(width: 8),
                         _filterChip('문의 종료', 'closed'),
                       ],
@@ -316,7 +316,7 @@ class _InquiryListScreenState extends State<InquiryListScreen> {
 
   Widget _buildInquiryCard(InquiryModel r) {
     String statusLabel = r.displayStatus;
-    if (r.status == 'cancelled') {
+    if (r.status == 'canceled') {
       statusLabel = '문의 취소';
     } else if (r.status == 'pending') {
       statusLabel = '답변 대기';
