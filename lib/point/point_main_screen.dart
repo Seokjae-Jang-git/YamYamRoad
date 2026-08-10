@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
-import '../AI/ai_recommendation_page.dart';
 import 'logic/point_purchase_service.dart';
 import 'logic/point_repository.dart';
 import 'logic/point_usage_calculator.dart';
@@ -142,7 +141,6 @@ class _PointMainScreenState extends State<PointMainScreen> {
                     repository: _repository,
                     userId: widget.userId,
                     onSelectEmoticon: _showEmoticonPackage,
-                    onOpenAiRecommendationPage: _openAiRecommendationPage,
                     onOpenStampDevPage: _openStampDevPage,
                   ),
                   PointShopTab.gifticon => PointGifticonView(
@@ -187,14 +185,6 @@ class _PointMainScreenState extends State<PointMainScreen> {
   Future<void> _openStampDevPage() {
     return Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const StampDevPlaceEntryPage()),
-    );
-  }
-
-  Future<void> _openAiRecommendationPage() {
-    return Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => AiRecommendationPage(userId: widget.userId),
-      ),
     );
   }
 
