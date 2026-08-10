@@ -13,14 +13,12 @@ class PointEmoticonView extends StatelessWidget {
     required this.repository,
     required this.userId,
     required this.onSelectEmoticon,
-    required this.onOpenAiRecommendationPage,
     required this.onOpenStampDevPage,
   });
 
   final PointShopRepository repository;
   final String userId;
   final ValueChanged<EmoticonProduct> onSelectEmoticon;
-  final VoidCallback onOpenAiRecommendationPage;
   final VoidCallback onOpenStampDevPage;
 
   static const Color deepChocolate = Color(0xFF4A3225);
@@ -68,20 +66,6 @@ class PointEmoticonView extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: OutlinedButton.icon(
-                        onPressed: onOpenAiRecommendationPage,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: deepChocolate,
-                          side: const BorderSide(color: cardBorder),
-                        ),
-                        icon: const Icon(Icons.auto_awesome_outlined),
-                        label: const Text('AI 추천 페이지 테스트'),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
                     SizedBox(
                       width: double.infinity,
                       height: 48,

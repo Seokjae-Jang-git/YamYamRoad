@@ -7,10 +7,13 @@ import 'location_bar.dart';
 import 'home_stamp_dashboard.dart';
 import 'home_recommended_roads_section.dart';
 import 'ad_banner.dart';
+import 'ai_recommendation_banner.dart';
+import '../../AI/ai_recommendation_page.dart';
 import '../../ad/ad_station_page.dart';
 import '../../road/models/place_model.dart';
 import '../../providers/user_location_provider.dart';
 import '../../stamp/logic/stamp_verification_navigator.dart';
+import '../../services/auth_service.dart';
 import '../../services/location_service.dart';
 
 class HomeContentView extends StatefulWidget {
@@ -136,6 +139,24 @@ class _HomeContentViewState extends State<HomeContentView> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const AdStationPage(),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: AiRecommendationBanner(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AiRecommendationPage(
+                      userId: AuthService.currentUser!.uid,
+                    ),
                   ),
                 );
               },
