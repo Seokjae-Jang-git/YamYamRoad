@@ -84,10 +84,10 @@ YamYamRoad(얌얌로드)는 성수동, 가로수길, 해리단길 등 급증하�
 ## <a name="members"></a>🤝🏼 팀원 구성
 | 이름 | 역할 | GitHub | 담당 영역 |
 |:---:|:---:|:---:|:---|
-| **장석재** | 팀장 | [@장석재](https://github.com) | 마이페이지 전체, 관리자 웹페이지, 뱃지/포인트/스탬프 조회 |
-| **필우청** | 팀원 | [@필우청](https://github.com) | 소셜/SMS 로그인, 얌얌북 커뮤니티, 1:1 문의, 이모티콘 팩 시스템 |
-| **김현동** | 팀원 | [@김현동](https://github.com) | 영수증 OCR 인증, GPS 어뷰징 방지, PortOne 포인트 결제, AI 추천, 인앱 알림 |
-| **임효진** | 팀원 | [@임효진](https://github.com) | 메인페이지, 얌얌로드 지도/업체, Geohash 스캔, AdMob/제휴 보상형 광고, UI/UX 디자인 |
+| **장석재** | 팀장 | [@장석재](https://github.com/Seokjae-Jang-git) | 마이페이지 전체, 관리자 웹페이지, 뱃지/포인트/스탬프 조회 |
+| **필우청** | 팀원 | [@필우청](https://github.com/yuqingtangda) | 소셜/SMS 로그인, 얌얌북 커뮤니티, 1:1 문의, 이모티콘 팩 시스템 |
+| **김현동** | 팀원 | [@김현동](https://github.com/Medo-skb) | 영수증 OCR 인증, GPS 어뷰징 방지, PortOne 포인트 결제, AI 추천, 인앱 알림 |
+| **임효진** | 팀원 | [@임효진](https://github.com/limhyojin3) | 메인페이지, 얌얌로드 지도/업체, Geohash 스캔, AdMob/제휴 보상형 광고, UI/UX 디자인 |
 
 ---
 
@@ -180,10 +180,10 @@ YamYamRoad(얌얌로드)는 성수동, 가로수길, 해리단길 등 급증하�
 
 ### 🎥 시연 영상
 **[팀원별 담당 페이지 시연 영상]**
-* ▶ **장석재 (팀장)**: [마이페이지 & 관리자 백오피스 웹 시연 영상](https://drive.google.com)
-* ▶ **필우청**: [소셜/SMS 로그인 & 얌얌북 커뮤니티 & 1:1 문의 시연 영상](https://drive.google.com)
+* ▶ **장석재 (팀장)**: [마이페이지 시연 영상](https://drive.google.com/file/d/1E40UVNLDs8E9wsNAn3tKJ9BqR98WkTEd/view?usp=sharing), [관리자 백오피스 웹 시연영상](https://drive.google.com/file/d/10EgcvBBvaIYxJIsKeZUVradU290ukpcC/view?usp=sharing)
+* ▶ **필우청**: [소셜/SMS 로그인 & 얌얌북 커뮤니티 & 1:1 문의 시연 영상](https://drive.google.com/drive/folders/1Kht4XcYQtSaTvFp37uZMvb_cjNHZ4_xD?usp=drive_link)
 * ▶ **김현동**: [영수증 OCR 스탬프 인증 & 포인트 결제 & AI 추천 시연 영상](https://drive.google.com)
-* ▶ **임효진**: [메인 & 얌얌로드 지도 & 무료 포인트 충전소 시연 영상](https://drive.google.com)
+* ▶ **임효진**: [메인 & 얌얌로드 지도 & 무료 포인트 충전소 시연 영상](https://drive.google.com/file/d/1ZiulgUu5jBQZGVsIBNSNWlHGeMILq6dT/view?usp=sharing)
 
 ---
 
