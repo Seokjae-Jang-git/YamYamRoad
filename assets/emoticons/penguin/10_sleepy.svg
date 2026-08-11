@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">
+  <circle cx="150" cy="157" r="105" fill="#465064" stroke="#1E232D" stroke-width="6"/>
+  <ellipse cx="150" cy="190" rx="70" ry="60" fill="#F0F0EB"/>
+  <polygon points="138,168 162,168 150,190" fill="#F0A53C"/>
+  <line x1="92" y1="145" x2="124" y2="145" stroke="#1E232D" stroke-width="6" stroke-linecap="round"/>
+  <line x1="176" y1="145" x2="208" y2="145" stroke="#1E232D" stroke-width="6" stroke-linecap="round"/>
+  <ellipse cx="150" cy="208" rx="8" ry="8" fill="#963232" stroke="#1E232D" stroke-width="3"/>
+  <text x="235" y="55" font-size="26" font-weight="bold" fill="#1E232D">Z</text>
+  <text x="252" y="72" font-size="18" font-weight="bold" fill="#1E232D">z</text>
+</svg>

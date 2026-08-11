@@ -11,6 +11,7 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+*.env
 
 # IntelliJ related
 *.iml
@@ -45,3 +46,9 @@ app.*.map.json
 /android/app/release
 
 *.env
+
+scripts/serviceAccountKey.json
+scripts/node_modules/
+
+# Local Codex repository guidance
+AGENTS.md

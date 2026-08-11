@@ -30,11 +30,45 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
+  video_player: ^2.8.2
+  # Google AdMob SDK 패키지 추가
+  google_mobile_ads: ^5.1.0
+  url_launcher: ^6.3.0  # 👈 외부 딥링크 주소를 실행해 주는 핵심 패키지 추가
+  flutter_dotenv: ^5.1.0
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   firebase_core: ^4.11.0
+  cloud_firestore: ^6.6.0
+  flutter_naver_login: ^2.1.1
+  kakao_flutter_sdk_user: ^1.9.7
+  google_sign_in: ^7.1.1
+  google_mlkit_text_recognition: ^0.16.0
+  safe_device: ^1.4.1
+  firebase_app_check: ^0.4.5+2
+  cloud_functions: ^6.3.5
+  portone_flutter: ^1.0.3
+  # PortOne의 안정 버전 WebView가 AGP 9와 충돌하여 공식 AGP 9 수정 버전을 고정합니다.
+  flutter_inappwebview: 6.2.0-beta.3
+  in_app_purchase: ^3.3.0
+  flutter_svg: ^2.3.0
+  extended_text_field: ^16.0.0
+  shared_preferences: ^2.2.2
+
+
+  image_picker: ^1.2.3
+  firebase_storage: ^13.4.5
+  table_calendar: ^3.2.0
+  intl: ^0.20.3
+  firebase_auth: ^6.5.6
+
+  # 구글 지도 SDK 패키지 추가
+  google_maps_flutter: ^2.10.0
+  geolocator: ^14.0.3
+  provider: ^6.1.5+1
+  firebase_messaging: ^16.4.3
+  http: ^1.6.0
+  device_info_plus: ^13.2.0
 
 dev_dependencies:
   flutter_test:
@@ -64,7 +98,12 @@ flutter:
   #   - images/a_dot_ham.jpeg
   assets:
     - .env
-
+    - assets/temp_images/
+    - assets/emoticons/character/
+    - assets/emoticons/emoji/
+    - assets/emoticons/meme/
+    - assets/emoticons/penguin/
+    - assets/emoticons/cloud/
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

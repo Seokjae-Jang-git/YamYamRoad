@@ -1,0 +1,175 @@
+rules_version = '2';
+
+service cloud.firestore {
+    match /databases/{database}/documents {
+
+        // 로그인 여부 확인
+        function isSignedIn() {
+            return request.auth != null;
+        }
+
+        // 본인 소유 계정/문서인지 확인
+        function isOwner(ownerUid) {
+            return isSignedIn() && request.auth.uid == ownerUid;
+        }
+
+        // 🌟 현재 로그인한 유저가 /admins 컬렉션에 등록된 관리자인지 확인
+        function isAdmin() {
+            return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+        }
+
+        // 게시글 원 작성자인지 확인
+        function isPostOwner(postId) {
+            return isSignedIn() &&
+                get(/databases/$(database)/documents/posts/$(postId)).data.userId == request.auth.uid;
+        }
+
+        // ────────────────────────────────
+        // posts (커뮤니티 게시글 및 댓글)
+        // ────────────────────────────────
+        match /posts/{postId} {
+            allow read: if true;
+            allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+
+            allow update: if isOwner(resource.data.userId) || isAdmin() || (
+                isSignedIn() && request.resource.data.diff(resource.data).affectedKeys()
+                    .hasOnly(['likedBy', 'likeCount', 'scrappedBy', 'scrapCount', 'commentCount', 'reportCount'])
+            );
+
+            allow delete: if isOwner(resource.data.userId) || isAdmin();
+
+            match /comments/{commentId} {
+                allow read: if true;
+                allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+                allow delete: if isOwner(resource.data.userId) || isPostOwner(postId) || isAdmin();
+                allow update: if isAdmin() || (
+                    isSignedIn() && (
+                        (isOwner(resource.data.userId) &&
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'updatedAt', 'nickname'])
+                        )
+                        ||
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount', 'reportCount'])
+                    )
+                );
+
+                match /comment_like/{likeUserId} {
+                    allow read: if true;
+                    allow write: if isSignedIn() && likeUserId == request.auth.uid;
+                    allow delete: if isSignedIn() && (likeUserId == request.auth.uid || isPostOwner(postId) || isAdmin());
+                }
+            }
+
+            match /post_scrap/{scrapUserId} {
+                allow read: if true;
+                allow write: if isSignedIn() && scrapUserId == request.auth.uid;
+                allow delete: if isSignedIn() && (scrapUserId == request.auth.uid || isPostOwner(postId) || isAdmin());
+            }
+
+            match /post_like/{likeUserId} {
+                allow read: if true;
+                allow write: if isSignedIn() && likeUserId == request.auth.uid;
+                allow delete: if isSignedIn() && (scrapUserId == request.auth.uid || isPostOwner(postId) || isAdmin());
+            }
+        }
+
+        // ────────────────────────────────
+        // reports (신고 관리)
+        // ────────────────────────────────
+        match /reports/{reportId} {
+            allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+            allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+            allow update, delete: if isAdmin();
+        }
+
+        // ────────────────────────────────
+        // users (사용자 정보 관리)
+        // ────────────────────────────────
+        match /users/{uid} {
+            allow read: if true;
+
+            allow write: if isOwner(uid) || isAdmin();
+
+            match /{subcollection}/{docId} {
+                allow read: if true;
+                allow write: if isOwner(uid) || isAdmin();
+            }
+            match /users_myscrap/{scrapPostId} {
+                allow read: if isOwner(uid) || isAdmin();
+                allow write: if isOwner(uid) || isAdmin();
+            }
+        }
+
+        // ────────────────────────────────
+        // inquiry (문의 관리)
+        // ────────────────────────────────
+        match /inquiry/{inquiryId} {
+            allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid || isAdmin());
+            allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+            allow update: if isAdmin() || (
+                isSignedIn()
+                && resource.data.userId == request.auth.uid
+                // 💡 status를 canceled 또는 closed 로 변경하는 것 허용
+                && (request.resource.data.status == resource.data.status 
+                    || request.resource.data.status == 'canceled' 
+                    || request.resource.data.status == 'closed')
+                && request.resource.data.adminMemo == resource.data.adminMemo
+                && request.resource.data.userId == resource.data.userId
+            );
+            allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+        }
+
+        // ────────────────────────────────
+        // 앱 전역 참고/카탈로그 데이터
+        // ────────────────────────────────
+        match /badge/{docId} { allow read: if true; allow write: if isAdmin(); }
+        match /dessert_category/{docId} { allow read: if true; allow write: if isAdmin(); }
+        match /emoticon/{docId} { allow read: if true; allow write: if isAdmin(); }
+        match /gifticon/{docId} { allow read: if true; allow write: if isAdmin(); }
+        match /gifticon_stock/{docId} { allow read: if isSignedIn(); allow write: if isAdmin(); }
+        match /place/{docId} { allow read: if true; allow write: if isAdmin(); }
+        match /point_package/{docId} { allow read: if true; allow write: if isAdmin(); }
+        match /region/{docId} { allow read: if true; allow write: if isAdmin(); }
+        match /road/{docId} { allow read: if true; allow write: if isAdmin(); }
+
+        match /stamp/{docId} { allow read, write: if isSignedIn(); }
+        match /verification/{docId} { allow read, write: if isSignedIn(); }
+
+        // ────────────────────────────────
+        // 포인트 및 광고 시청 트랜잭션 관련 컬렉션
+        // ────────────────────────────────
+        match /ads/{adId} {
+            allow read: if isSignedIn();
+            allow write: if isSignedIn();
+        }
+
+        match /admob_reward_log/{logId} {
+            allow read: if isSignedIn();
+            allow create, update: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        }
+
+        match /ad_view/{viewId} {
+            allow read: if isSignedIn();
+            allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+            allow update, delete: if false;
+        }
+
+        match /users_point_transaction/{transactionId} {
+            allow read: if isSignedIn();
+            allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+            allow update, delete: if false;
+        }
+
+        // ────────────────────────────────
+        // admins (관리자 계정 등록 정보)
+        // ────────────────────────────────
+        match /admins/{adminId} {
+            allow read: if request.auth != null;
+            allow write: if request.auth != null && request.auth.uid == adminId;
+        }
+
+        // 정의되지 않은 나머지는 전체 차단
+        match /{document=**} {
+            allow read, write: if false;
+        }
+    }
+}

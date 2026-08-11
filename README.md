@@ -163,6 +163,7 @@ YamYamRoad(얌얌로드)는 성수동, 가로수길, 해리단길 등 급증하�
   - **GPS 어뷰징 및 부정 인증 검증 로직**: GPS 측정 거리 검사, 6시간 이내 결제 건 검증, 중복 영수증 차단, GPS 조작/루팅/비정상 이동 속도 자동 필터링 구축
   - **인증 보상 연동**: 검증 통과 시 스탬프 즉시 발행, 포인트 자동 지급 및 뱃지 획득 조건 판정 처리
   - **PortOne 결제 및 AI 추천**: PortOne 결제 모듈 연동 포인트 충전, FastAPI 연동 위치/이용 기록 기반 AI 맞춤 매장·코스 추천, FCM 인앱 푸시 알림 연동
+- **관련 저장소:** [**YamYamServer**](https://github.com/Medo-skb/YamYamServer), [**yamyamroad-data-tools**](https://github.com/Medo-skb/yamyamroad-data-tools)
 
 ### 임효진
 - **작업 페이지:**
